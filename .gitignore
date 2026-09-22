@@ -1,0 +1,16 @@
+node_modules/
+dist/
+coverage/
+.tanstack/
+.wrangler/
+.vite/
+.vite-hooks/_/
+.env
+.env.*
+!.env.example
+.dev.vars
+.dev.vars.*
+*.tsbuildinfo
+worker-configuration.d.ts
+playwright-report/
+test-results/

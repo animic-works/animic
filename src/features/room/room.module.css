@@ -1,0 +1,59 @@
+.form,
+.lobby {
+  display: grid;
+  gap: 1rem;
+  margin-block: 2rem;
+}
+.form {
+  max-width: 24rem;
+}
+.form input,
+.form button,
+.lobby button {
+  font: inherit;
+  padding: 0.75rem 1rem;
+  border: 1px solid #6a647b;
+  border-radius: 0.5rem;
+}
+.form button,
+.lobby button {
+  background: #f5f2ff;
+  color: inherit;
+  cursor: pointer;
+}
+.form button:disabled,
+.lobby button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.form :focus-visible,
+.lobby :focus-visible {
+  outline: 3px solid #5b43cc;
+  outline-offset: 3px;
+}
+.members {
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.75rem;
+}
+.members li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid #ddd7eb;
+  border-radius: 0.5rem;
+}
+.actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.lobby a {
+  overflow-wrap: anywhere;
+}
+.lobby > button {
+  justify-self: start;
+}

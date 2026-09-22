@@ -1,0 +1,12 @@
+# Vite+と同梱Viteの解決先を一致させる。
+overrides:
+  vite: npm:@voidzero-dev/vite-plus-core@0.3.3
+# 同梱Vite 8.3.0の代わりに別名パッケージの0.3.3がpeer判定されるため、
+# この確認済みバージョンだけを許可する。更新時は同梱版との互換性を再確認する。
+peerDependencyRules:
+  allowedVersions:
+    vite: "0.3.3"
+# ローカルWorkers実行に必要なネイティブバイナリの準備だけを許可する。
+onlyBuiltDependencies:
+  - esbuild
+  - workerd

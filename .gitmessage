@@ -1,0 +1,7 @@
+# type(scope): 日本語の説明
+#
+# 例: docs(repo): CONTRIBUTING.mdにセットアップ手順を追加する
+# type: feat / fix / refactor / perf / docs / test / build / ci / style / revert / chore
+# scope: 変更対象の機能・領域
+# 件名は72文字以内とし、論理的な変更単位でまとめます。
+# 本文には、件名だけでは伝わらない変更理由や補足を必要に応じて記載します。

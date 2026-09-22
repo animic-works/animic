@@ -1,0 +1,51 @@
+name: Checks
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: checks-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  quality:
+    name: Quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      VP_GIT_HOOKS: "0"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: voidzero-dev/setup-vp@3754dd7dbdb32bd8f6d28b6043de13ad3a75f21f # v1.21.1
+        with:
+          version: "0.3.3"
+          node-version-file: .node-version
+          cache: true
+          run-install: false
+      - run: vp install --frozen-lockfile
+      - name: Generate Workers types
+        run: vp run typegen
+      - name: Test game rules
+        run: vp run test
+      - name: Install test browser
+        run: vp exec playwright install --with-deps --no-shell chromium
+      - name: Build and test production preview
+        id: e2e
+        run: vp run test:e2e
+      - name: Upload E2E failure traces
+        if: ${{ failure() && steps.e2e.outcome == 'failure' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-failure-traces
+          path: test-results/
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Verify generated routes
+        run: git diff --exit-code -- src/routeTree.gen.ts
+      - name: Format, lint, types and unused code
+        run: vp run check

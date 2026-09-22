@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1790093837244,
+      "tag": "0000_anonymous-sessions",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1790095480333,
+      "tag": "0001_topics",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1790101152803,
+      "tag": "0002_battle_results",
+      "breakpoints": true
+    }
+  ]
+}
