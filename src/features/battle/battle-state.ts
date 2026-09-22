@@ -94,8 +94,8 @@ export type BattleSnapshot = v.InferOutput<typeof battleSnapshotSchema>;
 export type BattleSettings = v.InferOutput<typeof battleSettingsSchema>;
 export type Topic = v.InferOutput<typeof topicSchema>;
 
-export function hasEnoughParticipants(count: number) {
-  return count >= 2;
+export function canStartBattle(count: number) {
+  return count === 2;
 }
 
 export function createBattle(
@@ -106,10 +106,10 @@ export function createBattle(
   previousBattleId: string | null = null,
 ): BattleState {
   if (
-    !hasEnoughParticipants(participantIds.length) ||
+    !canStartBattle(participantIds.length) ||
     new Set(participantIds).size !== participantIds.length
   ) {
-    throw new Error("対戦には2人以上の参加者が必要です。");
+    throw new Error("対戦を開始するには参加者が2人必要です。");
   }
   if (settings.difficulty !== topic.difficulty) throw new Error("お題の難易度が一致しません。");
   return {

@@ -14,6 +14,16 @@ export const roomCodeSchema = v.pipe(
 export const participantNameSchema = v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(20));
 const memberSchema = v.object({ id: v.string(), name: participantNameSchema, ready: v.boolean() });
 export const roomStateSchema = v.object({
+  creation: v.optional(
+    v.nullable(
+      v.object({
+        participantId: v.string(),
+        requestId: v.pipe(v.string(), v.uuid()),
+        name: participantNameSchema,
+      }),
+    ),
+    null,
+  ),
   code: roomCodeSchema,
   settings: v.optional(v.nullable(battleSettingsSchema), null),
   battle: v.optional(v.nullable(battleStateSchema), null),

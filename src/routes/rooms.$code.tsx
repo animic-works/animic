@@ -1,7 +1,7 @@
 import { createFileRoute, notFound, redirect } from "@tanstack/react-router";
 import * as v from "valibot";
 
-import { hasEnoughParticipants } from "../features/battle/battle-state";
+import { canStartBattle } from "../features/battle/battle-state";
 import { BattleSetup } from "../features/battle/battle-setup";
 import { BattleView } from "../features/battle/battle-view";
 import { getRoomEntry } from "../features/room/room.functions";
@@ -54,7 +54,10 @@ function RoomPage() {
                     key={`setup:${current.battle?.id ?? "initial"}`}
                     code={code}
                     previousBattleId={current.battle?.id ?? null}
-                    canStart={connected && hasEnoughParticipants(current.members.length)}
+                    canStart={
+                      connected &&
+                      canStartBattle(current.members.filter((member) => member.connected).length)
+                    }
                     initialSettings={current.settings}
                   />
                 ) : (

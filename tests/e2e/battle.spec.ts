@@ -37,7 +37,10 @@ test.beforeAll(async () => {
   ]);
 });
 
-test("準備未完了でも開始でき、途中参加者を進行中の対戦に加えない", async ({ page, browser }) => {
+test("接続中の2人で開始し、開始時に切断していた人は復帰しても次の対戦を待つ", async ({
+  page,
+  browser,
+}) => {
   const guestContext = await browser.newContext();
   const lateContext = await browser.newContext();
   try {
@@ -61,6 +64,17 @@ test("準備未完了でも開始でき、途中参加者を進行中の対戦�
     await guest.getByRole("button", { name: "ルームに参加", exact: true }).click();
     await expect(guest.getByRole("listitem")).toHaveCount(2);
     await expect(guest.getByRole("button", { name: "対戦を始める" })).toHaveCount(0);
+    const late = await lateContext.newPage();
+    await late.goto(url);
+    await late.getByLabel("表示名").fill("待機参加者");
+    await late.getByRole("button", { name: "ルームに参加", exact: true }).click();
+    await expect(page.getByRole("listitem")).toHaveCount(3);
+    await expect(page.getByRole("button", { name: "対戦を始める" })).toBeDisabled();
+    await late.close();
+    await expect(page.getByRole("listitem").filter({ hasText: "待機参加者" })).toContainText(
+      "再接続待ち",
+    );
+    await expect(page.getByRole("button", { name: "対戦を始める" })).toBeEnabled();
     await page.getByLabel("制限時間（秒）").fill("120");
     await page.getByLabel("画像を選ぶ猶予（秒）").fill("60");
     await page.getByRole("button", { name: "対戦を始める" }).click();
@@ -77,12 +91,10 @@ test("準備未完了でも開始でき、途中参加者を進行中の対戦�
     await page.reload();
     await expect(page.getByRole("heading", { name: "今回のお題" })).toBeVisible();
     await expect(page.getByText("制限時間: 120秒", { exact: true })).toBeVisible();
-    const late = await lateContext.newPage();
-    await late.goto(url);
-    await late.getByLabel("表示名").fill("途中参加");
-    await late.getByRole("button", { name: "ルームに参加", exact: true }).click();
-    await expect(late.getByText("次の対戦を待っています。", { exact: true })).toBeVisible();
-    await expect(late.getByRole("img", { name: "再現するお題のイラスト" })).toHaveCount(0);
+    const returned = await lateContext.newPage();
+    await returned.goto(url);
+    await expect(returned.getByText("次の対戦を待っています。", { exact: true })).toBeVisible();
+    await expect(returned.getByRole("img", { name: "再現するお題のイラスト" })).toHaveCount(0);
   } finally {
     await guestContext.close();
     await lateContext.close();

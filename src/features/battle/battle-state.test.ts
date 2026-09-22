@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
-import { createBattle } from "./battle-state";
+import * as v from "valibot";
+import { createBattle, battleStateSchema } from "./battle-state";
 import type { BattleSettings, Topic } from "./battle-state";
 
 const settings: BattleSettings = { difficulty: "easy", durationSeconds: 120, selectionSeconds: 60 };
@@ -32,8 +33,13 @@ describe("対戦の開始", () => {
   it("選んだ難易度と異なるお題では開始しない", () => {
     expect(() => createBattle(settings, { ...topic, difficulty: "hard" }, ["a", "b"], 0)).toThrow();
   });
-  it("人数を固定せず、2人以上を扱う", () => {
-    expect(createBattle(settings, topic, ["a", "b", "c", "d"], 0).participantIds).toHaveLength(4);
+  it("開始は1対1に限定し、保存スキーマには人数を固定しない", () => {
+    expect(() => createBattle(settings, topic, ["a", "b", "c"], 0)).toThrow();
+    const battle = createBattle(settings, topic, ["a", "b"], 0);
+    expect(
+      v.parse(battleStateSchema, { ...battle, participantIds: ["a", "b", "c", "d"] })
+        .participantIds,
+    ).toHaveLength(4);
     expect(() => createBattle(settings, topic, ["a"], 0)).toThrow();
     expect(() => createBattle(settings, topic, ["a", "a"], 0)).toThrow();
   });

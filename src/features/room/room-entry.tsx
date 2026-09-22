@@ -1,6 +1,6 @@
 import { Button } from "@base-ui/react/button";
 import { Input } from "@base-ui/react/input";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { createClientOnlyFn } from "@tanstack/react-start";
 import { useRouter } from "@tanstack/react-router";
 
@@ -12,6 +12,7 @@ const prepareParticipant = createClientOnlyFn(() => ensureParticipant());
 
 export function RoomEntry({ code }: { code?: string }) {
   const router = useRouter();
+  const creation = useRef<{ requestId: string; name: string } | null>(null);
   const [name, setName] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
@@ -26,8 +27,18 @@ export function RoomEntry({ code }: { code?: string }) {
         setError("");
         try {
           await prepareParticipant();
-          const destination = code ?? (await createRoom({ data: { name } }));
-          if (code) await joinRoom({ data: { code, name } });
+          const requestedName = name.trim();
+          let destination = code;
+          if (destination) {
+            await joinRoom({ data: { code: destination, name: requestedName } });
+          } else {
+            const request =
+              creation.current?.name === requestedName
+                ? creation.current
+                : { requestId: crypto.randomUUID(), name: requestedName };
+            creation.current = request;
+            destination = await createRoom({ data: request });
+          }
           await router.invalidate();
           await router.navigate({ to: "/rooms/$code", params: { code: destination } });
         } catch {

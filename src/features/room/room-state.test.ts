@@ -4,6 +4,7 @@ import type { RoomState } from "./room-state";
 
 function room(): RoomState {
   return {
+    creation: null,
     code: "ABCDEFGH",
     battle: null,
     settings: null,

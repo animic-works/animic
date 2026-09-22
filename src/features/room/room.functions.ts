@@ -3,6 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders, setResponseHeader } from "@tanstack/react-start/server";
 import * as v from "valibot";
 
+import { createRoomCode } from "./room-creation";
 import { battleSettingsSchema } from "../battle/battle-state";
 import { createAuth } from "../../lib/auth.server";
 import { participantNameSchema, roomCodeSchema, roomSnapshotSchema } from "./room-state";
@@ -19,18 +20,19 @@ async function requireParticipant() {
 }
 
 export const createRoom = createServerFn({ method: "POST" })
-  .validator(v.object({ name: participantNameSchema }))
+  .validator(v.object({ name: participantNameSchema, requestId: v.pipe(v.string(), v.uuid()) }))
   .handler(async ({ data }) => {
     const participantId = await requireParticipant();
-    const alphabet = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
     for (let attempt = 0; attempt < 8; attempt += 1) {
-      let code = "";
-      while (code.length < 8) {
-        for (const value of crypto.getRandomValues(new Uint8Array(16))) {
-          if (value < 248 && code.length < 8) code += alphabet[value % alphabet.length];
-        }
-      }
-      if (await env.ROOMS.getByName(code).create(code, participantId, data.name)) return code;
+      const code = await createRoomCode(participantId, data.requestId, attempt);
+      if (
+        await env.ROOMS.getByName(code).create(code, {
+          participantId,
+          requestId: data.requestId,
+          name: data.name,
+        })
+      )
+        return code;
     }
     throw new Error("ルームを作成できませんでした。もう一度お試しください。");
   });

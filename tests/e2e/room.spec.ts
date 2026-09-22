@@ -17,12 +17,45 @@ async function join(page: Page, url: string, name: string) {
   await expect(page.getByRole("status").filter({ hasText: "接続済み" })).toBeVisible();
 }
 
-test("招待・準備状態の同期・複数タブからの復帰・ホストの退出", async ({
+test("作成の同時要求と再送・招待・準備同期・複数タブ・ホストの退出", async ({
   page,
   context,
   browser,
 }) => {
-  const invite = await create(page);
+  let originalBody: string | null = null;
+  let originalResponse: string | null = null;
+  await page.route("**/*", async (route) => {
+    const request = route.request();
+    const body = request.postData();
+    if (request.method() !== "POST" || !body?.includes("requestId")) {
+      await route.continue();
+      return;
+    }
+    if (originalBody === null) {
+      originalBody = body;
+      const [first, duplicate] = await Promise.all([route.fetch(), route.fetch()]);
+      expect(first.ok()).toBe(true);
+      originalResponse = await first.text();
+      expect(await duplicate.text()).toBe(originalResponse);
+      await route.abort("failed");
+    } else {
+      expect(body).toBe(originalBody);
+      const retried = await route.fetch();
+      expect(await retried.text()).toBe(originalResponse);
+      await route.fulfill({ response: retried });
+    }
+  });
+  await page.goto("/");
+  await page.getByLabel("表示名").fill("ホスト");
+  await page.getByRole("button", { name: "ルームを作る" }).click();
+  await expect(page.getByRole("alert")).toContainText("もう一度お試しください");
+  await page.getByRole("button", { name: "ルームを作る" }).click();
+  await expect(page).toHaveURL(/\/rooms\/[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{8}$/);
+  await expect(page.getByRole("listitem")).toHaveCount(1);
+  await expect(page.getByRole("listitem")).toContainText("ホスト");
+  expect(originalResponse).toContain(new URL(page.url()).pathname.split("/").at(-1));
+  await page.unrouteAll({ behavior: "wait" });
+  const invite = page.url();
   await expect(page.getByRole("img", { name: "ルームへの招待QRコード" })).toBeVisible();
   await expect(page.getByRole("link", { name: invite })).toHaveAttribute("href", invite);
   const guestContext = await browser.newContext();

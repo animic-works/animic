@@ -6,7 +6,7 @@ import * as v from "valibot";
 import {
   startNextBattle,
   canStartAfter,
-  hasEnoughParticipants,
+  canStartBattle,
   reconcileBattle,
   acceptGeneration,
   finishGeneration,
@@ -16,6 +16,8 @@ import {
 } from "../battle/battle-state";
 import type { BattleSettings, Topic, GenerationOutcome } from "../battle/battle-state";
 import { persistBattleResult } from "../battle/battle-results.server";
+import { isRoomCreationRetry } from "./room-creation";
+import type { RoomCreation } from "./room-creation";
 import { session } from "../../lib/auth-schema";
 import { reconcileRoom, getRoomDeadline, roomStateSchema } from "./room-state";
 import type { RoomSnapshot, RoomState } from "./room-state";
@@ -212,9 +214,17 @@ export class Room extends DurableObject<Env> {
     await this.#schedule();
   }
 
-  async create(code: string, participantId: string, name: string) {
-    if (this.#read()) return false;
+  async create(code: string, creation: RoomCreation) {
+    const previous = this.#reconcile();
+    if (previous) {
+      if (!isRoomCreationRetry(previous.creation, creation)) return false;
+      if (previous.closed) throw new Error("この作成要求のルームは終了しています。");
+      await this.#schedule();
+      return true;
+    }
+    const { participantId, name } = creation;
     this.#save({
+      creation,
       code,
       version: 0,
       battle: null,
@@ -271,12 +281,14 @@ export class Room extends DurableObject<Env> {
 
   canStart(participantId: string, previousBattleId: string | null) {
     const state = this.#reconcile();
+    const connected = this.#connected();
     return Boolean(
       state &&
       !state.closed &&
       canStartAfter(state.battle, previousBattleId) &&
       state.hostId === participantId &&
-      hasEnoughParticipants(state.members.length),
+      connected.has(participantId) &&
+      canStartBattle(state.members.filter((member) => connected.has(member.id)).length),
     );
   }
 
@@ -292,12 +304,14 @@ export class Room extends DurableObject<Env> {
     if (state.battle && state.battle.previousBattleId === previousBattleId) return;
     if (JSON.stringify(state.settings) !== JSON.stringify(settings))
       throw new Error("対戦の条件が変更されています。");
+    const connected = this.#connected();
+    if (!connected.has(participantId)) throw new Error("ルームへ再接続してから開始してください。");
     state.battle = startNextBattle(
       state.battle,
       previousBattleId,
       settings,
       topic,
-      state.members.map((member) => member.id),
+      state.members.filter((member) => connected.has(member.id)).map((member) => member.id),
       Date.now(),
     );
     for (const member of state.members) member.ready = false;

@@ -193,18 +193,11 @@ describe("同じルームでの再戦", () => {
   it("対戦ID・履歴・締切を新しくし、前の提出と結果は変更しない", () => {
     const ended = reconcileBattle(battle(), 15_000);
     const saved = serializeBattleResult(ended, "ABCDEFGH");
-    const next = startNextBattle(
-      ended,
-      ended.id,
-      ended.settings,
-      ended.topic,
-      ["a", "b", "c"],
-      20_000,
-    );
+    const next = startNextBattle(ended, ended.id, ended.settings, ended.topic, ["a", "c"], 20_000);
     expect(next.id).not.toBe(ended.id);
     expect(next.previousBattleId).toBe(ended.id);
     expect(next.generationEndsAt).toBe(30_000);
-    expect(next.participantIds).toEqual(["a", "b", "c"]);
+    expect(next.participantIds).toEqual(["a", "c"]);
     expect(next.generations).toEqual([]);
     expect(next.submissions).toEqual([]);
     expect(next.result).toBeNull();

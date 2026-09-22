@@ -107,7 +107,7 @@ export function BattleSetup({
         value={selection}
         onValueChange={setSelection}
       />
-      <p>準備状態を確認して開始してください。全員の準備完了は必須ではありません。</p>
+      <p>接続中の参加者が2人の場合に開始できます。全員の準備完了は必須ではありません。</p>
       <Button type="submit" disabled={!canStart || pending}>
         {pending ? "開始中…" : previousBattleId ? "次の対戦を始める" : "対戦を始める"}
       </Button>
