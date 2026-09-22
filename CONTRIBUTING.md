@@ -56,9 +56,11 @@ vp dev
 
 E2Eは[playwright.config.ts](playwright.config.ts)がビルド・DBの初期化・プレビュー起動を行います。テストごとではなく実行ごとに`.wrangler/e2e/`を初期化し、開発用の`.wrangler/state/`とは分けます。Wranglerによるテストデータ操作と他のテストが同じSQLiteを同時に更新しないよう、E2Eは1 workerで順に実行します。複数人の同時操作は各テスト内で複数のブラウザコンテキストを使って確認します。認証URLと鍵はテスト用に設定するため、E2Eだけなら`.env`の用意は不要です。
 
+E2E専用クライアントは`ANIMIC_E2E=true`のビルドにだけ含め、共通ルートのクライアントコードから読み込みます。通常のビルドや開発サーバーにはこの読み込みを追加しません。E2Eのビルド成果物はデプロイせず、公開用にはこの環境変数を指定せずにビルドし直します。
+
 `vp run test`はVite+内蔵のVitestで`src/**/*.test.ts`を実行します。期限やホストの引き継ぎなど、時刻を指定して確認する業務ルールを対象とします。Workersランタイムが必要な処理はE2Eで実際のD1・DOと組み合わせて確認します。
 
-E2EにはSSR表示、ブラウザ操作、404応答、匿名セッションの復元・失効、CSRF対策、ルームへの参加と状態同期、複数タブ、ホストの退出・切断、WebSocketの認証、対戦開始・再戦・復帰・途中参加・提出期限による未提出・勝負不成立の確定と、D1への結果保存に失敗した場合の再試行を含めます。失敗時のtraceは`test-results/`に保存され、CIでは`e2e-failure-traces` artifactから7日間取得できます。展開したtraceは`vp exec playwright show-trace <trace.zipのパス>`で確認します。
+E2Eでは、ロゴのSSR表示・画像の読み込み・狭い画面での表示・404応答をブラウザで確認します。認証・ルーム・対戦は、`tests/fixtures/api-client.ts`をブラウザで読み込んで実際のServer FunctionsとWebSocketを呼び出し、モックUIを経由せずに検証します。匿名セッションの復元・失効、CSRF対策、ルームへの参加と状態同期、複数タブ、ホストの退出・切断、WebSocketの認証、対戦開始・再戦・復帰・途中参加・提出期限による未提出・勝負不成立の確定と、D1への結果保存に失敗した場合の再試行を含めます。失敗時のtraceは`test-results/`に保存され、CIでは`e2e-failure-traces` artifactから7日間取得できます。展開したtraceは`vp exec playwright show-trace <trace.zipのパス>`で確認します。
 
 Drizzleスキーマを変更したら`vp run db:generate --name <変更名>`でSQLを生成し、`migrations/`のSQLとスナップショットを確認して一緒に管理します。ローカルへの適用には`vp run db:migrate:local`を使います。適用済みのSQLは書き換えず、追加のmigrationで変更します。
 

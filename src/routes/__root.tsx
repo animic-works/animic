@@ -1,11 +1,8 @@
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 
-import { getCurrentParticipant } from "../lib/auth.functions";
-
 import "../styles/global.css";
 
 export const Route = createRootRoute({
-  beforeLoad: async () => ({ participant: await getCurrentParticipant() }),
   head: () => ({
     links: [{ rel: "icon", type: "image/svg+xml", href: "/favicon.svg" }],
     meta: [
