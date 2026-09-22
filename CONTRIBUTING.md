@@ -78,6 +78,18 @@ git config --local commit.template .gitmessage
 
 テンプレートは`git commit`でエディターを開くと表示されます。`git commit -m`には適用されません。
 
+## アイコンの更新
+
+`public/favicon.svg`を原本とし、ブラウザ用のICO、Apple Touch Icon、Manifest用のPNGを生成します。SVGは絵柄を保持し、正方形のviewBoxで外側の余白を詰めています。SVGを更新したら、セットアップ済みのChromiumで次のコマンドを実行し、生成したファイルもコミットします。追加の画像変換パッケージは不要です。
+
+```sh
+vp run icons:generate
+```
+
+生成処理は`scripts/generate-icons.mjs`にあります。ICOには16・32・48pxの透過画像を格納し、Apple Touch Iconは180px、Manifest用は192・512pxの白背景にします。maskable版は512pxで余白を取り、マークが[安全領域](https://web.dev/articles/maskable-icon)に収まらなければ生成を失敗させます。
+
+HTMLの参照は`src/routes/__root.tsx`、ホーム画面用アイコンの参照は`public/site.webmanifest`で管理します。タブのアイコン更新時はHTMLのfavicon URLの`v`も増やし、ブラウザに残った旧画像のキャッシュを更新します。Manifestの表示モードは`browser`とし、オフライン動作やService Workerは追加しません。更新時は明暗両方の背景で小さいアイコンの見え方と、各URLの配信を確認してください。
+
 ## お題の登録
 
 自前で生成した画像を配信できるURLに配置し、D1の`topic`テーブルへID・難易度・画像URLを登録します。難易度は`easy`（かんたん）、`normal`（ふつう）、`hard`（むずかしい）です。画像のバイナリはD1に保存しません。

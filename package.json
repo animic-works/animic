@@ -6,6 +6,7 @@
     "check": "vp check && vp exec tsc --noEmit && vp exec knip",
     "format": "vp fmt",
     "hooks:setup": "vp hooks enable",
+    "icons:generate": "node scripts/generate-icons.mjs",
     "commitlint": "commitlint",
     "lint": "vp lint",
     "format:check": "vp fmt --check",
