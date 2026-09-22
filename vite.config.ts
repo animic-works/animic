@@ -19,7 +19,7 @@ export default defineConfig({
   lint: {
     plugins: ["typescript", "unicorn", "oxc", "react", "promise", "import"],
     categories: { correctness: "error", suspicious: "error" },
-    options: { typeAware: true, typeCheck: true },
+    options: { typeAware: true, typeCheck: false },
     rules: {
       "typescript/no-unnecessary-type-assertion": "error",
       "typescript/consistent-type-assertions": ["error", { assertionStyle: "never" }],

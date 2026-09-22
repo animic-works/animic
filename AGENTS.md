@@ -4,7 +4,7 @@
 
 作業前に[CONTRIBUTING.md](CONTRIBUTING.md)、[docs/architecture.md](docs/architecture.md)、[docs/conventions.md](docs/conventions.md)を読み、プロダクトの変更では[docs/product.md](docs/product.md)も確認してください。
 
-セットアップと検証は[CONTRIBUTING.md](CONTRIBUTING.md#セットアップと検証)に従います。静的検査はリポジトリルートで`vp run check`を実行します。`vp check`だけではKnipを含みません。業務ルールの単体テストは`vp run test`、Workers上のD1・DOとブラウザを含む検証は`vp run test:e2e`です。E2Eは専用のローカルDBを初期化してビルドから実行します。コマンドを変更したら、このファイルの案内も合わせて更新してください。
+セットアップと検証は[CONTRIBUTING.md](CONTRIBUTING.md#セットアップと検証)に従います。静的検査はリポジトリルートで`vp run check`を実行します。`vp check`だけではプロジェクト全体の型チェックとKnipを含みません。業務ルールの単体テストは`vp run test`、Workers上のD1・DOとブラウザを含む検証は`vp run test:e2e`です。E2Eは専用のローカルDBを初期化してビルドから実行します。コマンドを変更したら、このファイルの案内も合わせて更新してください。
 
 Issueに基づく作業では本文とコメントを確認してください。ブランチ名は[ブランチ運用](CONTRIBUTING.md#ブランチ運用)に従い、エージェントやツールの既定値をそのまま使わないでください。
 
