@@ -1,6 +1,8 @@
 # Vite+と同梱Viteの解決先を一致させる。
 overrides:
   vite: npm:@voidzero-dev/vite-plus-core@0.3.3
+  # GHSA-67mh-4wv8-2f99対策。依存元が修正済みesbuildへ更新されたら削除する。
+  "@esbuild-kit/core-utils@3.3.2>esbuild": "0.25.12"
 # 同梱Vite 8.3.0の代わりに別名パッケージの0.3.3がpeer判定されるため、
 # この確認済みバージョンだけを許可する。更新時は同梱版との互換性を再確認する。
 peerDependencyRules:
