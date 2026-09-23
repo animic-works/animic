@@ -6,6 +6,7 @@ test.describe("SSR", () => {
   test("JavaScriptなしでロゴだけのトップページが表示される", async ({ page }) => {
     const response = await page.goto("/");
     expect(response?.status()).toBe(200);
+    expect(response?.headers()["x-robots-tag"]).toBe("noindex");
     await expect(page).toHaveTitle("Animic");
     await expect(page.getByRole("heading", { name: "Animic", level: 1 })).toBeVisible();
     const logo = page.getByRole("img", { name: "Animic", exact: true });
@@ -43,9 +44,29 @@ for (const path of ["/not-a-route", "/rooms/ABCDEFGH"]) {
   test(`${path}は404画面を表示し、トップへ戻れる`, async ({ page }) => {
     const response = await page.goto(path);
     expect(response?.status()).toBe(404);
+    expect(response?.headers()["x-robots-tag"]).toBe("noindex");
     await expect(page.getByRole("heading", { name: "ページが見つかりません" })).toBeVisible();
     await page.getByRole("link", { name: "トップへ戻る" }).click();
     await expect(page).toHaveURL("/");
     await expect(page.getByRole("img", { name: "Animic", exact: true })).toBeVisible();
   });
 }
+
+test("認証APIの正常応答も検索対象にしない", async ({ request }) => {
+  const response = await request.get("/api/auth/get-session");
+  expect(response.status()).toBe(200);
+  expect(response.headers()["x-robots-tag"]).toBe("noindex");
+});
+
+test("本番ホストのトップだけを検索対象にする", async ({ request }) => {
+  for (const [host, path, indexable] of [
+    ["animic.party", "/", true],
+    ["animic.party", "/rooms/ABCDEFGH", false],
+    ["animic.example.workers.dev", "/", false],
+    ["dev.animic.party", "/", false],
+  ] as const) {
+    const response = await request.get(path, { headers: { Host: host } });
+    expect(response.status()).toBe(path === "/" ? 200 : 404);
+    expect(response.headers()["x-robots-tag"]).toBe(indexable ? undefined : "noindex");
+  }
+});

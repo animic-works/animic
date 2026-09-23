@@ -88,6 +88,8 @@ vp run icons:generate
 
 生成処理は`scripts/generate-icons.mjs`にあります。ICOには16・32・48pxの透過画像を格納し、Apple Touch Iconは180px、Manifest用は192・512pxの白背景にします。maskable版は512pxで余白を取り、マークが[安全領域](https://web.dev/articles/maskable-icon)に収まらなければ生成を失敗させます。
 
+同じ生成コマンドで`public/animic-logo.svg`から1200×630pxの白背景の`public/og-image.png`も作ります。ロゴは横幅900pxで縦横比を保ち、中央に配置します。OGPの参照は`src/routes/index.tsx`にあります。
+
 HTMLの参照は`src/routes/__root.tsx`、ホーム画面用アイコンの参照は`public/site.webmanifest`で管理します。タブのアイコン更新時はHTMLのfavicon URLの`v`も増やし、ブラウザに残った旧画像のキャッシュを更新します。Manifestの表示モードは`browser`とし、オフライン動作やService Workerは追加しません。更新時は明暗両方の背景で小さいアイコンの見え方と、各URLの配信を確認してください。
 
 ## お題の登録

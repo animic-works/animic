@@ -57,6 +57,35 @@ try {
     await writeFile(new URL(file, publicDirectory), await render(size, true, maskable));
   }
 
+  const logo = await readFile(new URL("animic-logo.svg", publicDirectory));
+  const ogImage = await page.evaluate(
+    async (logoUrl) => {
+      const image = new Image();
+      image.src = logoUrl;
+      await image.decode();
+      const canvas = document.createElement("canvas");
+      canvas.width = 1200;
+      canvas.height = 630;
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("Canvasを初期化できません。");
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      const width = 900;
+      const height = (width * image.naturalHeight) / image.naturalWidth;
+      context.drawImage(
+        image,
+        (canvas.width - width) / 2,
+        (canvas.height - height) / 2,
+        width,
+        height,
+      );
+      return canvas.toDataURL("image/png").split(",")[1];
+    },
+    `data:image/svg+xml;base64,${logo.toString("base64")}`,
+  );
+  if (!ogImage) throw new Error("OGP画像を生成できません。");
+  await writeFile(new URL("og-image.png", publicDirectory), Buffer.from(ogImage, "base64"));
+
   // ICOのディレクトリに各サイズのPNGを格納する。
   const sizes = [16, 32, 48];
   const images = await Promise.all(sizes.map((size) => render(size)));

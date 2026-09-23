@@ -15,7 +15,6 @@ export const Route = createRootRoute({
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { name: "theme-color", content: "#ffffff" },
       { title: "Animic" },
-      { name: "description", content: "お題のイラストをAIで再現する対戦ゲーム。" },
     ],
   }),
   component: Root,

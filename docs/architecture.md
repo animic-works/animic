@@ -6,15 +6,15 @@ TanStack Startのフルスタック構成で、機能単位で関連するコー
 
 各機能の役割と依存関係に合わせてコードを配置します。ゲームUIの構築にはBase UIとCSS Modulesを使用する方針です。Cloudflareにデプロイする構成とし、依存パッケージのバージョン管理は[CONTRIBUTING.md](../CONTRIBUTING.md#依存関係とgitで管理するファイル)に従います。
 
+## 検索とSNS共有
+
+検索と共有の対象は[ゲーム仕様](product.md#検索とsns共有)に従います。トップ固有のcanonicalとOGPは`src/routes/index.tsx`で設定します。robots.txtとsitemap.xmlは`public/`に置き、サイトマップには公開する正規URLだけを記載します。`src/server.ts`では`animic.party`のトップだけを検索対象とし、それ以外のホスト・パスのページ・APIレスポンスに`X-Robots-Tag: noindex`を付けます。一般公開する説明ページを追加する際は、検索対象の判定とサイトマップを合わせて更新します。画像・CSS・JavaScriptなどの静的アセットは取得を許可し、トップの表示と共有に利用できるようにします。robots.txtでクロールを禁止するだけでは検索除外を保証できず、非公開情報の保護には認証・認可が必要です。
+
 ## 画面とAPIの構成
 
-公開する画面は[ゲーム仕様](product.md#公開する画面)に従います。`src/routes/index.tsx`は`public/animic-logo.svg`を表示し、共通ルートでは参加者の認証処理を呼びません。ゲーム画面のルートはなく、`/rooms/<コード>`は404を返します。
-
-認証・ルーム・対戦のServer Functions、D1スキーマ、DOは画面から独立して保持します。ブラウザ側のWebSocket接続・再接続・状態のバージョン比較は`src/features/room/room-connection.ts`に置き、表示は呼び出し側に委ねます。ルームへのWebSocket接続用URLと認証APIは引き続きサーバーで処理します。
+画面の要件は[ゲーム仕様](product.md#対象範囲)に従い、ルートは`src/routes/`で定義します。認証・ルーム・対戦のServer Functions、D1スキーマ、DOは画面の表示から独立させます。ブラウザ側のWebSocket接続・再接続・状態のバージョン比較は`src/features/room/room-connection.ts`に置き、表示は呼び出し側に委ねます。
 
 APIの結合検証は画面のレイアウトやフォームに依存させません。E2E専用クライアントからServer FunctionsとWebSocketを呼び出し、通常のビルドには検証用クライアントを含めません。検証手順は[CONTRIBUTING.md](../CONTRIBUTING.md#セットアップと検証)を参照してください。
-
-以下は保持する業務処理と、ゲーム画面を構築する際の設計です。
 
 ## データと入力検証
 
