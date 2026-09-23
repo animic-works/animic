@@ -12,7 +12,17 @@ export default {
   async fetch(request: Request) {
     const url = new URL(request.url);
     const match = /^\/rooms\/([^/]+)\/connection$/.exec(url.pathname);
-    if (!match) return handleStart(request);
+    if (!match) {
+      const response = await handleStart(request);
+      if (url.hostname === "animic.party" && url.pathname === "/") return response;
+      const headers = new Headers(response.headers);
+      headers.set("X-Robots-Tag", "noindex");
+      return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers,
+      });
+    }
     if (request.headers.get("Origin") !== new URL(env.BETTER_AUTH_URL).origin)
       return new Response(null, { status: 403 });
     const code = v.safeParse(roomCodeSchema, match[1]);

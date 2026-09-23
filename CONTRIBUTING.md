@@ -56,9 +56,11 @@ vp dev
 
 E2Eは[playwright.config.ts](playwright.config.ts)がビルド・DBの初期化・プレビュー起動を行います。テストごとではなく実行ごとに`.wrangler/e2e/`を初期化し、開発用の`.wrangler/state/`とは分けます。Wranglerによるテストデータ操作と他のテストが同じSQLiteを同時に更新しないよう、E2Eは1 workerで順に実行します。複数人の同時操作は各テスト内で複数のブラウザコンテキストを使って確認します。認証URLと鍵はテスト用に設定するため、E2Eだけなら`.env`の用意は不要です。
 
+E2E専用クライアントは`ANIMIC_E2E=true`のビルドにだけ含め、共通ルートのクライアントコードから読み込みます。通常のビルドや開発サーバーにはこの読み込みを追加しません。E2Eのビルド成果物はデプロイせず、公開用にはこの環境変数を指定せずにビルドし直します。
+
 `vp run test`はVite+内蔵のVitestで`src/**/*.test.ts`を実行します。期限やホストの引き継ぎなど、時刻を指定して確認する業務ルールを対象とします。Workersランタイムが必要な処理はE2Eで実際のD1・DOと組み合わせて確認します。
 
-E2EにはSSR表示、ブラウザ操作、404応答、匿名セッションの復元・失効、CSRF対策、ルームへの参加と状態同期、複数タブ、ホストの退出・切断、WebSocketの認証、対戦開始・再戦・復帰・途中参加・提出期限による未提出・勝負不成立の確定と、D1への結果保存に失敗した場合の再試行を含めます。失敗時のtraceは`test-results/`に保存され、CIでは`e2e-failure-traces` artifactから7日間取得できます。展開したtraceは`vp exec playwright show-trace <trace.zipのパス>`で確認します。
+E2Eでは、ロゴのSSR表示・画像の読み込み・狭い画面での表示・404応答をブラウザで確認します。認証・ルーム・対戦は、`tests/fixtures/api-client.ts`をブラウザで読み込んで実際のServer FunctionsとWebSocketを呼び出し、モックUIを経由せずに検証します。匿名セッションの復元・失効、CSRF対策、ルームへの参加と状態同期、複数タブ、ホストの退出・切断、WebSocketの認証、対戦開始・再戦・復帰・途中参加・提出期限による未提出・勝負不成立の確定と、D1への結果保存に失敗した場合の再試行を含めます。失敗時のtraceは`test-results/`に保存され、CIでは`e2e-failure-traces` artifactから7日間取得できます。展開したtraceは`vp exec playwright show-trace <trace.zipのパス>`で確認します。
 
 Drizzleスキーマを変更したら`vp run db:generate --name <変更名>`でSQLを生成し、`migrations/`のSQLとスナップショットを確認して一緒に管理します。ローカルへの適用には`vp run db:migrate:local`を使います。適用済みのSQLは書き換えず、追加のmigrationで変更します。
 
@@ -75,6 +77,38 @@ git config --local commit.template .gitmessage
 ```
 
 テンプレートは`git commit`でエディターを開くと表示されます。`git commit -m`には適用されません。
+
+## 本番デプロイ
+
+Cloudflare Workers Buildsは次の設定で通常のアプリをビルド・デプロイします。Vite+とWranglerはリポジトリの依存パッケージから実行します。
+
+| 設定               | 値                          |
+| ------------------ | --------------------------- |
+| Worker名           | `animic`                    |
+| 本番ブランチ       | `main`                      |
+| ルートディレクトリ | リポジトリルート            |
+| ビルドコマンド     | `pnpm run build`            |
+| デプロイコマンド   | `pnpm exec wrangler deploy` |
+
+Node.jsは`.node-version`、pnpmは`package.json`の指定に合わせます。初回は本番D1を作成・確認し、`wrangler.jsonc`の`database_id`を設定してから`vp exec wrangler d1 migrations apply DB --remote`でSQLを適用します。Workerの秘密情報として`BETTER_AUTH_SECRET`に本番専用の鍵、`BETTER_AUTH_URL`に`https://animic.party`を設定します。DOのクラス登録は`wrangler.jsonc`のmigrationによってデプロイ時に行います。
+
+Custom Domainに`animic.party`を設定します。公開前に変更が`main`へ取り込まれていることと、Cloudflareがビルドするコミットを確認します。公開後はHTTPS、トップページ、アイコン・OGP画像、robots.txt、sitemap.xml、存在しないページの404を確認します。`www`を使う場合は正規ホストへ恒久リダイレクトします。開発環境を公開する場合は、Accessによる閲覧制限と、本番から独立したD1・DO・認証情報を設定します。
+
+Search Consoleは`animic.party`のドメインプロパティを追加し、指定されたDNS TXTレコードで所有権を確認します。コンテンツやサイト公開は所有権確認の前提ではありません。TXTは確認後も維持します。サイトマップの公開を確認したらSearch Consoleに送信し、robots.txtにも`Sitemap:`でそのURLを指定します。公開するページを追加した際は同じURLのサイトマップを更新し、URL検査で取得・登録状況を確認します。所有権確認だけで検索掲載が保証されるわけではありません。
+
+## アイコンの更新
+
+`public/favicon.svg`を原本とし、ブラウザ用のICO、Apple Touch Icon、Manifest用のPNGを生成します。SVGは絵柄を保持し、正方形のviewBoxで外側の余白を詰めています。SVGを更新したら、セットアップ済みのChromiumで次のコマンドを実行し、生成したファイルもコミットします。追加の画像変換パッケージは不要です。
+
+```sh
+vp run icons:generate
+```
+
+生成処理は`scripts/generate-icons.mjs`にあります。ICOには16・32・48pxの透過画像を格納し、Apple Touch Iconは180px、Manifest用は192・512pxの白背景にします。maskable版は512pxで余白を取り、マークが[安全領域](https://web.dev/articles/maskable-icon)に収まらなければ生成を失敗させます。
+
+同じ生成コマンドで`public/animic-logo.svg`から1200×630pxの白背景の`public/og-image.png`も作ります。ロゴは横幅900pxで縦横比を保ち、中央に配置します。OGPの参照は`src/routes/index.tsx`にあります。
+
+HTMLの参照は`src/routes/__root.tsx`、ホーム画面用アイコンの参照は`public/site.webmanifest`で管理します。タブのアイコン更新時はHTMLのfavicon URLの`v`も増やし、ブラウザに残った旧画像のキャッシュを更新します。Manifestの表示モードは`browser`とし、オフライン動作やService Workerは追加しません。更新時は明暗両方の背景で小さいアイコンの見え方と、各URLの配信を確認してください。
 
 ## お題の登録
 

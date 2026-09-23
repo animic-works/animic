@@ -1,3 +1,5 @@
+import { fileURLToPath } from "node:url";
+
 import babel from "@rolldown/plugin-babel";
 import { cloudflare } from "@cloudflare/vite-plugin";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
@@ -14,6 +16,18 @@ export default defineConfig({
     tanstackStart(),
     react(),
     babel({ presets: [reactCompilerPreset()] }),
+    process.env.ANIMIC_E2E === "true" && {
+      name: "animic-e2e-api-client",
+      apply: "build",
+      applyToEnvironment: (environment) => environment.name === "client",
+      enforce: "pre",
+      transform(code, id) {
+        if (id !== fileURLToPath(new URL("./src/routes/__root.tsx", import.meta.url))) return null;
+        // クライアントの単一エントリーを保ち、検証時だけAPI操作用モジュールを読み込む。
+        const fixture = fileURLToPath(new URL("./tests/fixtures/api-client.ts", import.meta.url));
+        return { code: `${code}\nvoid import(${JSON.stringify(fixture)});`, map: null };
+      },
+    },
   ],
   server: { port: 3000, strictPort: true },
   lint: {

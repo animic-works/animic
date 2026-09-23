@@ -4,6 +4,8 @@ import { promisify } from "node:util";
 import { expect, test } from "@playwright/test";
 import * as v from "valibot";
 
+import { loadApi } from "./api";
+
 const origin = "http://127.0.0.1:4173";
 const participantSchema = v.object({
   id: v.pipe(v.string(), v.regex(/^[a-zA-Z0-9-]+$/)),
@@ -42,10 +44,12 @@ test("匿名セッションを同じブラウザで復元し、別のブラウ�
   expect(v.parse(sessionSchema, await restored.json()).user.id).toBe(signedIn.user.id);
 
   const document = await page.goto("/");
-  expect(document?.headers()["cache-control"]).toContain("no-store");
   const html = await document?.text();
-  expect(html).toContain(signedIn.user.id);
+  expect(html).not.toContain(signedIn.user.id);
   expect(html).not.toContain(signedIn.token);
+  await loadApi(page);
+  const participant = await page.evaluate(() => window.animicTest.getCurrentParticipant());
+  expect(participant).toEqual({ id: signedIn.user.id, isAnonymous: true });
   await page.reload();
   await expect(page.getByRole("heading", { name: "Animic", exact: true })).toBeVisible();
 

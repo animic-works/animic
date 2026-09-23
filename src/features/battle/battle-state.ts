@@ -1,6 +1,6 @@
 import * as v from "valibot";
 
-export const difficultySchema = v.picklist(["easy", "normal", "hard"]);
+const difficultySchema = v.picklist(["easy", "normal", "hard"]);
 export const battleSettingsSchema = v.object({
   difficulty: difficultySchema,
   durationSeconds: v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(3600)),

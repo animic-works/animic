@@ -23,6 +23,9 @@ export default defineConfig({
     ].join(" && "),
     env: {
       ANIMIC_E2E: "true",
+      // Hostを切り替え、本番と非本番の検索設定をローカルで検証する。
+      __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS:
+        "animic.party,animic.example.workers.dev,dev.animic.party",
       BETTER_AUTH_URL: "http://127.0.0.1:4173",
       BETTER_AUTH_SECRET: randomBytes(32).toString("hex"),
     },

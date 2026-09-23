@@ -11,6 +11,7 @@
     {
       "binding": "DB",
       "database_name": "animic",
+      "database_id": "8944c3f5-246f-41d4-b4b9-80a204952dc5",
       "migrations_dir": "migrations",
     },
   ],
