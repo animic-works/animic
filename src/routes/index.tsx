@@ -1,29 +1,36 @@
-import { Collapsible } from "@base-ui/react/collapsible";
 import { createFileRoute } from "@tanstack/react-router";
-
-import { RoomEntry } from "../features/room/room-entry";
 
 import styles from "./-index.module.css";
 
-export const Route = createFileRoute("/")({ component: Home });
+export const Route = createFileRoute("/")({
+  head: () => ({
+    links: [{ rel: "canonical", href: "https://animic.party/" }],
+    meta: [
+      { property: "og:type", content: "website" },
+      { property: "og:title", content: "Animic" },
+      { property: "og:site_name", content: "Animic" },
+      { property: "og:locale", content: "ja_JP" },
+      { property: "og:url", content: "https://animic.party/" },
+      { property: "og:image", content: "https://animic.party/og-image.png" },
+      { property: "og:image:type", content: "image/png" },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      { property: "og:image:alt", content: "Animic" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Animic" },
+      { name: "twitter:image", content: "https://animic.party/og-image.png" },
+      { name: "twitter:image:alt", content: "Animic" },
+    ],
+  }),
+  component: Home,
+});
 
 function Home() {
   return (
     <main className={styles.page}>
-      <p className={styles.eyebrow}>AIイラスト再現バトル</p>
-      <h1>Animic</h1>
-      <p>お題のイラストを、あなたのプロンプトで再現しよう。</p>
-      <RoomEntry />
-      <Collapsible.Root>
-        <Collapsible.Trigger className={styles.trigger}>遊び方</Collapsible.Trigger>
-        <Collapsible.Panel>
-          <ol className={styles.steps}>
-            <li>お題を見ながら、プロンプトを入力して画像を生成。</li>
-            <li>生成履歴から好きな1枚を選んで提出。</li>
-            <li>再現度・提出速度・生成回数で勝負。</li>
-          </ol>
-        </Collapsible.Panel>
-      </Collapsible.Root>
+      <h1 className={styles.logo}>
+        <img src="/animic-logo.svg" alt="Animic" width="2078" height="607" />
+      </h1>
     </main>
   );
 }

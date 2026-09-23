@@ -6,6 +6,7 @@
     "check": "vp check && vp exec tsc --noEmit && vp exec knip",
     "format": "vp fmt",
     "hooks:setup": "vp hooks enable",
+    "icons:generate": "node scripts/generate-icons.mjs",
     "commitlint": "commitlint",
     "lint": "vp lint",
     "format:check": "vp fmt --check",
@@ -21,12 +22,10 @@
     "test": "vp test run --config vitest.config.ts"
   },
   "dependencies": {
-    "@base-ui/react": "1.8.0",
     "@tanstack/react-router": "1.170.38",
     "@tanstack/react-start": "1.168.57",
     "better-auth": "1.7.5",
     "drizzle-orm": "0.45.3",
-    "qrcode.react": "4.2.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "valibot": "1.5.0"
