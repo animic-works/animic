@@ -78,6 +78,24 @@ git config --local commit.template .gitmessage
 
 テンプレートは`git commit`でエディターを開くと表示されます。`git commit -m`には適用されません。
 
+## 本番デプロイ
+
+Cloudflare Workers Buildsは次の設定で通常のアプリをビルド・デプロイします。Vite+とWranglerはリポジトリの依存パッケージから実行します。
+
+| 設定               | 値                          |
+| ------------------ | --------------------------- |
+| Worker名           | `animic`                    |
+| 本番ブランチ       | `main`                      |
+| ルートディレクトリ | リポジトリルート            |
+| ビルドコマンド     | `pnpm run build`            |
+| デプロイコマンド   | `pnpm exec wrangler deploy` |
+
+Node.jsは`.node-version`、pnpmは`package.json`の指定に合わせます。初回は本番D1を作成・確認し、`wrangler.jsonc`の`database_id`を設定してから`vp exec wrangler d1 migrations apply DB --remote`でSQLを適用します。Workerの秘密情報として`BETTER_AUTH_SECRET`に本番専用の鍵、`BETTER_AUTH_URL`に`https://animic.party`を設定します。DOのクラス登録は`wrangler.jsonc`のmigrationによってデプロイ時に行います。
+
+Custom Domainに`animic.party`を設定します。公開前に変更が`main`へ取り込まれていることと、Cloudflareがビルドするコミットを確認します。公開後はHTTPS、トップページ、アイコン・OGP画像、robots.txt、sitemap.xml、存在しないページの404を確認します。`www`を使う場合は正規ホストへ恒久リダイレクトします。開発環境を公開する場合は、Accessによる閲覧制限と、本番から独立したD1・DO・認証情報を設定します。
+
+Search Consoleは`animic.party`のドメインプロパティを追加し、指定されたDNS TXTレコードで所有権を確認します。コンテンツやサイト公開は所有権確認の前提ではありません。TXTは確認後も維持します。サイトマップの公開を確認したらSearch Consoleに送信し、robots.txtにも`Sitemap:`でそのURLを指定します。公開するページを追加した際は同じURLのサイトマップを更新し、URL検査で取得・登録状況を確認します。所有権確認だけで検索掲載が保証されるわけではありません。
+
 ## アイコンの更新
 
 `public/favicon.svg`を原本とし、ブラウザ用のICO、Apple Touch Icon、Manifest用のPNGを生成します。SVGは絵柄を保持し、正方形のviewBoxで外側の余白を詰めています。SVGを更新したら、セットアップ済みのChromiumで次のコマンドを実行し、生成したファイルもコミットします。追加の画像変換パッケージは不要です。
