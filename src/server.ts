@@ -4,6 +4,10 @@ import * as v from "valibot";
 
 import { createAuth } from "./lib/auth.server";
 import { roomCodeSchema } from "./features/room/room-state";
+import {
+  handleScoringWorkerRequest,
+  isScoringWorkerRequest,
+} from "./features/scoring/scoring-workers.server";
 export { Room } from "./features/room/room.server";
 
 const handleStart = createStartHandler(defaultStreamHandler);
@@ -13,7 +17,10 @@ export default {
     const url = new URL(request.url);
     const match = /^\/rooms\/([^/]+)\/connection$/.exec(url.pathname);
     if (!match) {
-      const response = await handleStart(request);
+      // 採点ワーカーはCookieを使わずBearerで認証するため、ブラウザ向けのCSRF対策を通さない。
+      const response = isScoringWorkerRequest(url)
+        ? await handleScoringWorkerRequest(request)
+        : await handleStart(request);
       if (url.hostname === "animic.party" && url.pathname === "/") return response;
       const headers = new Headers(response.headers);
       headers.set("X-Robots-Tag", "noindex");
