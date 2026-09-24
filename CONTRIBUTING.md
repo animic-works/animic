@@ -60,7 +60,7 @@ E2E専用クライアントは`ANIMIC_E2E=true`のビルドにだけ含め、共
 
 `vp run test`はVite+内蔵のVitestで`src/**/*.test.ts`を実行します。期限やホストの引き継ぎなど、時刻を指定して確認する業務ルールを対象とします。Workersランタイムが必要な処理はE2Eで実際のD1・DOと組み合わせて確認します。
 
-E2Eでは、ロゴのSSR表示・画像の読み込み・狭い画面での表示・404応答をブラウザで確認します。認証・ルーム・対戦は、`tests/fixtures/api-client.ts`をブラウザで読み込んで実際のServer FunctionsとWebSocketを呼び出し、モックUIを経由せずに検証します。匿名セッションの復元・失効、CSRF対策、ルームへの参加と状態同期、複数タブ、ホストの退出・切断、WebSocketの認証、対戦開始・再戦・復帰・途中参加・提出期限による未提出・勝負不成立の確定と、D1への結果保存に失敗した場合の再試行を含めます。失敗時のtraceは`test-results/`に保存され、CIでは`e2e-failure-traces` artifactから7日間取得できます。展開したtraceは`vp exec playwright show-trace <trace.zipのパス>`で確認します。
+E2Eでは、ロゴのSSR表示・画像の読み込み・狭い画面での表示・404応答をブラウザで確認します。認証・ルーム・対戦は、`tests/fixtures/api-client.ts`をブラウザで読み込んで実際のServer FunctionsとWebSocketを呼び出し、モックUIを経由せずに検証します。匿名セッションの復元・失効、CSRF対策、ルームへの参加と状態同期、複数タブ、ホストの退出・切断、WebSocketの認証、対戦開始・再戦・復帰・途中参加・提出期限による未提出・勝負不成立の確定と、D1への結果保存に失敗した場合の再試行を含めます。採点ワーカー向けAPIは、ブラウザを使わずPlaywrightの`request`から採点ワーカーとして要求を送り、リンク・heartbeat・採点ジョブの割り当て・完了・差し戻しと、D1に保存される状態を確認します。失敗時のtraceは`test-results/`に保存され、CIでは`e2e-failure-traces` artifactから7日間取得できます。展開したtraceは`vp exec playwright show-trace <trace.zipのパス>`で確認します。
 
 Drizzleスキーマを変更したら`vp run db:generate --name <変更名>`でSQLを生成し、`migrations/`のSQLとスナップショットを確認して一緒に管理します。ローカルへの適用には`vp run db:migrate:local`を使います。適用済みのSQLは書き換えず、追加のmigrationで変更します。
 
@@ -128,6 +128,39 @@ vp exec wrangler d1 execute DB --local --file /path/to/topics.sql
 ```
 
 E2Eは専用DBへテスト用のお題を登録するため、開発用データを必要としません。画像の配信先はテスト内で差し替えます。
+
+## 採点ワーカーの準備
+
+採点は、運営者のPCで動く[desktop-comfyui-server](https://github.com/mintani/desktop-comfyui-server)を採点ワーカーとして登録して実行します。構成は[採点の設計](docs/scoring.md)を参照してください。
+
+1. PCにdesktop-comfyui-serverとComfyUIを用意し、ComfyUIの`custom_nodes`にcomfyui-illust-similarityを配置して依存パッケージを入れます。平坦な画像でも厳密なJSONを出力する版を使います。
+2. 初回の採点でモデル（約5GB）をダウンロードするため、登録の前に一度評価を実行しておきます。ダウンロード中はAnimicの割り当ての期限（2分）に間に合いません。
+3. D1にリンクコードを登録します。コードは英大文字と数字の`XXXX-XXXX`形式、有効期限はUNIX時刻のミリ秒で、発行から10分後を指定します。
+
+   ```sh
+   node -e "console.log(Date.now() + 10 * 60_000)"
+   ```
+
+   ```sql
+   INSERT INTO scoring_link_code (code, name, expires_at)
+   VALUES ('K7M2-Q9XD', 'studio-pc', 1790000000000);
+   ```
+
+   ローカルD1には`vp exec wrangler d1 execute DB --local --command "<SQL>"`、本番には`--remote`で適用します。
+
+4. desktop-comfyui-serverのサーバー設定にAnimicのURLを追加し、リンクコードを入力してリンクします。ローカルでは`vp dev`の`http://localhost:3000`を指定できます。
+
+採点ワーカーを止める場合は、失効日時を設定します。以後その採点ワーカーの要求は拒否されます。
+
+```sql
+UPDATE scoring_worker SET revoked_at = 1790000000000 WHERE id = '<採点ワーカーのID>';
+```
+
+採点ジョブの状態は次のSQLで確認できます。
+
+```sql
+SELECT id, state, attempts, worker_id, error FROM scoring_job ORDER BY created_at DESC LIMIT 20;
+```
 
 ## 作業の流れ
 
