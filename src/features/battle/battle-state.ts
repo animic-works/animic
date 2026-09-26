@@ -202,19 +202,22 @@ export function reconcileBattle(state: BattleState, now: number): BattleState {
         winnerId: submitted[0].participantId,
         decidedAt,
       };
-    else if (submitted.length > 1) next.result = decideByScores(next, now);
+    else if (submitted.length > 1) {
+      // 採点期限は全員の提出状態が確定した時刻から数える。
+      const settledAt = Math.max(
+        ...next.submissions.map((item) =>
+          item.status === "submitted" ? item.submittedAt : item.decidedAt,
+        ),
+      );
+      next.scoring.endsAt ??= settledAt + scoringTimeoutMs;
+      next.result = decideByScores(next, next.scoring.endsAt, now);
+    }
   }
   return next;
 }
 
-// 採点期限は全員の提出状態が確定してから数え、期限までに採点がそろわなければ勝負不成立にする。
-function decideByScores(state: BattleState, now: number): BattleState["result"] {
-  const settledAt = Math.max(
-    ...state.submissions.map((item) =>
-      item.status === "submitted" ? item.submittedAt : item.decidedAt,
-    ),
-  );
-  const endsAt = (state.scoring.endsAt ??= settledAt + scoringTimeoutMs);
+// 採点期限までに全員の採点がそろわなければ勝負不成立にする。
+function decideByScores(state: BattleState, endsAt: number, now: number): BattleState["result"] {
   const entries = state.submissions
     .filter((item) => item.status === "submitted")
     .map((item) =>
