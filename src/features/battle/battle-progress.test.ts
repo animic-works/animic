@@ -2,16 +2,18 @@ import { describe, expect, it } from "vite-plus/test";
 import * as v from "valibot";
 import {
   acceptGeneration,
+  applyScoringJobs,
   battleStateSchema,
   createBattle,
   finishGeneration,
   getBattleSnapshot,
+  getScoringRequests,
   reconcileBattle,
   submitImage,
   serializeBattleResult,
   startNextBattle,
 } from "./battle-state";
-import type { BattleState } from "./battle-state";
+import type { BattleState, ScoringJobOutcome } from "./battle-state";
 
 function battle() {
   return createBattle(
@@ -163,15 +165,116 @@ describe("未提出による1対1の勝敗", () => {
       decidedAt: 15_000,
     });
   });
-  it("両方提出していれば採点せず勝敗を決めない", () => {
-    const generated = success(success(accept(accept(battle(), "one"), "two", "b"), "one"), "two");
-    const submitted = submitImage(submitImage(generated, "a", "one", 3000), "b", "two", 4000);
-    expect(reconcileBattle(submitted, 20_000).result).toBeNull();
+  it("両方提出しても採点結果がそろうまで勝敗を決めない", () => {
+    expect(reconcileBattle(bothSubmitted(), 20_000).result).toBeNull();
   });
   it("複数人対戦へ未合意の順位ルールを適用しない", () => {
     const state = battle();
     state.participantIds.push("c");
     expect(reconcileBattle(state, 20_000).result).toBeNull();
+  });
+});
+
+function bothSubmitted() {
+  const generated = success(success(accept(accept(battle(), "one"), "two", "b"), "one"), "two");
+  return submitImage(submitImage(generated, "a", "one", 3000), "b", "two", 4000);
+}
+function jobs(state: BattleState, outcomes: Record<string, number | "failed" | "running">) {
+  return state.scoring.entries.map((entry): ScoringJobOutcome => {
+    const outcome = outcomes[entry.participantId] ?? "running";
+    return typeof outcome === "number"
+      ? {
+          id: entry.jobId,
+          state: "succeeded",
+          totals: [{ participantId: entry.participantId, total: outcome }],
+        }
+      : { id: entry.jobId, state: outcome, totals: [] };
+  });
+}
+
+describe("採点による1対1の勝敗", () => {
+  it("提出ごとに採点を依頼し、再送では依頼を増やさない", () => {
+    const state = submitImage(success(accept(battle(), "one"), "one"), "a", "one", 3000);
+    expect(getScoringRequests(state)).toEqual([
+      {
+        jobId: state.scoring.entries[0]?.jobId,
+        participantId: "a",
+        topicImageUrl: "https://example.invalid/topic.png",
+        submissionImageUrl: "https://example.invalid/one.png",
+      },
+    ]);
+    expect(submitImage(state, "a", "one", 4000).scoring.entries).toEqual(state.scoring.entries);
+  });
+  it("全員の提出確定から採点期限を数え、制限時間の前でも採点結果で勝敗を決める", () => {
+    const state = bothSubmitted();
+    expect(state.scoring.endsAt).toBe(304_000);
+    expect(getBattleSnapshot(state, "a", 5000).scoringEndsAt).toBe(304_000);
+    const scored = applyScoringJobs(state, jobs(state, { a: 71.4, b: 60 }), 6000);
+    expect(scored.result).toEqual({
+      kind: "win",
+      reason: "higher-score",
+      winnerId: "a",
+      decidedAt: 6000,
+    });
+    expect(getScoringRequests(scored)).toEqual([]);
+  });
+  it("totalが等しければ引き分けにする", () => {
+    const state = bothSubmitted();
+    expect(applyScoringJobs(state, jobs(state, { a: 50, b: 50 }), 6000).result).toEqual({
+      kind: "draw",
+      reason: "same-score",
+      decidedAt: 6000,
+    });
+  });
+  it("採点ジョブの失敗や採点期限の超過は勝負不成立にする", () => {
+    const state = bothSubmitted();
+    const failed = applyScoringJobs(state, jobs(state, { a: 71.4, b: "failed" }), 6000);
+    expect(failed.result).toEqual({
+      kind: "no-contest",
+      reason: "scoring-failed",
+      decidedAt: 6000,
+    });
+    const missingTotal = jobs(state, { a: 71.4, b: 60 }).map((job) =>
+      job.totals[0]?.participantId === "b" ? { ...job, totals: [] } : job,
+    );
+    expect(applyScoringJobs(state, missingTotal, 6000).result?.kind).toBe("no-contest");
+    const waiting = applyScoringJobs(state, jobs(state, { a: 71.4 }), 6000);
+    expect(reconcileBattle(waiting, 303_999).result).toBeNull();
+    expect(reconcileBattle(waiting, 400_000).result).toEqual({
+      kind: "no-contest",
+      reason: "scoring-failed",
+      decidedAt: 304_000,
+    });
+  });
+  it("別の対戦のジョブや結果確定後の採点結果を反映しない", () => {
+    const state = bothSubmitted();
+    const unrelated = jobs(state, { a: 90, b: 10 }).map((job) => ({ ...job, id: `old-${job.id}` }));
+    expect(applyScoringJobs(state, unrelated, 6000)).toEqual(reconcileBattle(state, 6000));
+    const scored = applyScoringJobs(state, jobs(state, { a: 71.4, b: 60 }), 6000);
+    expect(applyScoringJobs(scored, jobs(state, { a: 10, b: 90 }), 7000)).toEqual(scored);
+  });
+  it("勝敗の確定前は相手の採点結果と画像を配信せず、確定後に全員分を公開して保存する", () => {
+    const state = bothSubmitted();
+    const partial = applyScoringJobs(state, jobs(state, { b: 60 }), 6000);
+    const before = getBattleSnapshot(partial, "a", 6000);
+    expect(before.scores).toBeNull();
+    expect(JSON.stringify(before)).not.toContain("two.png");
+    const scored = applyScoringJobs(partial, jobs(state, { a: 71.4, b: 60 }), 7000);
+    expect(getBattleSnapshot(scored, "a", 7000).scores).toEqual([
+      { participantId: "a", total: 71.4, imageUrl: "https://example.invalid/one.png" },
+      { participantId: "b", total: 60, imageUrl: "https://example.invalid/two.png" },
+    ]);
+    expect(JSON.parse(serializeBattleResult(scored, "ABCDEFGH"))).toMatchObject({
+      result: { kind: "win", winnerId: "a" },
+      scores: [
+        { participantId: "a", total: 71.4 },
+        { participantId: "b", total: 60 },
+      ],
+    });
+  });
+  it("採点の項目がない保存済みの状態も読み込める", () => {
+    const { scoring: _scoring, ...saved } = battle();
+    expect(v.parse(battleStateSchema, saved).scoring).toEqual({ endsAt: null, entries: [] });
   });
 });
 

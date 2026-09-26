@@ -13,9 +13,12 @@ import {
   submitImage,
   getBattleSnapshot,
   serializeBattleResult,
+  getScoringRequests,
+  applyScoringJobs,
 } from "../battle/battle-state";
 import type { BattleSettings, Topic, GenerationOutcome } from "../battle/battle-state";
 import { persistBattleResult } from "../battle/battle-results.server";
+import { getScoringJobs, registerScoringJobs } from "../scoring/scoring-jobs.server";
 import { isRoomCreationRetry } from "./room-creation";
 import type { RoomCreation } from "./room-creation";
 import { session } from "../../lib/auth-schema";
@@ -27,8 +30,12 @@ const attachmentSchema = v.object({
   sessionId: v.string(),
   expiresAt: v.number(),
 });
+const scoringCheckIntervalMs = 3000;
 
 export class Room extends DurableObject<Env> {
+  // 操作のたびに予約し直しても、採点の確認を先へ延ばし続けない。
+  #scoringCheckAt: number | null = null;
+
   constructor(ctx: DurableObjectState, bindings: Env) {
     super(ctx, bindings);
     ctx.storage.sql.exec(
@@ -130,6 +137,12 @@ export class Room extends DurableObject<Env> {
         battle.submissions.length < battle.participantIds.length
       )
         deadlines.push(Math.max(now, battle.selectionEndsAt));
+      if (getScoringRequests(battle).length) {
+        this.#scoringCheckAt ??= now + scoringCheckIntervalMs;
+        deadlines.push(Math.max(now, this.#scoringCheckAt));
+      }
+      if (!battle.result && battle.scoring.endsAt !== null)
+        deadlines.push(Math.max(now, battle.scoring.endsAt));
     }
     if (this.#sockets().length) {
       deadlines.push(now + 30_000);
@@ -170,6 +183,29 @@ export class Room extends DurableObject<Env> {
           battleId: item.battle_id,
         });
       }
+    }
+  }
+
+  // 採点ジョブの登録と結果の取得は冪等にし、失敗しても次のAlarmでやり直す。
+  async #syncScoring() {
+    this.#scoringCheckAt = null;
+    const state = this.#read();
+    const battle = state?.battle;
+    const requests = battle ? getScoringRequests(battle) : [];
+    if (!state || state.closed || !battle || !requests.length) return;
+    try {
+      await registerScoringJobs(this.env.DB, battle.id, state.code, requests);
+      const jobs = await getScoringJobs(
+        this.env.DB,
+        requests.map((request) => request.jobId),
+      );
+      // D1との通信中に対戦が進んだ場合も、現在の対戦の状態から反映する。
+      const current = this.#read();
+      if (!current?.battle || current.battle.id !== battle.id) return;
+      current.battle = applyScoringJobs(current.battle, jobs, Date.now());
+      this.#save(current);
+    } catch {
+      console.error("採点ジョブを確認できませんでした。再試行します。", { battleId: battle.id });
     }
   }
 
@@ -415,6 +451,7 @@ export class Room extends DurableObject<Env> {
     await this.#publish();
   }
   async alarm() {
+    await this.#syncScoring();
     await this.#publish();
   }
 }
