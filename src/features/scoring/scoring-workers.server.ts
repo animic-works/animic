@@ -99,6 +99,9 @@ async function fetchImage(url: string) {
   const contentType = response.headers.get("Content-Type")?.split(";")[0]?.trim() ?? "";
   if (!response.ok || !imageTypes.includes(contentType))
     throw new Error(`画像を取得できませんでした（HTTP ${response.status}）: ${url}`);
+  // 大きな画像をメモリへ読み込む前に拒否する。長さが分からない応答は読み込んでから確かめる。
+  if (Number(response.headers.get("Content-Length")) > maxImageBytes)
+    throw new Error(`画像が10MBを超えています: ${url}`);
   const body = await response.arrayBuffer();
   if (body.byteLength > maxImageBytes) throw new Error(`画像が10MBを超えています: ${url}`);
   return { base64: Buffer.from(body).toString("base64"), contentType };
