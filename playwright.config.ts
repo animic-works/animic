@@ -28,6 +28,8 @@ export default defineConfig({
         "animic.party,animic.example.workers.dev,dev.animic.party",
       BETTER_AUTH_URL: "http://127.0.0.1:4173",
       BETTER_AUTH_SECRET: randomBytes(32).toString("hex"),
+      // 開発者の.envにあるNovelAIのトークンをE2Eのビルドへ含めない。
+      NOVELAI_API_TOKEN: "e2e-dummy-token",
     },
     url: "http://127.0.0.1:4173",
     reuseExistingServer: false,

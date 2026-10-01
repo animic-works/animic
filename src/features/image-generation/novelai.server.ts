@@ -1,0 +1,54 @@
+import { DurableObject } from "cloudflare:workers";
+import * as v from "valibot";
+
+import { requestImage } from "./novelai";
+import type { ImageResult } from "./novelai";
+
+const apiUrl = "https://image.novelai.net";
+const configSchema = v.object({ NOVELAI_API_TOKEN: v.pipe(v.string(), v.minLength(1)) });
+
+// NovelAIは1アカウントで同時に1件しか生成できないため、全ルームの生成を受付順に1件ずつ送る。
+export class NovelAiQueue extends DurableObject<Env> {
+  #tail: Promise<unknown> = Promise.resolve();
+  #waiting = 0;
+
+  generate(
+    prompt: string,
+    deadline: number,
+  ): Promise<ImageResult | { ok: false; reason: "not-configured" }> {
+    const queuedAt = Date.now();
+    this.#waiting += 1;
+    // fetchの応答を待つ間もDOは次の要求を受け付けるため、Promiseをつないで順番を守る。
+    const run = this.#tail.then(() => {
+      this.#waiting -= 1;
+      return this.#request(prompt, deadline, queuedAt);
+    });
+    this.#tail = run.catch(() => {});
+    return run;
+  }
+
+  async #request(prompt: string, deadline: number, queuedAt: number) {
+    const config = v.safeParse(configSchema, this.env);
+    if (!config.success) {
+      console.error("NOVELAI_API_TOKENを設定してください。");
+      return { ok: false, reason: "not-configured" } as const;
+    }
+    console.info("NovelAIへ画像生成を送ります。", {
+      waitedMs: Date.now() - queuedAt,
+      waiting: this.#waiting,
+    });
+    const result = await requestImage({
+      apiUrl,
+      token: config.output.NOVELAI_API_TOKEN,
+      prompt,
+      deadline,
+    });
+    if (!result.ok)
+      console.error("NovelAIで画像を生成できませんでした。", {
+        reason: result.reason,
+        status: result.status,
+        detail: result.detail,
+      });
+    return result;
+  }
+}
