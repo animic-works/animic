@@ -13,13 +13,21 @@ export default defineConfig({
     baseURL: "http://127.0.0.1:4173",
     trace: "retain-on-failure",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  // 見た目の回帰テスト（tests/visual）は基準画像がOSで変わるため、vp run test:visual でだけ動かす
+  snapshotPathTemplate: "{testDir}/__screenshots__/{platform}/{arg}{ext}",
+  expect: { toHaveScreenshot: { maxDiffPixelRatio: 0.01, animations: "disabled" } },
+  projects: [
+    { name: "chromium", testDir: "./tests/e2e", use: { ...devices["Desktop Chrome"] } },
+    ...(process.env.ANIMIC_VISUAL === "true"
+      ? [{ name: "visual", testDir: "./tests/visual", use: { ...devices["Desktop Chrome"] } }]
+      : []),
+  ],
   webServer: {
     command: [
       "node -e \"require('node:fs').rmSync('.wrangler/e2e', { recursive: true, force: true })\"",
       "vp run build",
       "vp run db:migrate:local --persist-to .wrangler/e2e",
-      "vp preview --host 127.0.0.1 --port 4173 --strictPort",
+      "vp preview . --host 127.0.0.1 --port 4173 --strictPort",
     ].join(" && "),
     env: {
       ANIMIC_E2E: "true",
