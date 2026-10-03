@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "panda": {
+      "command": "pnpm",
+      "args": ["exec", "panda-mcp"]
+    },
+    "ark-ui": {
+      "command": "pnpm",
+      "args": ["exec", "ark-ui-mcp"]
+    }
+  }
+}

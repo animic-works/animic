@@ -1,0 +1,317 @@
+import { defineRecipe, defineSlotRecipe } from "@pandacss/dev";
+
+// 画面の背景に置く飾り（固定）
+export const pageDeco = defineRecipe({
+  className: "page-deco",
+  description: "画面全体の後ろに固定する飾りの図。操作を受け付けない",
+  base: {
+    position: "fixed",
+    inset: "0",
+    width: "full",
+    height: "full",
+    pointerEvents: "none",
+    // スマホでは出さない（上のアプリバーに替える）
+    "@media (max-width: 560px)": { display: "none" },
+  },
+});
+
+// スマホの上のアプリバー: 左に戻る、中央にロゴか見出し
+export const mobileBar = defineSlotRecipe({
+  className: "mobile-bar",
+  description:
+    "スマホだけで出す上のバー。ログインでは透明の帯にロゴ、規約などの文書では白い帯に見出しを置く",
+  slots: ["root", "back", "logo", "title"],
+  base: {
+    root: {
+      display: "none",
+      "@media (max-width: 560px)": {
+        zIndex: "5",
+        top: "0",
+        display: "grid",
+        gridTemplateColumns: "48px 1fr 48px",
+        alignItems: "center",
+        minHeight: "calc(56px + env(safe-area-inset-top, 0px))",
+        pt: "env(safe-area-inset-top, 0px)",
+        px: "8px",
+        pb: "0",
+      },
+    },
+    back: {
+      display: "grid",
+      placeItems: "center",
+      width: "48px",
+      height: "48px",
+      p: "0",
+      borderWidth: "none",
+      borderRadius: "full",
+      color: "fg.default",
+      cursor: "pointer",
+      textDecoration: "none",
+    },
+    logo: { justifySelf: "center", width: "auto", height: "38px" },
+    title: {
+      m: "0",
+      overflow: "hidden",
+      textAlign: "center",
+      textOverflow: "ellipsis",
+      whiteSpace: "nowrap",
+      fontFamily: "round",
+      fontWeight: "heavy",
+      fontSize: "1.05rem",
+    },
+  },
+  variants: {
+    variant: {
+      // ログイン: 絵の上に浮かせる。戻るは白い丸。
+      // 画面の上端に詰まって見えないよう、文書のバーより上に12pxの余白を足す
+      float: {
+        root: {
+          "@media (max-width: 560px)": {
+            position: "fixed",
+            left: "0",
+            right: "0",
+            minHeight: "calc(68px + env(safe-area-inset-top, 0px))",
+            pt: "calc(12px + env(safe-area-inset-top, 0px))",
+            pointerEvents: "none",
+            "& > *": { pointerEvents: "auto" },
+          },
+        },
+        back: {
+          bg: "rgb(255 255 255 / 0.92)",
+          boxShadow: "0 6px 16px -8px rgb(11 27 43 / 0.45)",
+          _active: { transform: "scale(0.94)" },
+        },
+      },
+      // 文書: 白い帯で上に貼り付く
+      sticky: {
+        root: {
+          "@media (max-width: 560px)": {
+            position: "sticky",
+            gap: "4px",
+            bg: "rgb(255 255 255 / 0.94)",
+            borderBottomWidth: "thin",
+            borderBottomStyle: "solid",
+            borderBottomColor: "border.default",
+            backdropFilter: "blur(10px)",
+          },
+        },
+        back: { bg: "none", _active: { bg: "bg.sunken" } },
+      },
+    },
+  },
+  defaultVariants: { variant: "sticky" },
+});
+
+// 左上の「戻る」
+export const backLink = defineRecipe({
+  className: "back-link",
+  description: "画面の左上に置く、前の画面へ戻るリンク",
+  base: {
+    position: "absolute",
+    zIndex: "2",
+    top: "6",
+    left: "clamp(1rem, 4vw, 3rem)",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "0.4rem",
+    p: "0",
+    borderWidth: "none",
+    bg: "none",
+    color: "fg.default",
+    fontFamily: "body",
+    fontWeight: "bold",
+    fontSize: "0.9rem",
+    textDecoration: "none",
+    cursor: "pointer",
+    _hover: { color: "accent.default" },
+    "@media (max-width: 560px)": { display: "none" },
+  },
+});
+
+// 規約・ポリシーなどの文書ページ
+export const docPage = defineSlotRecipe({
+  className: "doc-page",
+  description: "利用規約・プライバシーポリシーなど、長い文章を読むページ",
+  slots: [
+    "page",
+    "doc",
+    "head",
+    "eyebrow",
+    "meta",
+    "draft",
+    "toc",
+    "tocSummary",
+    "tocList",
+    "section",
+    "heading",
+    "paragraph",
+    "list",
+    "tableWrap",
+    "table",
+    "foot",
+    "toTop",
+  ],
+  base: {
+    page: {
+      position: "relative",
+      zIndex: "raised",
+      width: "min(100%, 50rem)",
+      mx: "auto",
+      pt: "20",
+      px: "4",
+      pb: "16",
+      "@media (max-width: 560px)": {
+        pt: "12px",
+        px: "4",
+        pb: "calc(5rem + env(safe-area-inset-bottom, 0px))",
+      },
+    },
+    doc: {
+      p: "clamp(1.5rem, 5vw, 3.25rem)",
+      bg: "bg.surface",
+      borderRadius: "card",
+      boxShadow: "0 30px 60px -34px rgb(11 27 43 / 0.35)",
+      lineHeight: "1.9",
+      "@media (max-width: 560px)": {
+        pt: "1.4rem",
+        px: "1.15rem",
+        pb: "1.6rem",
+        borderRadius: "20px",
+        lineHeight: "1.95",
+      },
+    },
+    head: {
+      display: "grid",
+      gap: "2",
+      pb: "6",
+      mb: "6",
+      borderBottomWidth: "thick",
+      borderBottomStyle: "solid",
+      borderBottomColor: "border.strong",
+      "& h1": {
+        m: "0",
+        fontFamily: "round",
+        fontWeight: "heavy",
+        fontSize: "clamp(1.7rem, 5vw, 2.4rem)",
+        lineHeight: "1.35",
+      },
+      "@media (max-width: 560px)": { pb: "1.1rem", mb: "1.25rem", "& h1": { fontSize: "1.6rem" } },
+    },
+    // 見出しの上の英字の小見出し（TERMS OF SERVICE）
+    eyebrow: {
+      m: "0",
+      fontFamily: "latin",
+      fontStyle: "italic",
+      fontSize: "0.78rem",
+      letterSpacing: "0.25em",
+      color: "accent.default",
+    },
+    meta: { m: "0", mt: "2", fontSize: "0.95rem", color: "fg.muted" },
+    draft: {
+      m: "0",
+      mt: "2",
+      py: "0.8rem",
+      px: "4",
+      borderRadius: "0.9rem",
+      bg: "warning.subtle",
+      fontSize: "0.95rem",
+      lineHeight: "relaxed",
+    },
+    toc: {
+      m: "0",
+      mb: "8",
+      py: "4",
+      px: "5",
+      borderRadius: "md",
+      bg: "bg.sunken",
+      "@media (max-width: 560px)": { mb: "6" },
+    },
+    tocSummary: { fontWeight: "bold", cursor: "pointer" },
+    tocList: {
+      mt: "2",
+      mb: "0",
+      pl: "6",
+      columns: "2 14rem",
+      listStyleType: "decimal",
+      fontSize: "0.95rem",
+      "& a": { color: "fg.default", textDecoration: "underline" },
+      "@media (max-width: 560px)": { columns: "1", fontSize: "0.95rem", lineHeight: "2.2" },
+    },
+    // 上のアプリバーに見出しが隠れないようにする
+    section: {
+      mt: "8",
+      scrollMarginTop: "6",
+      "@media (max-width: 560px)": {
+        scrollMarginTop: "calc(72px + env(safe-area-inset-top, 0px))",
+      },
+    },
+    heading: {
+      m: "0",
+      mb: "0.6rem",
+      pl: "3",
+      borderLeftWidth: "4px",
+      borderLeftStyle: "solid",
+      borderLeftColor: "accent.muted",
+      fontSize: "1.1rem",
+      fontWeight: "bold",
+      lineHeight: "1.5",
+      "@media (max-width: 560px)": { fontSize: "1.12rem" },
+    },
+    paragraph: {
+      m: "0",
+      mt: "2",
+      fontSize: "0.95rem",
+      "@media (max-width: 560px)": { fontSize: "md" },
+    },
+    list: {
+      mt: "2",
+      mb: "0",
+      pl: "6",
+      "&:is(ol)": { listStyleType: "decimal" },
+      "&:is(ul)": { listStyleType: "disc" },
+      "& li": { fontSize: "0.95rem", "@media (max-width: 560px)": { fontSize: "md" } },
+    },
+    tableWrap: { overflowX: "auto" },
+    table: {
+      width: "full",
+      mt: "3",
+      borderCollapse: "collapse",
+      fontSize: "0.88rem",
+      lineHeight: "relaxed",
+      "& th, & td": {
+        py: "0.6rem",
+        px: "3",
+        borderBottomWidth: "thin",
+        borderBottomStyle: "solid",
+        borderBottomColor: "border.default",
+        textAlign: "left",
+        verticalAlign: "top",
+      },
+      "& th": { width: "32%", bg: "bg.sunken" },
+      smDown: {
+        "& th, & td": { display: "block", width: "full" },
+        "& th": { borderBottomWidth: "none" },
+      },
+    },
+    foot: {
+      mt: "10",
+      pt: "6",
+      borderTopWidth: "thin",
+      borderTopStyle: "dashed",
+      borderTopColor: "border.default",
+      display: "flex",
+      flexWrap: "wrap",
+      gap: "0.75rem 1.5rem",
+      justifyContent: "space-between",
+      alignItems: "center",
+      fontSize: "0.85rem",
+      "& a": { color: "fg.default", fontWeight: "bold", textDecoration: "underline" },
+    },
+    toTop: {
+      position: "fixed",
+      zIndex: "5",
+      right: "4",
+      bottom: "calc(16px + env(safe-area-inset-bottom, 0px))",
+    },
+  },
+});

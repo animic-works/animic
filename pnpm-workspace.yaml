@@ -1,3 +1,6 @@
+# デザインシステムのパッケージ（docs/design-system.md）
+packages:
+  - packages/*
 # Vite+と同梱Viteの解決先を一致させる。
 overrides:
   vite: npm:@voidzero-dev/vite-plus-core@0.3.3

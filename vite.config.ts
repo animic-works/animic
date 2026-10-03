@@ -68,13 +68,49 @@ export default defineConfig({
       "import/no-cycle": "error",
       "import/no-unassigned-import": "off",
     },
-    ignorePatterns: ["**/routeTree.gen.ts", "worker-configuration.d.ts"],
+    overrides: [
+      {
+        // 画面側（src/）はデザインシステムを組み合わせるだけにし、見た目を定義しない（docs/design-system.md）
+        files: ["src/**/*.{ts,tsx}"],
+        rules: {
+          "no-restricted-imports": [
+            "error",
+            {
+              patterns: [
+                {
+                  group: ["@ark-ui/*"],
+                  message:
+                    "Ark UIは@animic/reactの中でだけ使います。@animic/reactの部品を使ってください。",
+                },
+                {
+                  group: ["@animic/styled-system", "@animic/styled-system/*", "@pandacss/*"],
+                  message: "画面側でスタイルを書かず、@animic/reactの部品を組み合わせてください。",
+                },
+                {
+                  group: ["*.module.css"],
+                  message:
+                    "画面ごとのCSSは作りません。足りない表現はデザインシステムへの追加を検討してください。",
+                },
+              ],
+            },
+          ],
+          "react/forbid-dom-props": ["error", { forbid: ["style"] }],
+          "react/forbid-component-props": ["error", { forbid: ["className", "style"] }],
+        },
+      },
+    ],
+    ignorePatterns: [
+      "**/routeTree.gen.ts",
+      "worker-configuration.d.ts",
+      "packages/styled-system/dist/**",
+      "mock/**",
+    ],
   },
   fmt: {
     singleQuote: false,
     semi: true,
     sortPackageJson: true,
-    ignorePatterns: ["src/routeTree.gen.ts", "worker-configuration.d.ts"],
+    ignorePatterns: ["src/routeTree.gen.ts", "worker-configuration.d.ts", "mock/**", ".claude/**"],
   },
   staged: {
     "*.{js,ts,jsx,tsx,json,jsonc,css,md,yml,yaml}": "vp check --fix",

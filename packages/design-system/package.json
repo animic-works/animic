@@ -1,0 +1,13 @@
+{
+  "name": "@animic/design-system",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Animicのデザイン言語（トークン・スタイル・レシピ・パターン）をPandaのプリセットとして定義する。UIフレームワークには依存しない",
+  "type": "module",
+  "exports": {
+    "./preset": "./src/preset.ts"
+  },
+  "devDependencies": {
+    "@pandacss/dev": "2.1.0"
+  }
+}

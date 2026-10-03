@@ -1,0 +1,30 @@
+{
+  "name": "@animic/styled-system",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Pandaが packages/design-system から生成する、Animic専用の型付きスタイルの道具。dist/ は生成物なので手で編集しない（このpackage.jsonだけを管理する）",
+  "type": "module",
+  "exports": {
+    "./css": {
+      "types": "./dist/css/index.d.ts",
+      "default": "./dist/css/index.js"
+    },
+    "./recipes": {
+      "types": "./dist/recipes/index.d.ts",
+      "default": "./dist/recipes/index.js"
+    },
+    "./patterns": {
+      "types": "./dist/patterns/index.d.ts",
+      "default": "./dist/patterns/index.js"
+    },
+    "./tokens": {
+      "types": "./dist/tokens/index.d.ts",
+      "default": "./dist/tokens/index.js"
+    },
+    "./types": {
+      "types": "./dist/types/index.d.ts"
+    },
+    "./styles.css": "./dist/styles.css",
+    "./specs/*": "./dist/specs/*"
+  }
+}

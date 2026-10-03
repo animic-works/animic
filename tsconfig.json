@@ -12,6 +12,9 @@
   },
   "include": [
     "src",
+    "packages/*/src",
+    "panda.config.ts",
+    ".storybook",
     "tests",
     "vite.config.ts",
     "vitest.config.ts",

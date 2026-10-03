@@ -14,3 +14,9 @@ coverage/
 worker-configuration.d.ts
 playwright-report/
 test-results/
+
+# Pandaの生成物（packages/styled-system/dist）は dist/ の除外に含まれる
+
+# 画面モックの別リポジトリ（mock/README.md）。本体には含めない
+mock/
+.DS_Store
