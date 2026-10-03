@@ -10,11 +10,41 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as TermsRouteImport } from './routes/terms'
+import { Route as ArtSpecRouteImport } from './routes/art/$spec'
+import { Route as RoomsCodeRouteImport } from './routes/rooms/$code'
+import { Route as RoomsNewRouteImport } from './routes/rooms/new'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ArtSpecRoute = ArtSpecRouteImport.update({
+  id: '/art/$spec',
+  path: '/art/$spec',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RoomsCodeRoute = RoomsCodeRouteImport.update({
+  id: '/rooms/$code',
+  path: '/rooms/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RoomsNewRoute = RoomsNewRouteImport.update({
+  id: '/rooms/new',
+  path: '/rooms/new',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
@@ -25,27 +55,69 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
+  '/art/$spec': typeof ArtSpecRoute
+  '/rooms/$code': typeof RoomsCodeRoute
+  '/rooms/new': typeof RoomsNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
+  '/art/$spec': typeof ArtSpecRoute
+  '/rooms/$code': typeof RoomsCodeRoute
+  '/rooms/new': typeof RoomsNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
+  '/art/$spec': typeof ArtSpecRoute
+  '/rooms/$code': typeof RoomsCodeRoute
+  '/rooms/new': typeof RoomsNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/auth/$'
+  fullPaths:
+    | '/'
+    | '/privacy'
+    | '/terms'
+    | '/art/$spec'
+    | '/rooms/$code'
+    | '/rooms/new'
+    | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/auth/$'
-  id: '__root__' | '/' | '/api/auth/$'
+  to:
+    | '/'
+    | '/privacy'
+    | '/terms'
+    | '/art/$spec'
+    | '/rooms/$code'
+    | '/rooms/new'
+    | '/api/auth/$'
+  id:
+    | '__root__'
+    | '/'
+    | '/privacy'
+    | '/terms'
+    | '/art/$spec'
+    | '/rooms/$code'
+    | '/rooms/new'
+    | '/api/auth/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  PrivacyRoute: typeof PrivacyRoute
+  TermsRoute: typeof TermsRoute
+  ArtSpecRoute: typeof ArtSpecRoute
+  RoomsCodeRoute: typeof RoomsCodeRoute
+  RoomsNewRoute: typeof RoomsNewRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
@@ -56,6 +128,41 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/art/$spec': {
+      id: '/art/$spec'
+      path: '/art/$spec'
+      fullPath: '/art/$spec'
+      preLoaderRoute: typeof ArtSpecRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rooms/$code': {
+      id: '/rooms/$code'
+      path: '/rooms/$code'
+      fullPath: '/rooms/$code'
+      preLoaderRoute: typeof RoomsCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rooms/new': {
+      id: '/rooms/new'
+      path: '/rooms/new'
+      fullPath: '/rooms/new'
+      preLoaderRoute: typeof RoomsNewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/auth/$': {
@@ -70,6 +177,11 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  PrivacyRoute: PrivacyRoute,
+  TermsRoute: TermsRoute,
+  ArtSpecRoute: ArtSpecRoute,
+  RoomsCodeRoute: RoomsCodeRoute,
+  RoomsNewRoute: RoomsNewRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport

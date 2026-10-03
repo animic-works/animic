@@ -1,14 +1,2 @@
-:root {
-  font-family: system-ui, sans-serif;
-  color: #051523;
-  background: #fff;
-  color-scheme: light;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-}
+/* Pandaが生成するスタイルの層。土台・トークン・部品の見た目はデザインシステム（packages/design-system）が持ち、ここには書かない */
+@layer reset, base, tokens, recipes, utilities;
