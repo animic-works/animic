@@ -60,6 +60,12 @@ export const setReady = createServerFn({ method: "POST" })
     env.ROOMS.getByName(data.code).setReady(await requireParticipant(), data.ready),
   );
 
+export const setParticipantName = createServerFn({ method: "POST" })
+  .validator(v.object({ code: roomCodeSchema, name: participantNameSchema }))
+  .handler(async ({ data }) =>
+    env.ROOMS.getByName(data.code).setName(await requireParticipant(), data.name),
+  );
+
 export const leaveRoom = createServerFn({ method: "POST" })
   .validator(v.object({ code: roomCodeSchema }))
   .handler(async ({ data }) => env.ROOMS.getByName(data.code).leave(await requireParticipant()));

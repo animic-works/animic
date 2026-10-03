@@ -365,6 +365,17 @@ export class Room extends DurableObject<Env> {
     await this.#publish();
   }
 
+  // 待機中の表示名の変更。配信で全員の画面に反映する
+  async setName(participantId: string, name: string) {
+    const state = this.#reconcile();
+    const member = state?.members.find((item) => item.id === participantId);
+    if (!state || state.closed || !member) throw new Error("ルームへの参加が必要です。");
+    if (state.battle && !state.battle.result) throw new Error("対戦中は表示名を変更できません。");
+    member.name = name;
+    this.#save(state);
+    await this.#publish();
+  }
+
   async leave(participantId: string) {
     const state = this.#reconcile();
     if (!state || state.closed) return;

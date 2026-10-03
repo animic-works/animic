@@ -5,6 +5,7 @@ import {
   getRoomEntry,
   joinRoom,
   leaveRoom,
+  setParticipantName,
   setReady,
   setRoomSettings,
 } from "../../src/features/room/room.functions";
@@ -23,6 +24,7 @@ const api = {
   getRoomEntry,
   joinRoom,
   leaveRoom,
+  setParticipantName,
   setReady,
   setRoomSettings,
   startBattle,

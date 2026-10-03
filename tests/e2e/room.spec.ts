@@ -75,6 +75,44 @@ test("作成の同時要求と再送・招待・準備同期・複数タブ・�
   }
 });
 
+// 匿名参加の回数制限は送信元IPごとに数える。このファイルのほかのテストと合算されないよう、送信元を分ける
+test.describe("表示名の変更", () => {
+  test.use({ extraHTTPHeaders: { "CF-Connecting-IP": "203.0.113.30" } });
+
+  test("待機中の表示名の変更は全員に配信され、空の名前は拒否する", async ({ page, browser }) => {
+    const code = await create(page, "まえ");
+    const hostId = (await snapshot(page)).hostId;
+    const guestContext = await browser.newContext({
+      extraHTTPHeaders: { "CF-Connecting-IP": "203.0.113.31" },
+    });
+    try {
+      const guest = await guestContext.newPage();
+      await join(guest, code, "ゲスト");
+      await page.evaluate(
+        (value) =>
+          window.animicTest.setParticipantName({ data: { code: value, name: "  あと  " } }),
+        code,
+      );
+      await expect
+        .poll(
+          async () => (await snapshot(guest)).members.find((member) => member.id === hostId)?.name,
+        )
+        .toBe("あと");
+      await expect(
+        page.evaluate(
+          (value) => window.animicTest.setParticipantName({ data: { code: value, name: "   " } }),
+          code,
+        ),
+      ).rejects.toThrow();
+      expect((await snapshot(page)).members.find((member) => member.id === hostId)?.name).toBe(
+        "あと",
+      );
+    } finally {
+      await guestContext.close();
+    }
+  });
+});
+
 test("切断したホストを30秒待って引き継ぎ、元ホストが戻っても戻さない", async ({
   page,
   context,
