@@ -1,0 +1,2 @@
+/* デザインシステムのスタイルの層（アプリの src/styles/global.css と同じ） */
+@layer reset, base, tokens, recipes, utilities;

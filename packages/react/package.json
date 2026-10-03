@@ -1,0 +1,50 @@
+{
+  "name": "@animic/react",
+  "version": "0.0.0",
+  "private": true,
+  "description": "AnimicのデザインシステムをReactのコンポーネントとして実装する。Ark UIはこのパッケージの内部でだけ使う",
+  "type": "module",
+  "exports": {
+    "./avatar": "./src/avatar/avatar.tsx",
+    "./badge": "./src/badge/badge.tsx",
+    "./battle": "./src/battle/battle.tsx",
+    "./button": "./src/button/button.tsx",
+    "./character-art": "./src/character-art/character-art.tsx",
+    "./code": "./src/code/code-input.tsx",
+    "./dialog": "./src/dialog/dialog.tsx",
+    "./entry": "./src/entry/entry-card.tsx",
+    "./field": "./src/field/text-field.tsx",
+    "./icon": "./src/icon/icon.tsx",
+    "./landing/gallery": "./src/landing/gallery.tsx",
+    "./landing/hero": "./src/landing/hero.tsx",
+    "./landing/nav": "./src/landing/landing-nav.tsx",
+    "./landing/score-cards": "./src/landing/score-cards.tsx",
+    "./landing/screen": "./src/landing/landing-screen.tsx",
+    "./landing/step-carousel": "./src/landing/step-carousel.tsx",
+    "./layout/center": "./src/layout/center.tsx",
+    "./layout/cluster": "./src/layout/cluster.tsx",
+    "./layout/container": "./src/layout/container.tsx",
+    "./layout/grid": "./src/layout/grid.tsx",
+    "./layout/stack": "./src/layout/stack.tsx",
+    "./layout/visually-hidden": "./src/layout/visually-hidden.tsx",
+    "./lobby": "./src/lobby/lobby.tsx",
+    "./lobby/segmented-control": "./src/lobby/segmented-control.tsx",
+    "./lobby/top-bar": "./src/lobby/top-bar.tsx",
+    "./logo": "./src/logo/logo.tsx",
+    "./page": "./src/page/page.tsx",
+    "./result": "./src/result/result-board.tsx",
+    "./select": "./src/select/select.tsx",
+    "./surface": "./src/surface/surface.tsx",
+    "./text": "./src/text/text.tsx",
+    "./toast": "./src/toast/toast.tsx",
+    "./transition": "./src/transition/page-wipe.tsx"
+  },
+  "dependencies": {
+    "@animic/styled-system": "workspace:*",
+    "@ark-ui/react": "5.39.2"
+  },
+  "peerDependencies": {
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  }
+}
