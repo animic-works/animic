@@ -2,7 +2,7 @@
 
 ## ファイル配置と分割
 
-[architecture.md](architecture.md)で定めた役割に従い、機能固有のUI・スタイル・処理は近くに配置します。CSS Modulesは対応するUIに隣接させます。
+[architecture.md](architecture.md)で定めた役割に従い、機能固有のUI・処理は近くに配置します。画面の見た目は`@animic/react`の部品の組み合わせで作り、CSS Modulesや`style`属性で定義しません。規則と例外の判断は[デザインシステム](design-system.md)に従います。
 
 分割は処理の役割、変更理由、読みやすさ、再利用性、テストのしやすさで判断します。必要なファイルやドキュメントは作成します。
 

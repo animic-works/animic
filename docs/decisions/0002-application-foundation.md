@@ -1,8 +1,9 @@
 # 0002: TanStack Startの構成を必要なパッケージから組み立てる
 
-- 状態: 承認済み
+- 状態: 別のADRで変更（UIの方針）
 - 決定日: 2026-09-23
 - 関連: [アーキテクチャ](../architecture.md)、[実装規約](../conventions.md)
+- 変更後のADR: [0004](0004-design-system.md)（UIをPanda CSSとArk UIのデザインシステムで作る）
 
 ## 背景
 

@@ -4,7 +4,7 @@
 
 作業前に[CONTRIBUTING.md](CONTRIBUTING.md)、[docs/architecture.md](docs/architecture.md)、[docs/conventions.md](docs/conventions.md)を読み、プロダクトの変更では[docs/product.md](docs/product.md)も確認してください。
 
-セットアップと検証は[CONTRIBUTING.md](CONTRIBUTING.md#セットアップと検証)に従います。静的検査はリポジトリルートで`vp run check`を実行します。`vp check`だけではプロジェクト全体の型チェックとKnipを含みません。業務ルールの単体テストは`vp run test`、Workers上のD1・DOとブラウザを含む検証は`vp run test:e2e`です。E2Eは専用のローカルDBを初期化してビルドから実行します。コマンドを変更したら、このファイルの案内も合わせて更新してください。
+セットアップと検証は[CONTRIBUTING.md](CONTRIBUTING.md#セットアップと検証)に従います。画面モック（`mock/`。別リポジトリ）は`vp run dev:mock`で`http://localhost:8000/`に配信して確認します（[画面モック](CONTRIBUTING.md#画面モック)）。静的検査はリポジトリルートで`vp run check`を実行します。`vp check`だけではプロジェクト全体の型チェックとKnipを含みません。業務ルールの単体テストは`vp run test`、Workers上のD1・DOとブラウザを含む検証は`vp run test:e2e`です。E2Eは専用のローカルDBを初期化してビルドから実行します。コマンドを変更したら、このファイルの案内も合わせて更新してください。
 
 favicon・OGP用ロゴを変更したら[アイコンの更新](CONTRIBUTING.md#アイコンの更新)に従い、`vp run icons:generate`で派生画像を再生成してください。
 
@@ -21,6 +21,16 @@ Issueに基づく作業では本文とコメントを確認してください。
 ## 判断と報告
 
 フレームワークのAPI・設定・バージョンは、リポジトリで指定しているバージョンと実装を確認し、必要に応じて公式資料・ソースで確かめてください。他のフレームワークの慣習をそのまま当てはめないでください。未確定の仕様・命名・技術選定を決定事項として扱わないでください。仕様上の判断が必要な場合は、論点と推奨案を示してください。実行した検証と、その結果・限界を正確に報告してください。
+
+## UIの実装
+
+UIを実装・変更する前に[デザイン原則](docs/design.md)と[デザインシステム](docs/design-system.md)を読んでください。
+
+- 既存のトークン・レシピ・パターンは、コードから推測せずPanda MCP（`.mcp.json`の`panda`）で確認してください。Ark UIを使う部品を作る・直すときは、APIと実装例をArk UI MCP（`ark-ui`）で確認してください。
+- 画面（`src/`）は`@animic/react`の部品を組み合わせるだけにし、色・大きさ・余白などの値、`style`属性、部品への`className`、CSS Modulesを書かないでください。Ark UI・`@animic/styled-system`・Pandaを画面から直接読み込まないでください。
+- 既存のデザインシステムで表せる場合は、新しい値を足さないでください。表せない場合は、画面で独自のスタイルを書かず、デザインシステムへ追加するかを判断し、追加するなら用途を表す名前で意味のトークン・レシピの変種・パターンとして追加してください。
+- `packages/styled-system/dist`は生成物です。手で編集せず、`vp run ds:codegen`で作り直してください。
+- 部品を変えたら、Storybookの状態（`*.stories.tsx`）と部品のテスト（`*.test.tsx`）も合わせて更新してください。見た目を意図して変えた場合は`vp run test:visual:update`で基準画像を更新し、差分を確認してください。
 
 ## 文書の編集
 

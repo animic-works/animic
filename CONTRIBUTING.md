@@ -29,28 +29,34 @@ vp run test
 vp exec playwright install --no-shell chromium
 vp run test:e2e
 vp run check
-vp dev
+vp run dev
 ```
 
 開発サーバーは`http://localhost:3000`です。Cloudflare Vite pluginを通じてサーバー処理をローカルのWorkersランタイムで実行します。Linuxでブラウザのシステムライブラリが不足している場合は、Playwrightの[環境構築手順](https://playwright.dev/docs/browsers#install-system-dependencies)に従います。
 
-| 操作                         | コマンド                               |
-| ---------------------------- | -------------------------------------- |
-| 依存パッケージのインストール | `vp install --frozen-lockfile`         |
-| Git hooksの有効化            | `vp hooks enable`                      |
-| Git hooksの確認              | `vp hooks status`                      |
-| 開発サーバー                 | `vp dev`                               |
-| DB変更のSQL生成              | `vp run db:generate --name <変更名>`   |
-| ローカルD1へのSQL適用        | `vp run db:migrate:local`              |
-| Workers型の生成              | `vp run typegen`                       |
-| クライアント・Workerのビルド | `vp run build`                         |
-| ビルド成果物のローカル起動   | `vp preview`                           |
-| 業務ルールの単体テスト       | `vp run test`                          |
-| ブラウザでのE2E検証          | `vp run test:e2e`                      |
-| 静的検査                     | `vp run check`                         |
-| フォーマット修正             | `vp fmt`                               |
-| 未使用コードの検査           | `vp run knip`                          |
-| コミットメッセージの検証     | `vp exec commitlint --edit <ファイル>` |
+| 操作                          | コマンド                               |
+| ----------------------------- | -------------------------------------- |
+| 依存パッケージのインストール  | `vp install --frozen-lockfile`         |
+| Git hooksの有効化             | `vp hooks enable`                      |
+| Git hooksの確認               | `vp hooks status`                      |
+| 開発サーバー                  | `vp run dev`                           |
+| 画面モックの配信              | `vp run dev:mock`                      |
+| DB変更のSQL生成               | `vp run db:generate --name <変更名>`   |
+| ローカルD1へのSQL適用         | `vp run db:migrate:local`              |
+| Workers型の生成               | `vp run typegen`                       |
+| クライアント・Workerのビルド  | `vp run build`                         |
+| ビルド成果物のローカル起動    | `vp run preview`                       |
+| デザインシステムの生成        | `vp run ds:codegen`                    |
+| 部品の状態の一覧（Storybook） | `vp run storybook`                     |
+| Storybookのビルド             | `vp run storybook:build`               |
+| 見た目の回帰テスト            | `vp run test:visual`                   |
+| 見た目の基準画像の更新        | `vp run test:visual:update`            |
+| 業務ルールの単体テスト        | `vp run test`                          |
+| ブラウザでのE2E検証           | `vp run test:e2e`                      |
+| 静的検査                      | `vp run check`                         |
+| フォーマット修正              | `vp fmt`                               |
+| 未使用コードの検査            | `vp run knip`                          |
+| コミットメッセージの検証      | `vp exec commitlint --edit <ファイル>` |
 
 `vp run check`はフォーマット・lint・型チェック・Knipを実行します。`vp check`ではフォーマットと型情報を使うlintを実行し、プロジェクト全体の型チェックは`tsc --noEmit`、未使用コードの検査はKnipが担当します。コマンドの定義は[package.json](package.json)、lint・format・staged設定は[vite.config.ts](vite.config.ts)を参照してください。
 
@@ -58,9 +64,13 @@ E2Eは[playwright.config.ts](playwright.config.ts)がビルド・DBの初期化�
 
 E2E専用クライアントは`ANIMIC_E2E=true`のビルドにだけ含め、共通ルートのクライアントコードから読み込みます。通常のビルドや開発サーバーにはこの読み込みを追加しません。E2Eのビルド成果物はデプロイせず、公開用にはこの環境変数を指定せずにビルドし直します。
 
-`vp run test`はVite+内蔵のVitestで`src/**/*.test.ts`を実行します。期限やホストの引き継ぎなど、時刻を指定して確認する業務ルールを対象とします。Workersランタイムが必要な処理はE2Eで実際のD1・DOと組み合わせて確認します。
+`vp run test`はVite+内蔵のVitestで`src/**/*.test.ts`と、部品の`packages/react/src/**/*.test.tsx`（happy-dom）を実行します。期限やホストの引き継ぎなど、時刻を指定して確認する業務ルールを対象とします。Workersランタイムが必要な処理はE2Eで実際のD1・DOと組み合わせて確認します。
 
-E2Eでは、ロゴのSSR表示・画像の読み込み・狭い画面での表示・404応答をブラウザで確認します。認証・ルーム・対戦は、`tests/fixtures/api-client.ts`をブラウザで読み込んで実際のServer FunctionsとWebSocketを呼び出し、モックUIを経由せずに検証します。匿名セッションの復元・失効、CSRF対策、ルームへの参加と状態同期、複数タブ、ホストの退出・切断、WebSocketの認証、対戦開始・再戦・復帰・途中参加・提出期限による未提出・勝負不成立の確定と、D1への結果保存に失敗した場合の再試行を含めます。失敗時のtraceは`test-results/`に保存され、CIでは`e2e-failure-traces` artifactから7日間取得できます。展開したtraceは`vp exec playwright show-trace <trace.zipのパス>`で確認します。
+E2Eでは、トップのSSR表示・画面の切り替え・画像の読み込み・狭い画面での表示・404応答・規約ページ・画面のアクセシビリティ（axeでWCAG 2.1 AAの規則に照らす）に加え、ルームを作る画面（`/rooms/new`）と招待URL（`/rooms/<コード>`）からの参加・準備状態の同期・招待の窓・退出、ロビーから対戦をはじめて生成した画像を提出し結果を見るまでを画面の操作で確認します。画面の操作のテストは`reducedMotion: "reduce"`で画面遷移の演出を省きます（演出そのものはアクセシビリティのテストと部品の単体テストで確認します）。画面のテストは匿名参加の回数制限がほかのテストと合算されないよう、`CF-Connecting-IP`で送信元を分けます。認証・ルーム・対戦は、`tests/fixtures/api-client.ts`をブラウザで読み込んで実際のServer FunctionsとWebSocketを呼び出し、モックUIを経由せずに検証します。匿名セッションの復元・失効、CSRF対策、ルームへの参加と状態同期、複数タブ、ホストの退出・切断、WebSocketの認証、対戦開始・再戦・復帰・途中参加・提出期限による未提出・勝負不成立の確定と、D1への結果保存に失敗した場合の再試行を含めます。失敗時のtraceは`test-results/`に保存され、CIでは`e2e-failure-traces` artifactから7日間取得できます。展開したtraceは`vp exec playwright show-trace <trace.zipのパス>`で確認します。
+
+見た目の回帰テスト（`vp run test:visual`）は通常のE2Eとは別に、`ANIMIC_VISUAL=true`のときだけ動くPlaywrightのプロジェクトで実行します。基準画像はOSやフォントで変わるため、`tests/visual/__screenshots__/<プラットフォーム>/`に分けて保存します。意図して見た目を変えたら`vp run test:visual:update`で基準を更新し、差分を確認してから一緒にコミットします。
+
+デザインシステムの生成物（`packages/styled-system/dist`）はGitに含めず、`vp install`の後に`prepare`で生成します。`packages/design-system`や`panda.config.ts`を変えたら`vp run ds:codegen`で作り直します。開発サーバーとビルドはPostCSS（[postcss.config.cjs](postcss.config.cjs)）でCSSを生成します。Storybookはアプリと別のVite設定（[.storybook/vite.config.ts](.storybook/vite.config.ts)）を使います。
 
 Drizzleスキーマを変更したら`vp run db:generate --name <変更名>`でSQLを生成し、`migrations/`のSQLとスナップショットを確認して一緒に管理します。ローカルへの適用には`vp run db:migrate:local`を使います。適用済みのSQLは書き換えず、追加のmigrationで変更します。
 
@@ -110,15 +120,34 @@ vp run icons:generate
 
 HTMLの参照は`src/routes/__root.tsx`、ホーム画面用アイコンの参照は`public/site.webmanifest`で管理します。タブのアイコン更新時はHTMLのfavicon URLの`v`も増やし、ブラウザに残った旧画像のキャッシュを更新します。Manifestの表示モードは`browser`とし、オフライン動作やService Workerは追加しません。更新時は明暗両方の背景で小さいアイコンの見え方と、各URLの配信を確認してください。
 
+## 画面モック
+
+画面の見た目の基準は別リポジトリの画面モック（[animic-mock](https://github.com/animic-works/animic-mock)）です。リポジトリ直下に`mock/`としてクローンして置きます（Gitには含めません）。`vp run dev:mock`で`mock/`を`http://localhost:8000/`に配信し、モックのREADMEと同じ方法で画面を見られます。ポートは環境変数`PORT`で変えられます。
+
+```sh
+git clone https://github.com/animic-works/animic-mock.git mock
+vp run dev:mock
+```
+
+## 画面モックの画像
+
+画面モック（`mock/images/`）の画像は、そのまま`public/`に置きます。トップとログイン画面のキャラクター（`public/hero-character.webp`。2560×1677）と遊び方の挿絵（`public/how-step-1.webp`）はモックのWebPをコピーし、ロビーの難易度の挿絵（`public/topic-sample-{easy,normal,hard}.webp`。832×1216）はモックのPNG（`sample-solo-white-bg.png`・`sample-solo-with-bg.png`・`sample-duo-with-bg.png`）をWebP（品質85）に変換して置きます。配置・傾き・影はレシピ（`packages/design-system/src/recipes/slots/landing.ts`の`hero`、`entry.ts`の`entryCard`、`lobby.ts`の`levelArt`）が持ちます。
+
+```sh
+cwebp -q 85 mock/images/sample-solo-white-bg.png -o public/topic-sample-easy.webp
+```
+
 ## お題の登録
 
 自前で生成した画像を配信できるURLに配置し、D1の`topic`テーブルへID・難易度・画像URLを登録します。難易度は`easy`（かんたん）、`normal`（ふつう）、`hard`（むずかしい）です。画像のバイナリはD1に保存しません。
 
-登録用SQLの例です。画像URLは実際の配信先に置き換えます。
+登録用SQLの例です。画像URLは実際の配信先に置き換えます。ローカルで画面を確認するだけなら、アプリが配信する仮の挿絵（`/art/<特徴>.svg`。特徴は`packages/react/src/character-art/character-art.tsx`の`encodeArt`の形式）も使えます。
 
 ```sql
 INSERT INTO topic (id, difficulty, image_url)
 VALUES ('easy-001', 'easy', 'https://example.com/topics/easy-001.webp');
+INSERT INTO topic (id, difficulty, image_url)
+VALUES ('local-easy', 'easy', 'http://localhost:3000/art/pink.twin.blue.sailor.smile.white.svg');
 ```
 
 ローカルD1には、SQLを保存したファイルを指定して適用します。
@@ -197,15 +226,17 @@ main・developの保護要件は、PR経由、1名以上の承認、必須のCI�
 
 ## 文書の管理
 
-| 文書                 | 記載する内容                             |
-| -------------------- | ---------------------------------------- |
-| README.md            | 概要と開発・設計文書へのリンク           |
-| docs/product.md      | プロダクトの要件                         |
-| docs/architecture.md | 構成・各機能の役割・依存関係             |
-| docs/conventions.md  | 配置・命名・コード分割・共通化の判断基準 |
-| CONTRIBUTING.md      | 開発・検証・Git運用の手順                |
-| AGENTS.md            | 参照先とAIエージェントへの指示           |
-| ADR                  | 重要な設計判断の背景・決定・理由・影響   |
+| 文書                  | 記載する内容                             |
+| --------------------- | ---------------------------------------- |
+| README.md             | 概要と開発・設計文書へのリンク           |
+| docs/product.md       | プロダクトの要件                         |
+| docs/architecture.md  | 構成・各機能の役割・依存関係             |
+| docs/conventions.md   | 配置・命名・コード分割・共通化の判断基準 |
+| docs/design.md        | 見た目と体験の原則（なぜそう見せるか）   |
+| docs/design-system.md | デザインシステムの構成・規則・検証       |
+| CONTRIBUTING.md       | 開発・検証・Git運用の手順                |
+| AGENTS.md             | 参照先とAIエージェントへの指示           |
+| ADR                   | 重要な設計判断の背景・決定・理由・影響   |
 
 規則の本文を置く場所を一つに決め、他の文書からは参照します。仕様・設計・手順の変更時は、対応する文書も同じ変更で更新します。会話ログ、進捗メモ、検討中の案はリポジトリ外の一時ファイルに置きます。
 

@@ -11,7 +11,10 @@
 - [ゲーム仕様](docs/product.md)
 - [アーキテクチャ](docs/architecture.md)
 - [実装規約](docs/conventions.md)
+- [デザイン原則](docs/design.md)
+- [デザインシステム](docs/design-system.md)
 - [Git hooksとCIの選定理由](docs/decisions/0001-git-workflow.md)
 - [アプリ構成の決定](docs/decisions/0002-application-foundation.md)
+- [デザインシステムの決定](docs/decisions/0004-design-system.md)
 
 文書の役割とテンプレートの使い方は[CONTRIBUTING.md](CONTRIBUTING.md#文書の管理)にまとめています。
