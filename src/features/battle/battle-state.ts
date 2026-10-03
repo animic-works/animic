@@ -73,6 +73,16 @@ export const battleStateSchema = v.object({
 });
 export type BattleState = v.InferOutput<typeof battleStateSchema>;
 export type GenerationOutcome = { status: "succeeded"; imageUrl: string } | { status: "failed" };
+// 全員に公開する参加者ごとの状況。生成の内容や提出前の画像は含めず、結果の確定後だけ提出画像を含める
+const participantStatusSchema = v.object({
+  participantId: v.string(),
+  generationCount: v.number(),
+  generating: v.boolean(),
+  submitted: v.boolean(),
+  eligibleForSpeedBonus: v.nullable(v.boolean()),
+  submittedImageUrl: v.nullable(v.pipe(v.string(), v.url())),
+});
+export type ParticipantStatus = v.InferOutput<typeof participantStatusSchema>;
 export const battleSnapshotSchema = v.object({
   serverTime: v.number(),
   ...battleHeaderSchema.entries,
@@ -80,6 +90,7 @@ export const battleSnapshotSchema = v.object({
   result: v.nullable(battleResultSchema),
   submissionsClosed: v.boolean(),
   generationClosed: v.boolean(),
+  participants: v.array(participantStatusSchema),
   myGenerations: v.array(
     v.variant("status", [
       v.omit(generationSchema.options[0], ["inputHash", "participantId"]),
@@ -254,10 +265,30 @@ export function getBattleSnapshot(
   participantId: string | null,
   now: number,
 ): BattleSnapshot {
+  const decided = state.result !== null;
   return v.parse(battleSnapshotSchema, {
     ...state,
     serverTime: now,
     generationClosed: now >= state.generationEndsAt,
+    participants: state.participantIds.map((id) => {
+      const submission = state.submissions.find((item) => item.participantId === id);
+      const submitted = submission?.status === "submitted" ? submission : null;
+      const image = submitted
+        ? state.generations.find((item) => item.id === submitted.generationId)
+        : undefined;
+      return {
+        participantId: id,
+        generationCount: state.generations.filter(
+          (item) => item.participantId === id && item.status === "succeeded",
+        ).length,
+        generating: state.generations.some(
+          (item) => item.participantId === id && item.status === "pending",
+        ),
+        submitted: submitted !== null,
+        eligibleForSpeedBonus: decided && submitted ? submitted.eligibleForSpeedBonus : null,
+        submittedImageUrl: decided && image?.status === "succeeded" ? image.imageUrl : null,
+      };
+    }),
     myGenerations: state.generations.filter((item) => item.participantId === participantId),
     mySubmission: state.submissions.find((item) => item.participantId === participantId) ?? null,
     submissionsClosed: state.participantIds.every((id) =>
