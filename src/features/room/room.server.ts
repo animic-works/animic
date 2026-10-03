@@ -18,7 +18,11 @@ import {
 } from "../battle/battle-state";
 import type { BattleSettings, Topic, GenerationOutcome } from "../battle/battle-state";
 import { persistBattleResult } from "../battle/battle-results.server";
-import { getScoringJobs, registerScoringJobs } from "../scoring/scoring-jobs.server";
+import {
+  cancelScoringJobs,
+  getScoringJobs,
+  registerScoringJobs,
+} from "../scoring/scoring-jobs.server";
 import { isRoomCreationRetry } from "./room-creation";
 import type { RoomCreation } from "./room-creation";
 import { session } from "../../lib/auth-schema";
@@ -174,6 +178,7 @@ export class Room extends DurableObject<Env> {
         const room = this.#read();
         if (!room) throw new Error("ルームがありません。");
         await persistBattleResult(this.env.DB, item.battle_id, room.code, item.data);
+        await cancelScoringJobs(this.env.DB, item.battle_id);
         this.ctx.storage.sql.exec(
           "UPDATE result_delivery SET saved = 1 WHERE battle_id = ?",
           item.battle_id,
@@ -201,7 +206,11 @@ export class Room extends DurableObject<Env> {
       );
       // D1との通信中に対戦が進んだ場合も、現在の対戦の状態から反映する。
       const current = this.#read();
-      if (!current?.battle || current.battle.id !== battle.id) return;
+      // 結果の確定後に登録が届いた場合も、そのジョブを割り当てない。
+      if (!current?.battle || current.battle.id !== battle.id || current.battle.result) {
+        await cancelScoringJobs(this.env.DB, battle.id);
+        return;
+      }
       current.battle = applyScoringJobs(current.battle, jobs, Date.now());
       this.#save(current);
     } catch {

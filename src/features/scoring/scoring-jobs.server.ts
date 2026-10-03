@@ -91,6 +91,21 @@ function assignedTo(workerId: string, jobId: string) {
   );
 }
 
+// 結果が確定した対戦のジョブを割り当てないよう、終わっていないジョブを失敗として確定する。
+export async function cancelScoringJobs(db: D1Database, battleId: string) {
+  await drizzle(db)
+    .update(scoringJob)
+    .set({
+      state: "failed",
+      leaseUntil: null,
+      finishedAt: new Date(),
+      error: "対戦の結果が確定したため取り消しました。",
+    })
+    .where(
+      and(eq(scoringJob.battleId, battleId), inArray(scoringJob.state, ["queued", "running"])),
+    );
+}
+
 export async function claimScoringJob(db: D1Database, workerId: string) {
   const client = drizzle(db);
   const now = Date.now();
