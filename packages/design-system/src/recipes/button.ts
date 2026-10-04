@@ -13,7 +13,11 @@ export const button = defineRecipe({
     overflowWrap: "anywhere",
     [enabled]: {
       _hover: { boxShadow: "soft.1" },
-      _active: { transform: "translateY(2px)", boxShadow: "none" },
+      _active: {
+        transform: "translateY(2px)",
+        boxShadow: "none",
+        _motionReduce: { transform: "none" },
+      },
     },
   },
   variants: {

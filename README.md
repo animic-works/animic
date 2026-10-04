@@ -13,10 +13,10 @@
 - [採点の設計](docs/scoring.md)
 - [実装規約](docs/conventions.md)
 - [デザイン原則](docs/design.md)
-- [GitフックとCIの選定理由](docs/decisions/0001-git-workflow.md)
+- [Git hooksとCIの選定理由](docs/decisions/0001-git-workflow.md)
 - [アプリ構成の決定](docs/decisions/0002-application-foundation.md)
 - [採点の実行先とキュー方式の決定](docs/decisions/0004-scoring-workers.md)
-- [デザイン定義とUIの分離](docs/decisions/0004-design-system.md)
+- [デザイン定義とUIの分離](docs/decisions/0006-design-system.md)
 - [Panda CSS v2の採用理由](docs/decisions/0005-panda-css-v2.md)
 - [Design Systemの設計資料](docs/design-system/README.md): 設計で得た判断材料と、比較・検証・判断変更の事例
 

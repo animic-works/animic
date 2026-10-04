@@ -2,19 +2,20 @@
 
 ## ファイル配置と分割
 
-[アーキテクチャの配置と役割](architecture.md#ファイル配置と役割)に従い、機能固有のUI・処理は近くに配置します。UIの依存関係と利用形式は[Design Systemの利用境界](architecture.md#uiからの利用)を参照してください。
+[architecture.md](architecture.md#ファイル配置と役割)で定めた役割に従い、機能固有のUI・処理は近くに配置します。UIの依存関係と利用形式は[Design Systemの利用境界](architecture.md#uiからの利用)に従います。
 
-分割は処理の役割、変更理由、読みやすさ、再利用性、テストのしやすさで判断します。必要なファイルやドキュメントは作成します。UIの共通化は[デザイン原則](design.md#新しい表現は既存の定義から組み立てる)に従います。
+分割は処理の役割、変更理由、読みやすさ、再利用性、テストのしやすさで判断します。必要なファイルやドキュメントは作成します。
 
 - 機能追加のたびにUI・CSS・Server Functions・サーバー専用実装を一式生成しません。
 - 小さい処理は同じファイルに書けます。役割の異なる処理は必要に応じて分割します。
-- 一律のbarrelファイルやサービス・リポジトリ層を義務付けません。
+- コードを共通化するかどうかは、利用箇所の数だけでなく、特定の機能の仕様に依存しているかも考慮して判断します。UIの共通化は[デザイン原則](design.md#新しい表現は既存の定義から組み立てる)に従います。
+- 一律のbarrelファイルやservice・repository階層を義務付けません。
 
 ## 命名
 
 プロダクト名の表記は「Animic」に統一します。パッケージ名・URL・リポジトリ名などの技術的な識別子は、それぞれの命名規則に従います。
 
-ユーザーが使う用語とその意味を整理してからコードの命名を決めます。機能の名前など設計に関わる命名は、役割と命名理由を示して合意を得ます。未承認の候補を決定事項として記載しません。
+ユーザーが使う用語とその意味を整理してからコードの命名を決めます。featureの名前など設計に関わる命名は、役割と命名理由を示して合意を得ます。未承認の候補を決定事項として記載しません。
 
 ## クライアントとサーバーの分離
 
@@ -25,12 +26,12 @@
 - 型情報を使う厳格なlintを維持します。型チェック、テスト、ビルドと合わせて変更に適した検証を実施します。
 - lint例外は必要性を説明できる範囲に限定します。設定は[vite.config.ts](../vite.config.ts)、検証手順は[CONTRIBUTING.md](../CONTRIBUTING.md#セットアップと検証)を参照してください。
 
-## React Compiler
+## React Compilerと未使用コード
 
-React Compilerを利用します。現在使用するReact・Vite+で公式に対応した方法でビルドへ組み込み、関連する依存パッケージの更新時に互換性を確認します。具体的な設定は[vite.config.ts](../vite.config.ts)を参照してください。
+React CompilerをVite+のビルド処理に組み込みます。`@vitejs/plugin-react` 6系では、`reactCompilerPreset`と`@rolldown/plugin-babel`を使います。古い`react({ babel: ... })`設定は使いません。Compilerの設定が、使用するReactのバージョンに対応していることを確認します。
 
-参考: [React Compiler公式のVite設定](https://react.dev/learn/react-compiler/installation)。
+Knipで検出されたファイルを機械的に削除したり、広範囲のignoreで隠したりせず、実際のエントリーポイントやフレームワークからの利用を確認します。フレームワークの導入・更新時にはKnipがルートと生成コードの利用を正しく判定することを確認します。`cloudflare:workers`はWorkersが提供する仮想モジュールのため、package.jsonのKnip設定で`cloudflare`の依存検査を除外します。npmパッケージとして追加しません。
 
-## 未使用コードとKnip
+Design Systemの生成コード・Fontsource・検証用型定義に関するKnip設定は、[CONTRIBUTING.md](../CONTRIBUTING.md#静的検査の設定)を参照してください。
 
-Knipで検出されたファイルを機械的に削除したり、広範囲の除外設定で隠したりせず、実際に入口となるファイルやフレームワークからの利用を確認します。フレームワークの導入・更新時にはKnipがルートと生成コードの利用を正しく判定することを確認します。検査の例外には説明できる理由を持たせます。現在の設定と例外の理由は[CONTRIBUTING.md](../CONTRIBUTING.md#静的検査の設定)を参照してください。
+参考: [React Compiler公式のVite設定](https://react.dev/learn/react-compiler/installation)、[KnipのVite+対応](https://knip.dev/reference/plugins/vite-plus)。

@@ -146,3 +146,52 @@ export const FocusStates: Story = {
     </Container>
   ),
 };
+
+export const FieldAssociations: Story = {
+  render: () => (
+    <Container size="reading">
+      <Stack space="section">
+        <Text id="unrelated-label">別のラベル</Text>
+        <Text id="unrelated-description">別の説明</Text>
+        <Field
+          id="email"
+          label="メール"
+          description="連絡先を入力します。"
+          error="形式を確認してください。"
+        >
+          <Input
+            id="ignored-input"
+            aria-labelledby="unrelated-label"
+            aria-describedby="unrelated-description"
+            aria-errormessage="unrelated-description"
+            aria-invalid={false}
+          />
+        </Field>
+        <Field
+          id="message"
+          label="メッセージ"
+          description="内容を入力します。"
+          error="内容を確認してください。"
+        >
+          <Textarea
+            id="ignored-textarea"
+            aria-labelledby="unrelated-label"
+            aria-describedby="unrelated-description"
+            aria-errormessage="unrelated-description"
+            aria-invalid={false}
+          />
+        </Field>
+        <Input
+          id="standalone-input"
+          aria-label="単独のInput"
+          aria-describedby="unrelated-description"
+        />
+        <Textarea
+          id="standalone-textarea"
+          aria-label="単独のTextarea"
+          aria-describedby="unrelated-description"
+        />
+      </Stack>
+    </Container>
+  ),
+};

@@ -23,7 +23,7 @@ export default defineConfig({
       enforce: "pre",
       transform(code, id) {
         if (id !== fileURLToPath(new URL("./src/routes/__root.tsx", import.meta.url))) return null;
-        // クライアントの単一の入口を保ち、検証時だけAPI操作用モジュールを読み込む。
+        // クライアントの単一エントリーを保ち、検証時だけAPI操作用モジュールを読み込む。
         const fixture = fileURLToPath(new URL("./tests/fixtures/api-client.ts", import.meta.url));
         return { code: `${code}\nvoid import(${JSON.stringify(fixture)});`, map: null };
       },

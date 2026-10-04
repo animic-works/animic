@@ -85,6 +85,7 @@ for (const [name, tabs] of [
   ["segmented", 7],
 ] as const) {
   test(`focus ${name}: visual regression`, async ({ page }) => {
+    test.skip(process.platform !== "linux", "画像比較の基準環境はLinux。CIで必ず実行する。");
     await page.goto("/iframe.html?id=controls--focus-states&viewMode=story");
     await page.getByRole("heading").waitFor();
     await page.evaluate(() => document.fonts.ready);

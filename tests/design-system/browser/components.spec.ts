@@ -15,7 +15,8 @@ for (const story of stories) {
   test(`${story}: 表示・アクセシビリティ`, async ({ page }) => {
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
-    await page.goto(`/iframe.html?id=${story}&viewMode=story`);
+    // axeはPlaywright側で実行し、Storybook addonとの同時実行を避ける。
+    await page.goto(`/iframe.html?id=${story}&viewMode=story&globals=a11y.manual:true`);
     await expect(page.locator("#storybook-root main")).toBeVisible();
     await page.evaluate(() => document.fonts.ready);
     if (story === "foundations--surfaces")
@@ -82,7 +83,9 @@ test("Dialogのfocus trap・Escape・復帰・スクロール制限", async ({ p
   await expect(trigger).toBeFocused();
 });
 test("ToastのSemantic積層と複数通知の配置・dismiss", async ({ page }) => {
-  await page.goto("/iframe.html?id=overlays--dialog-and-toast&viewMode=story");
+  await page.goto(
+    "/iframe.html?id=overlays--dialog-and-toast&viewMode=story&globals=a11y.manual:true",
+  );
   const trigger = page.getByRole("button", { name: "通知を表示" });
   await trigger.click();
   await trigger.click();
@@ -119,6 +122,13 @@ test("Primary state・focus・reduced motion", async ({ page }) => {
   await expect(button).toHaveCSS("outline-color", "rgb(11, 27, 43)");
   await page.emulateMedia({ reducedMotion: "reduce" });
   await expect(button).toHaveCSS("transition-duration", "0s");
+  for (const target of [button, page.getByRole("button", { name: "閉じる", exact: true })]) {
+    await target.hover();
+    await page.mouse.down();
+    expect(await target.evaluate((node) => node.matches(":active"))).toBe(true);
+    await expect(target).toHaveCSS("transform", "none");
+    await page.mouse.up();
+  }
   await page.goto("/iframe.html?id=controls--feedback&viewMode=story");
   await expect(page.getByRole("status").locator("[aria-hidden=true]")).toHaveCSS(
     "animation-name",
@@ -148,6 +158,7 @@ for (const story of [
   "overlays--open-dialog",
 ]) {
   test(`${story}: visual regression`, async ({ page }) => {
+    test.skip(process.platform !== "linux", "画像比較の基準環境はLinux。CIで必ず実行する。");
     await page.goto(`/iframe.html?id=${story}&viewMode=story`);
     await expect(page.locator("#storybook-root main")).toBeVisible();
     await page.evaluate(() => document.fonts.ready);
@@ -200,4 +211,37 @@ test("Visualのraw geometryと局所Keyframesがブラウザまで成立する",
   await page.emulateMedia({ reducedMotion: "reduce" });
   await expect(artwork).toHaveCSS("animation-name", "none");
   expect(await artwork.evaluate((node) => node.getAnimations().length)).toBe(0);
+});
+
+test("Fieldがid・ラベル・説明・エラーの関連付けを管理する", async ({ page }) => {
+  await page.goto(
+    "/iframe.html?id=controls--field-associations&viewMode=story&globals=a11y.manual:true",
+  );
+  for (const [id, label, description] of [
+    ["email", "メール", "連絡先を入力します。"],
+    ["message", "メッセージ", "内容を入力します。"],
+  ]) {
+    const control = page.getByRole("textbox", { name: label, exact: true });
+    await expect(control).toHaveAttribute("id", id);
+    await expect(control).toHaveAccessibleDescription(description);
+    await expect(control).toHaveAttribute("aria-invalid", "true");
+    const errorId = await control.getAttribute("aria-errormessage");
+    expect(errorId).toBeTruthy();
+    await expect(page.locator(`[id="${errorId}"]`)).toContainText("確認してください。");
+    await page.locator(`label[for="${id}"]`).click();
+    await expect(control).toBeFocused();
+  }
+  for (const [id, label] of [
+    ["standalone-input", "単独のInput"],
+    ["standalone-textarea", "単独のTextarea"],
+  ]) {
+    const control = page.getByRole("textbox", { name: label, exact: true });
+    await expect(control).toHaveAttribute("id", id);
+    await expect(control).toHaveAccessibleDescription("別の説明");
+  }
+  const result = await new AxeBuilder({ page })
+    .include("main")
+    .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
+    .analyze();
+  expect(result.violations).toEqual([]);
 });

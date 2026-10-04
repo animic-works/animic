@@ -36,13 +36,13 @@ vp run check
 vp run dev
 ```
 
-開発サーバーは`http://localhost:3000`です。Cloudflare Vite pluginを通じて、サーバー処理をローカルのWorkers実行環境で動かします。Linuxでブラウザのシステムライブラリが不足している場合は、Playwrightの[環境構築手順](https://playwright.dev/docs/browsers#install-system-dependencies)に従います。
+開発サーバーは`http://localhost:3000`です。Cloudflare Vite pluginを通じてサーバー処理をローカルのWorkersランタイムで実行します。Linuxでブラウザのシステムライブラリが不足している場合は、Playwrightの[環境構築手順](https://playwright.dev/docs/browsers#install-system-dependencies)に従います。
 
 | 操作                          | コマンド                               |
 | ----------------------------- | -------------------------------------- |
 | 依存パッケージのインストール  | `vp install --frozen-lockfile`         |
-| Gitフックの有効化             | `vp hooks enable`                      |
-| Gitフックの確認               | `vp hooks status`                      |
+| Git hooksの有効化             | `vp hooks enable`                      |
+| Git hooksの確認               | `vp hooks status`                      |
 | 開発サーバー                  | `vp run dev`                           |
 | DB変更のSQL生成               | `vp run db:generate --name <変更名>`   |
 | ローカルD1へのSQL適用         | `vp run db:migrate:local`              |
@@ -59,25 +59,25 @@ vp run dev
 | 未使用コードの検査            | `vp run knip`                          |
 | コミットメッセージの検証      | `vp exec commitlint --edit <ファイル>` |
 
-`vp run check`はDesign Systemを生成してから、インポートの利用場所・スタイル指定用プロパティの検査、フォーマット・lint・型チェック・Knipを実行します。`vp check`ではフォーマットと型情報を使うlintを実行し、プロジェクト全体の型チェックは`tsc --noEmit`、未使用コードの検査はKnipが担当します。現在の設定とKnipの例外は[静的検査の設定](#静的検査の設定)を参照してください。
+`vp run check`はDesign Systemを生成してから、import境界・styling propsの検査、フォーマット・lint・型チェック・Knipを実行します。`vp check`ではフォーマットと型情報を使うlintを実行し、プロジェクト全体の型チェックは`tsc --noEmit`、未使用コードの検査はKnipが担当します。現在の設定とKnipの例外は[静的検査の設定](#静的検査の設定)を参照してください。
 
 E2Eは[playwright.config.ts](playwright.config.ts)がビルド・DBの初期化・プレビュー起動を行います。テストごとではなく実行ごとに`.wrangler/e2e/`を初期化し、開発用の`.wrangler/state/`とは分けます。Wranglerによるテストデータ操作と他のテストが同じSQLiteを同時に更新しないよう、E2Eは1 workerで順に実行します。複数人の同時操作は各テスト内で複数のブラウザコンテキストを使って確認します。認証URLと鍵、NovelAIのトークンはテスト用の値を設定するため、E2Eだけなら`.env`の用意は不要です。E2Eのビルドには実際のNovelAIのトークンを含めず、ブラウザへ配信するファイルとトップページのHTMLにテスト用のトークンが含まれないことを確認します。
 
 E2E専用クライアントは`ANIMIC_E2E=true`のビルドにだけ含め、共通ルートのクライアントコードから読み込みます。通常のビルドや開発サーバーにはこの読み込みを追加しません。E2Eのビルド成果物はデプロイせず、公開用にはこの環境変数を指定せずにビルドし直します。
 
-`vp run test`はVite+内蔵のVitestで`src/**/*.test.ts`を実行します。期限やホストの引き継ぎなど、時刻を指定して確認する業務ルールを対象とします。Workersの実行環境が必要な処理はE2Eで実際のD1・DOと組み合わせて確認します。
+`vp run test`はVite+内蔵のVitestで`src/**/*.test.ts`を実行します。期限やホストの引き継ぎなど、時刻を指定して確認する業務ルールを対象とします。Workersランタイムが必要な処理はE2Eで実際のD1・DOと組み合わせて確認します。
 
-E2Eでは、ロゴのSSR表示・画像の読み込み・狭い画面での表示・404応答をブラウザで確認します。認証・ルーム・対戦は、`tests/fixtures/api-client.ts`をブラウザで読み込んで実際のServer FunctionsとWebSocketを呼び出し、画面実装を経由せずに検証します。匿名セッションの復元・失効、CSRF対策、ルームへの参加と状態同期、複数タブ、ホストの退出・切断、WebSocketの認証、対戦開始・再戦・復帰・途中参加・提出期限による未提出・勝負不成立の確定と、D1への結果保存に失敗した場合の再試行を含めます。採点ワーカー向けAPIは、ブラウザを使わずPlaywrightの`request`から採点ワーカーとして要求を送り、リンク・heartbeat・採点ジョブの割り当て・完了・差し戻しと、D1に保存される状態を確認します。失敗時のトレースは`test-results/`に保存され、CIでは`e2e-failure-traces`という名前の成果物から7日間取得できます。展開したトレースは`vp exec playwright show-trace <trace.zipのパス>`で確認します。
+E2Eでは、ロゴのSSR表示・画像の読み込み・狭い画面での表示・404応答をブラウザで確認します。認証・ルーム・対戦は、`tests/fixtures/api-client.ts`をブラウザで読み込んで実際のServer FunctionsとWebSocketを呼び出し、モックUIを経由せずに検証します。匿名セッションの復元・失効、CSRF対策、ルームへの参加と状態同期、複数タブ、ホストの退出・切断、WebSocketの認証、対戦開始・再戦・復帰・途中参加・提出期限による未提出・勝負不成立の確定と、D1への結果保存に失敗した場合の再試行を含めます。採点ワーカー向けAPIは、ブラウザを使わずPlaywrightの`request`から採点ワーカーとして要求を送り、リンク・heartbeat・採点ジョブの割り当て・完了・差し戻しと、D1に保存される状態を確認します。失敗時のtraceは`test-results/`に保存され、CIでは`e2e-failure-traces` artifactから7日間取得できます。展開したtraceは`vp exec playwright show-trace <trace.zipのパス>`で確認します。
 
-Drizzleスキーマを変更したら`vp run db:generate --name <変更名>`でSQLを生成し、`migrations/`のSQLとスナップショットを確認して一緒に管理します。ローカルへの適用には`vp run db:migrate:local`を使います。適用済みのSQLは書き換えず、追加のマイグレーションで変更します。
+Drizzleスキーマを変更したら`vp run db:generate --name <変更名>`でSQLを生成し、`migrations/`のSQLとスナップショットを確認して一緒に管理します。ローカルへの適用には`vp run db:migrate:local`を使います。適用済みのSQLは書き換えず、追加のmigrationで変更します。
 
-`wrangler.jsonc`のD1設定は`DB`バインディングを使います。リモート環境を用意する際は対象DBを作成・確認し、その`database_id`を設定してからマイグレーションを適用します。`BETTER_AUTH_URL`には公開URL、`BETTER_AUTH_SECRET`には環境固有の鍵を設定します。ローカルの鍵を本番へ流用しません。Cloudflare Vite pluginはプレビュー用の値を`dist/server/.dev.vars`へ出力するため、`dist/`全体を共有用成果物にしません。
+`wrangler.jsonc`のD1設定は`DB` bindingを使います。リモート環境を用意する際は対象DBを作成・確認し、その`database_id`を設定してからmigrationを適用します。`BETTER_AUTH_URL`には公開URL、`BETTER_AUTH_SECRET`には環境固有の鍵を設定します。ローカルの鍵を本番へ流用しません。Cloudflare Vite pluginはプレビュー用の値を`dist/server/.dev.vars`へ出力するため、`dist/`全体を共有用artifactにしません。
 
 Workers設定は[wrangler.jsonc](wrangler.jsonc)で管理し、変更後は`vp run typegen`を実行します。生成された`worker-configuration.d.ts`はGitに含めません。`src/routeTree.gen.ts`はTanStack Startが開発・ビルド時に生成するルートと型の定義で、Gitで管理します。手で編集せず、ルートの変更と合わせて更新します。
 
-ローカルではVite+のフックを使用します。`pre-commit`は`vp staged`で対象ファイルを検査・自動修正し、`commit-msg`はcommitlintでメッセージを検証します。フックとは別に、PR前に静的検査と変更に関連するテスト・動作確認を行います。
+ローカルではVite+のhooksを使用します。`pre-commit`は`vp staged`で対象ファイルを検査・自動修正し、`commit-msg`はcommitlintでメッセージを検証します。hooksとは別に、PR前に静的検査と変更に関連するテスト・動作確認を行います。
 
-[.gitmessage](.gitmessage)を使う場合は、クローンごとに設定します。
+[.gitmessage](.gitmessage)を使う場合は、cloneごとに設定します。
 
 ```sh
 git config --local commit.template .gitmessage
@@ -87,13 +87,12 @@ git config --local commit.template .gitmessage
 
 ## 静的検査の設定
 
-コマンドとKnipの設定は[package.json](package.json)、lint・整形・ステージ済みファイルの検査設定は[vite.config.ts](vite.config.ts)で管理します。検出結果への対応と例外の判断は[実装規約](docs/conventions.md#未使用コードとknip)に従います。
+コマンドとKnipの設定は[package.json](package.json)、lint・format・staged設定は[vite.config.ts](vite.config.ts)で管理します。検出結果への対応と例外の判断は[実装規約](docs/conventions.md#react-compilerと未使用コード)に従います。
 
-Knipには次の理由で例外・入口を設定しています。
+Knipでは、Design System用に次の例外とentryを設定しています。
 
-- `cloudflare:workers`はWorkersが提供する仮想モジュールのため、`cloudflare`の依存検査を除外します。npmパッケージとして追加しません。
-- 生成CSSの`@import`から書体依存を追跡しないため、`packages/styled-system`のFontsource依存だけを明示的に除外します。対応するCSSの解決は[フォント生成とStorybookのビルド](#design-systemの生成と検証)で検証します。
-- 検査・生成スクリプトのJSに対応する型宣言は、TypeScriptでの利用を解析する際の入口として指定します。
+- 生成CSSの`@import`からフォント依存を追跡しないため、`packages/styled-system`のFontsource依存だけを明示的に除外します。対応するCSSの解決は[フォント生成とStorybookのビルド](#design-systemの生成と検証)で検証します。
+- 検査・生成スクリプトのJSに対応する型宣言は、TypeScriptでの利用を解析するentryとして指定します。
 
 参考: [KnipのVite+対応](https://knip.dev/reference/plugins/vite-plus)。
 
@@ -131,27 +130,27 @@ vp run design-system:analyze
 vp run check
 ```
 
-`design-system:generate`は`panda codegen --spec`、`panda cssgen`、`scripts/generate-fonts.mjs`を実行します。Native Specは`generated/specs/design-system.json`、Panda CSSは`generated/styles.css`、フォントCSSは`generated/fonts.css`です。必要な書体の太さはText Styleから求め、styled-systemの依存からFontsource CSSを解決します。生成物を削除した後も同じコマンドで復元できます。直接値を持つSemantic TokenはNative Specの`semantic`フラグが省略されるため、分類はMCPのSemantic Token問い合わせとソースコードで確認します。アプリの`dev`・`build`・`preview`は`-C .`でルートパッケージを明示し、ワークスペース全体の選択と区別します。`dev`・`build`・`typecheck`・`check`・`test:design-system`も先に生成するため、初回チェックアウトの生成物に依存しません。
+`design-system:generate`は`panda codegen --spec`、`panda cssgen`、`scripts/generate-fonts.mjs`を実行します。Native Specは`generated/specs/design-system.json`、Panda CSSは`generated/styles.css`、フォントCSSは`generated/fonts.css`です。必要なフォントの太さはText Styleから求め、styled-systemの依存からFontsource CSSを解決します。生成物を削除した後も同じコマンドで復元できます。直接値を持つSemantic TokenはNative Specの`semantic`フラグが省略されるため、分類はMCPのSemantic Token問い合わせとソースコードで確認します。アプリの`dev`・`build`・`preview`は`-C .`でルートパッケージを明示し、ワークスペース全体の選択と区別します。`dev`・`build`・`typecheck`・`check`・`test:design-system`も先に生成するため、初回チェックアウトの生成物に依存しません。
 
-`test:design-system`は生成されたSemantic Tokenの参照・CSS変数・非公開サブパスの解決失敗・色ペアのコントラスト・フォントCSSの導出と依存の解決・JSXのスプレッド構文の型を検証します。禁止する値を使った型検証は`tests/design-system/strict-types.ts`と`public-types.tsx`にあり、`check`に含まれる型チェックで確認します。`design-system:analyze`は使用状況を`generated/analysis.json`へ出力します。未使用という結果だけで承認した語彙を削除しません。
+`test:design-system`は生成されたSemantic Tokenの参照・CSS変数・非公開サブパスの解決失敗・色ペアのコントラスト・フォントCSSの導出と依存の解決・JSX spreadの型を検証します。禁止する値を使った型検証は`tests/design-system/strict-types.ts`と`public-types.tsx`にあり、`check`に含まれる型チェックで確認します。`design-system:analyze`は使用状況を`generated/analysis.json`へ出力します。未使用という結果だけで承認済みの定義を削除しません。
 
 定義やReact内のスタイル指定を変更した場合は`vp run design-system:generate`を再実行してから表示を確認します。
 
-生成物はGit管理せず、整形・lintの修正対象にも含めません。各パッケージの`package.json`、CSS入口、生成設定・生成スクリプト・検証コードはGit管理します。
+生成物はGit管理せず、整形・lintの修正対象にも含めません。各パッケージの`package.json`、CSSエントリーポイント、生成設定・生成スクリプト・検証コードはGit管理します。
 
 ### Storybook・アクセシビリティ・画像比較
 
-`vp run storybook`は`http://localhost:6006`でComponentと状態を確認するStorybookを起動します。`vp run storybook:build`で静的出力を作り、`vp run storybook:preview`で確認できます。アプリ用のCloudflare・ルーティング設定は読み込まず、React Compilerと同じワークスペース内のパッケージを使用します。書体はローカルの依存パッケージから配信し、外部フォントサーバーへ依存しません。
+`vp run storybook`は`http://localhost:6006`でComponentと状態を確認するStorybookを起動します。`vp run storybook:build`で静的出力を作り、`vp run storybook:preview`で確認できます。アプリ用のCloudflare・ルーティング設定は読み込まず、React Compilerと同じワークスペース内のパッケージを使用します。フォントはローカルの依存パッケージから配信し、外部フォントサーバーへ依存しません。
 
-`vp run test:design-system:browser`はStorybookのビルド・起動とPlaywrightを実行します。既存のローカルサーバーは開発時だけ再利用し、CIでは必ずビルドから実行します。ARIAの関連付け、キーボード操作、Dialogのフォーカストラップ・フォーカスの復帰、Toastの積層、動きを抑える設定、文字拡大を検証します。axeによるWCAG A・AAの自動検査を含みますが、読み上げソフトによる確認や人間の使いやすさの評価を置き換えません。
+`vp run test:design-system:browser`はStorybookのビルド・起動とPlaywrightを実行します。既存のローカルサーバーは開発時だけ再利用し、CIでは必ずビルドから実行します。ARIAの関連付け、キーボード操作、Dialogのフォーカストラップ・フォーカスの復帰、Toastの重なり、reduced motion設定、文字拡大を検証します。axeによるWCAG A・AAの自動検査を含みますが、スクリーンリーダーによる確認や人間の使いやすさの評価を置き換えません。
 
-画像比較テストの基準画像は`tests/design-system/browser/snapshots/`で管理します。固定したChromium・ビューポート・ロケールを使い、フォントの読み込みを待って比較します。Linux環境で更新し、意図した表示変更であることを画像で確認します。差分を消すためだけに基準画像を更新しません。
+画像比較テストのベースライン画像は`tests/design-system/browser/snapshots/linux/`で管理します。Playwrightが指定するChrome for Testingを`channel: "chromium"`で起動し、ビューポート・ロケールを固定してフォントの読み込みを待ちます。Headless Shellとは文字描画が異なるため混用しません。画像比較はLinux上で実行・更新し、CIでも必ず実行します。Linux以外では画像比較だけをスキップし、操作・アクセシビリティ等のテストは実行します。更新時は意図した表示変更であることを画像で確認します。差分を消すためだけにベースライン画像を更新しません。
 
 ```sh
 vp run test:design-system:browser --update-snapshots
 ```
 
-失敗時のトレース・実画像・画像差分は`test-results/design-system/`に保存し、CIの`design-system-failures`という名前の成果物から取得できます。アプリのE2Eとは設定と出力先を分けます。`Layout boundaries`のストーリーでは、同じ内容の列数・縦並びを比較し、利用可能な幅と文字サイズによる成立条件を確認できます。
+失敗時のトレース・実画像・画像差分は`test-results/design-system/`に保存し、CIの`design-system-failures`という名前のartifactから取得できます。アプリのE2Eとは設定と出力先を分けます。`Layout boundaries`のストーリーでは、同じ内容の列数・縦並びを比較し、利用可能な幅と文字サイズによる成立条件を確認できます。
 
 ### AIからの問い合わせ
 
@@ -296,7 +295,7 @@ Issue・PRのタイトルとコミットの件名は`type(scope): 日本語の�
 - テスト・ビルド対象を追加する変更では、それに対応する検証もCIに組み込みます。
 - PRには実行したコマンド・操作と結果を記録します。未実施・適用外は理由を明記し、ビルドと起動確認を区別します。
 
-main・developの保護要件は、PR経由、1名以上の承認、必須のCIチェックの成功、レビューの未解決スレッドなし、force push・削除禁止です。必須チェックには実際のCIジョブを指定します。ローカルフックの通過だけを取り込み条件にはしません。
+main・developの保護要件は、PR経由、1名以上の承認、必須のCIチェックの成功、レビューの未解決スレッドなし、force push・削除禁止です。必須チェックには実際のCIジョブを指定します。ローカルhooksの通過だけを取り込み条件にはしません。
 
 ## マージとリリース
 

@@ -1,5 +1,5 @@
 import type { ChangeEventHandler, FocusEventHandler } from "react";
-import { Field as ArkField } from "@ark-ui/react/field";
+import { Field as ArkField, useFieldContext } from "@ark-ui/react/field";
 import { input } from "@animic/styled-system/recipes";
 import type { CommonProps } from "./dom";
 import { domProps } from "./dom";
@@ -17,10 +17,17 @@ export interface TextareaProps extends Omit<CommonProps<HTMLTextAreaElement>, "c
   rows?: number;
 }
 export function Textarea({ ref, ...props }: TextareaProps) {
+  const field = useFieldContext();
+  const fieldProps = field?.getTextareaProps();
   return (
     <ArkField.Textarea
       {...domProps(props)}
       ref={ref}
+      id={fieldProps?.id ?? props.id}
+      aria-labelledby={field?.ids.label ?? props["aria-labelledby"]}
+      aria-describedby={field ? fieldProps?.["aria-describedby"] : props["aria-describedby"]}
+      aria-errormessage={field ? fieldProps?.["aria-errormessage"] : props["aria-errormessage"]}
+      aria-invalid={field ? fieldProps?.["aria-invalid"] : props["aria-invalid"]}
       className={input({ multiline: true })}
       name={props.name}
       value={props.value}

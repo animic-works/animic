@@ -24,7 +24,7 @@ Design Systemの設計で得た判断材料を、次のDesign Systemでも利用
 
 ## 更新ルール
 
-文書ごとの所有関係と保存・更新ルールは[CONTRIBUTINGの文書の管理](../../CONTRIBUTING.md#文書の管理)に従います。検証記録は、重要な観測事実を事例本文と分けて保存する必要がある場合に作る文書です。すべての事例に必要なものではありません。読み分ける際の要点は次のとおりです。
+文書ごとの役割分担と保存・更新ルールは[CONTRIBUTINGの文書の管理](../../CONTRIBUTING.md#文書の管理)に従います。検証記録は、重要な観測事実を事例本文と分けて保存する必要がある場合に作る文書です。すべての事例に必要なものではありません。読み分ける際の要点は次のとおりです。
 
 - 現行資料は現在の仕様・実装へ追従します。
 - 設計ガイドと設計レビューガイドは、新しい知見に応じて更新できます。
@@ -35,7 +35,7 @@ Design Systemの設計で得た判断材料を、次のDesign Systemでも利用
 
 - [Visual / Guardrailの設計事例: 表現の責務と、実際に成立する利用形式](case-studies/visual-guardrails.md)
   - [検証記録](evidence/visual-guardrails.md): 2026-10-04の入力・観測結果・限界
-- [書体の責務分割の設計事例: デザイン判断からアセットの配信まで](case-studies/font-ownership.md)
+- [フォントの責務分割の設計事例: デザイン判断からアセットの配信まで](case-studies/font-ownership.md)
   - [検証記録](evidence/font-ownership.md): 配置の再評価と、生成・配信について確認できた記録
 - [Responsive / Typographyの設計事例: 意味を保って構成を変える](case-studies/responsive-typography.md): 利用可能幅の条件と、文字拡大時の組み合わせの判断
 - [Interaction / Environmentの設計事例: 操作と利用環境まで状態を確かめる](case-studies/interaction-environment.md): 状態の重なり、Portal、方向変更を含む検証と修正

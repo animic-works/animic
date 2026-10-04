@@ -15,7 +15,11 @@ export const iconButton = defineRecipe({
     "& > svg": { width: "icon.1", height: "icon.1" },
     [enabled]: {
       _hover: { boxShadow: "soft.1" },
-      _active: { transform: "translateY(2px)", boxShadow: "none" },
+      _active: {
+        transform: "translateY(2px)",
+        boxShadow: "none",
+        _motionReduce: { transform: "none" },
+      },
     },
     _disabled: disabled,
   },

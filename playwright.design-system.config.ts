@@ -7,8 +7,9 @@ export default defineConfig({
   workers: 2,
   reporter: "list",
   outputDir: "test-results/design-system",
-  snapshotPathTemplate: "{testDir}/snapshots/{arg}{ext}",
+  snapshotPathTemplate: "{testDir}/snapshots/{platform}/{arg}{ext}",
   use: {
+    channel: "chromium",
     baseURL: "http://localhost:6006",
     trace: "retain-on-failure",
     locale: "ja-JP",

@@ -4,42 +4,42 @@
 
 TanStack Startのフルスタック構成で、機能単位で関連するコードをまとめます。アプリ内の業務APIはServer Functionsを使います。
 
-各機能の役割と依存関係に合わせてコードを配置します。UIの視覚表現はPandaを基盤とするDesign Systemで所有し、React実装ではArk UIを内部利用します。Cloudflareにデプロイする構成とし、依存パッケージのバージョン管理は[CONTRIBUTING.md](../CONTRIBUTING.md#依存関係とgitで管理するファイル)に従います。
+各機能の役割と依存関係に合わせてコードを配置します。UIのスタイルはPandaを基盤とするDesign Systemで定義し、React実装ではArk UIを内部利用します。Cloudflareにデプロイする構成とし、依存パッケージのバージョン管理は[CONTRIBUTING.md](../CONTRIBUTING.md#依存関係とgitで管理するファイル)に従います。
 
 ## Design System
 
 [デザイン原則](design.md)を基準に、具体的なデザイン定義を`packages/design-system/src/`に置きます。`src/routes/`・`src/features/`のUIと、これらのパッケージを利用する外部アプリケーションは同じ定義を使います。デザインを変更する際は、このリポジトリの定義を変更してから各アプリケーションへ反映します。
 
-パッケージを分ける理由は[ADR 0004](decisions/0004-design-system.md)、Pandaのメジャーバージョンの選定は[ADR 0005](decisions/0005-panda-css-v2.md)を参照してください。
+パッケージを分ける理由は[ADR 0006](decisions/0006-design-system.md)、Pandaのメジャーバージョンの選定は[ADR 0005](decisions/0005-panda-css-v2.md)を参照してください。
 
 ### パッケージと依存関係
 
 | 配置                                                                | 責務                                                                                        | 許可する依存                                                                          |
 | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
 | `packages/design-system/`                                           | Primitive・Semantic Tokens、Styles、Recipes、Patterns、Conditions、GlobalをPresetとして定義 | Panda。UIフレームワーク・Ark UIには依存しない                                         |
-| `packages/styled-system/`                                           | 生成されたスタイル指定用の型付きSDK、CSS、書体アセットの配信                                | 生成結果とFontsource。Design System・UIフレームワーク・Ark UIへの実行時の依存関係なし |
+| `packages/styled-system/`                                           | Pandaが生成する型付きスタイリングAPI、CSS、フォントアセットの配信                           | 生成結果とFontsource。Design System・UIフレームワーク・Ark UIへの実行時の依存関係なし |
 | `packages/react/`                                                   | DOMの組み立て、キーボード操作、フォーカス管理、ARIAの関連付け                               | styled-system、React、Ark UI                                                          |
 | `src/routes/`・`src/features/`、Reactを利用する外部アプリケーション | 業務状態の判断と、それに応じた画面の組み立て                                                | `@animic/react`の公開サブパス                                                         |
 
-Design Systemは`tokens/primitive/`と`tokens/semantic/`、`styles/text.ts`・`layer.ts`・`animation.ts`・`keyframes.ts`、`recipes/`とその配下の`slots/`、`patterns/`、`font-assets.ts`、`conditions.ts`、`global.ts`、`preset.ts`に責務を分けます。単なる集約用の`theme.ts`やトップレベルの`slot-recipes/`は設けません。
+`design-system`パッケージは`tokens/primitive/`と`tokens/semantic/`、`styles/text.ts`・`layer.ts`・`animation.ts`・`keyframes.ts`、`recipes/`とその配下の`slots/`、`patterns/`、`font-assets.ts`、`conditions.ts`、`global.ts`、`preset.ts`に責務を分けます。単なる集約用の`theme.ts`やトップレベルの`slot-recipes/`は設けません。
 
-Design Systemパッケージの`exports`は`/preset`だけです。内部のToken・Style・Recipe・Pattern・`font-assets`は個別に公開しません。styled-systemは`/css`・`/recipes`・`/patterns`・`/styles.css`の4入口を公開します。生成コードが参照する内部の型やTokenの補助関数を独立した入口にしません。ReactはComponentごとのサブパスを明示し、ルートのbarrelファイル・ワイルドカード・内部補助関数を公開しません。
+`design-system`パッケージの`exports`は`/preset`だけです。内部のToken・Style・Recipe・Pattern・`font-assets`は個別に公開しません。styled-systemは`/css`・`/recipes`・`/patterns`・`/styles.css`の4つのエントリーポイントを公開します。生成コードが参照する内部の型やTokenヘルパーを独立したエントリーポイントにしません。ReactはComponentごとのサブパスを明示し、ルートのbarrelファイル・ワイルドカード・内部ヘルパーを公開しません。
 
 ### デザイン定義
 
-TokenのカテゴリはPandaの標準形式を使用します。色は`colors`、角丸は`radii`、書体は`fonts`、文字サイズは`fontSizes`、太さは`fontWeights`、行間は`lineHeights`、影は`shadows`、期間は`durations`、曲線は`easings`、線幅は`borderWidths`です。アイコンと操作領域の寸法は`sizes.icon`と`sizes.control`の独立したスケールとして保持します。具体値は文書へ複製しません。
+TokenのカテゴリはPandaの標準形式を使用します。色は`colors`、角丸は`radii`、フォントは`fonts`、文字サイズは`fontSizes`、太さは`fontWeights`、行間は`lineHeights`、影は`shadows`、アニメーションの時間は`durations`、イージングは`easings`、線幅は`borderWidths`です。アイコンと操作領域の寸法は`sizes.icon`と`sizes.control`の独立したスケールとして保持します。具体値は文書へ複製しません。
 
 PandaのSDK・Native Specには余白Tokenの負の派生値も含まれます。これはアプリケーションUI向けの選択肢ではありません。アプリケーションUIからSDKのTokenを直接参照する経路は設けず、Recipe・Patternの公開propsは用途ごとの選択肢に限定します。
 
-積層順は`tokens/semantic/z-index.ts`の`overlay`・`toast`という役割で所有します。数値のPrimitiveスケールは作らず、通常コンテンツには原則として`z-index`を付けません。
+重なり順は`tokens/semantic/z-index.ts`の`overlay`・`toast`で定義します。数値のPrimitiveスケールは作らず、通常コンテンツには原則として`z-index`を付けません。
 
 Recipeはスロット・variant・状態へ適用するスタイルを定義し、DOMの組み立てと操作処理はReact実装が担当します。
 
-### CSS・書体・全体への適用
+### CSS・フォント・全体への適用
 
-CSSは`@animic/styled-system/styles.css`から一度読み込みます。この入口が生成されたフォントCSSとPanda CSSをまとめ、React固有のCSS入口は設けません。採用書体・代替書体・太さ・用途はDesign SystemのTypography TokenとText Styleに定義します。非公開の`font-assets.ts`は書体TokenとFontsourceパッケージだけを対応付けます。リポジトリの生成処理がText Styleから必要な書体と太さを導出し、styled-systemが依存するFontsource CSSの存在を確認して`generated/fonts.css`へimport文を出力します。Fontsourceの`@font-face`・`unicode-range`・バイナリを再生成しません。
+CSSは`@animic/styled-system/styles.css`から一度読み込みます。このエントリーポイントで生成されたフォントCSSとPanda CSSを読み込み、React固有のCSSエントリーポイントは設けません。採用フォント・フォールバックフォント・太さ・用途はDesign SystemのTypography TokenとText Styleに定義します。非公開の`font-assets.ts`はフォントTokenとFontsourceパッケージだけを対応付けます。リポジトリの生成処理がText Styleから必要なフォントと太さを導出し、styled-systemが依存するFontsource CSSの存在を確認して`generated/fonts.css`へimport文を出力します。Fontsourceの`@font-face`・`unicode-range`・バイナリを再生成しません。
 
-書体のデザイン判断・アセット解決・配信を分けた比較と判断変更は、[書体の責務分割の設計事例](design-system/case-studies/font-ownership.md)を参照してください。
+フォントのデザイン判断・アセット解決・配信を分けた比較と判断変更は、[フォントの責務分割の設計事例](design-system/case-studies/font-ownership.md)を参照してください。
 
 利用側はAnimicのUIを構成する範囲に`data-animic-root`を付けます。`preflight: false`とし、CSSの読み込みだけで`html`・`body`全体を変更しません。`global.ts`がこの範囲へ基礎のText Style・文字色・背景・`font-synthesis`を適用し、対象要素・子孫とそれぞれの疑似要素を`border-box`にします。適用範囲の外に描画されるDialog・ToastのPortalには、Recipe側で必要なText Style・`font-synthesis`・`box-sizing`を適用します。
 
@@ -57,10 +57,12 @@ Panda JSX Componentsは公開・使用しません。
 | `segmented-control`                                        | `SegmentedControl`              | 値と表示名の選択肢、選択値、値だけを渡す変更通知                                      |
 | `dialog`                                                   | `Dialog`                        | 開閉状態、開閉の変更通知、見出し・説明・内容、`presentation`                          |
 | `toast`                                                    | `ToastProvider`、`useToast`     | 通知の表示・閉じる操作。Arkのストアは公開しない                                       |
-| `avatar`、`progress`、`spinner`                            | `Avatar`、`Progress`、`Spinner` | 画像失敗時の代替、割合または不定進捗、文言を伴う処理中表示                            |
+| `avatar`、`progress`、`spinner`                            | `Avatar`、`Progress`、`Spinner` | 画像失敗時の代替、進捗率またはindeterminate状態、文言を伴う処理中表示                 |
 | `stack`、`cluster`、`container`、`center`、`grid`、`split` | 同名のPatternのReact Component  | 意味のある配置だけを公開し、Containerの`size`、Gridの`columns`、Splitの`layout`は必須 |
 
-Text・HeadingはRecipeを介さず`styles/text.ts`に定義したText Styleを使います。HTML要素の既定の`margin`をReact実装で消し、外側の余白はPatternに任せます。書体の個別props、任意のDOM要素への置き換え、`className`・`style`・`asChild`は公開しません。入力用のrefやARIA属性は許可したDOMへ渡し、型を迂回した余分なスタイル指定用propsも実装内部で除外します。
+Text・HeadingはRecipeを介さず`styles/text.ts`に定義したText Styleを使います。HTML要素の既定の`margin`をReact実装で消し、外側の余白はPatternに任せます。フォントの個別props、任意のDOM要素への置き換え、`className`・`style`・`asChild`は公開しません。入力用のrefやARIA属性は許可したDOMへ渡し、型を迂回した余分なstyling propsも実装内部で除外します。
+
+Field内ではFieldがInput・Textareaの`id`とラベル・説明・エラーのARIA関連付けを管理します。固定IDが必要な場合はFieldの`id`へ指定し、子のInput・Textareaでは上書きしません。Fieldの外ではInput・Textarea自身の`id`・ARIA属性を使用できます。
 
 ### Ark UIとの対応
 
@@ -73,35 +75,35 @@ Animic側でスロット名を定義し、React実装で対応するArk UIの要
 | `segmented-control` | SegmentGroup           | `label`へItemText、`control`へItemControl。非表示のラジオボタンでフォームとキーボード操作を維持 |
 | `avatar`            | Avatar                 | 画像の読み込みと代替表示の切り替え                                                              |
 | `progress`          | Progress               | `fill`へRange、`value`へValueText。割合はAnimicのCSS変数へ変換                                  |
-| `toast`             | Toaster・Toast・Portal | `viewport`へToaster。内部の位置情報をAnimicのCSS変数へ対応付け、積層順はSemantic Tokenを優先    |
+| `toast`             | Toaster・Toast・Portal | `viewport`へToaster。内部の位置情報をAnimicのCSS変数へ対応付け、重なり順はSemantic Tokenを優先  |
 
-ArkのAnatomy・型・状態変更の詳細情報を公開APIにしません。Toastの配置余白と積層順もRecipeに置き、safe-areaと余白の大きい方を使用します。React実装はPortalの書字方向に応じて物理方向のsafe-areaを論理方向へ対応付け、祖先の方向指定の変更にも追従します。Arkのインラインスタイルによる位置・積層指定は除外します。
+ArkのAnatomy・型・状態変更の詳細情報を公開APIにしません。Toastの配置余白と重なり順もRecipeに置き、safe-areaと余白の大きい方を使用します。React実装はPortalのテキスト方向（LTR・RTL）に応じて物理方向のsafe-areaを論理方向へ対応付け、祖先の方向指定の変更にも追従します。Arkのインラインスタイルによる位置・z-index指定は除外します。
 
 ### UIからの利用
 
 #### 通常UI
 
-`src/routes/`・`src/features/`などのアプリケーションUIは、Panda、Design System内部の定義、styled-systemのJS/TS API、Ark UIを直接利用しません。任意のCSS、インラインスタイル、自由な`className`の上書きでDesign Systemを迂回しません。生成CSSの単一の入口を読み込むことは、このJS/TS APIの制約と分けて扱います。
+`src/routes/`・`src/features/`などのアプリケーションUIは、Panda、Design System内部の定義、styled-systemのJS/TS API、Ark UIを直接利用しません。任意のCSS、インラインスタイル、自由な`className`の上書きでDesign Systemを迂回しません。生成CSSの単一のエントリーポイントを読み込むことは、このJS/TS APIの制約と分けて扱います。
 
-`@animic/react`は自由なCSS propsを公開せず、用途ごとのvariant・配置ルールを公開します。TypographyはText Styleを通して選び、書体・文字サイズ・太さを個別に組み合わせません。進捗率などの実行時の値は意味のあるpropsで受け、必要なCSS変数への変換をReact実装の内部で行います。
+`@animic/react`は自由なCSS propsを公開せず、用途ごとのvariant・配置ルールを公開します。TypographyはText Styleを通して選び、フォント・文字サイズ・太さを個別に組み合わせません。進捗率などの実行時の値は意味のあるpropsで受け、必要なCSS変数への変換をReact実装の内部で行います。
 
 共通UIの視覚表現と状態ごとのスタイルは`packages/design-system/src/`に置きます。DOMと操作は`packages/react/src/`、業務状態の判断と画面の組み立ては`src/routes/`・`src/features/`が担当します。機能固有のアートワーク・演出は次項のVisual領域で扱います。表現の追加・共通化は[デザイン原則](design.md#新しい表現は既存の定義から組み立てる)に従い、新しいデザイン判断は実装前に承認を得ます。
 
 #### 機能固有のVisual
 
-`src/features/<feature>/visuals/`を、固有のアートワーク・Motionのための限定領域とします。各機能の通常UIからこの領域の表現を利用できますが、通常UIへ低レベルのスタイル指定用APIを再公開しません。
+`src/features/<feature>/visuals/`を、固有のアートワーク・Motionのための限定領域とします。各機能の通常UIからこの領域の表現を利用できますが、通常UIへ低レベルのスタイリングAPIを再公開しません。
 
-この領域では`@animic/styled-system/css`の`css()`で、`transform`、`opacity`、`clip-path`、`mask`、装飾配置、アートワークの合成、画面遷移などを扱えます。Token化に意味のない、その表現に固有の位置・寸法の値は、`top: "[-5px]"`のようなPandaの任意値（arbitrary value）構文で指定します。`strictTokens`・`strictPropertyValues`は維持し、余白Tokenやその負の派生値は流用しません。装飾は可能な限り非対話的にします。
+この領域では`@animic/styled-system/css`の`css()`で、`transform`、`opacity`、`clip-path`、`mask`、装飾配置、アートワークの合成、画面遷移などを扱えます。Token化に意味のない、その表現に固有の位置・寸法の値は、`top: "[-5px]"`のようなPandaのarbitrary value構文で指定します。`strictTokens`・`strictPropertyValues`は維持し、余白Tokenやその負の派生値は流用しません。装飾は可能な限り非対話的にします。
 
-`className`には検査済みの`css({...})`を直接指定するか、同一ファイルの単純な`const artwork = css({...})`を指定します。任意のクラス文字列、テンプレートリテラル、条件合成、インポートしたクラス、未知の関数の戻り値は受け付けません。`css`関数自体の代入・受け渡し・再公開も許可しません。`import`宣言から直接確認できる、読み込み時のローカル名の変更は利用できます。
+`className`には検査済みの`css({...})`を直接指定するか、同一ファイルの単純な`const artwork = css({...})`を指定します。任意のクラス文字列、テンプレートリテラル、条件合成、インポートしたクラス、未知の関数の戻り値は受け付けません。`css`関数自体の代入・受け渡し・再公開も許可しません。`import { css as draw }`のように、import宣言で指定するaliasは利用できます。
 
-共通MotionはDesign Systemに置き、機能固有のアートワーク・演出・MotionはVisualに置きます。固有Keyframesは同じ`/css`入口の`keyframes()`を使い、静的なフレーム定義を同一ファイルの`const`へ格納します。フレーム内にもVisualのプロパティ制限を適用します。生成名は検査済み`css()`の``animationName: `[${sparkle}]` ``として参照します。これは生成名をPandaの任意値として渡すための形式です。任意文字列によるアニメーション名の共有、生成名の再公開、`keyframes`関数の代入・受け渡しは許可しません。`css()`内へ`@keyframes`を直接記述しません。
+共通MotionはDesign Systemに置き、機能固有のアートワーク・演出・MotionはVisualに置きます。固有Keyframesは同じ`/css`エントリーポイントの`keyframes()`を使い、静的なフレーム定義を同一ファイルの`const`へ格納します。フレーム内にもVisualのプロパティ制限を適用します。生成名は検査済み`css()`の``animationName: `[${sparkle}]` ``として参照します。これは生成名をPandaのarbitrary valueとして渡すための形式です。任意文字列によるアニメーション名の共有、生成名の再公開、`keyframes`関数の代入・受け渡しは許可しません。`css()`内へ`@keyframes`を直接記述しません。
 
 Button・Input・Card・Dialogなどの通常UI、色・Typography・余白の体系、角丸・影、操作状態のスタイルはこの領域へ実装しません。Panda本体やArk UIへの直接依存も許可しません。
 
 #### 境界の検査
 
-パッケージの`exports`が利用可能な入口を定め、`scripts/design-guardrails.mjs`がその入口の利用場所を検査します。`/css`はReact実装と許可されたVisual、`/recipes`・`/patterns`はフレームワーク実装から利用します。スクリプトはインポート・再エクスポート・動的インポート・JSXを構文解析し、通常UIの`style`要素とスタイルシートを読み込む`link`も拒否します。JSXのスプレッド構文はTypeScriptで解決した閉じたprops型を許可し、禁止するスタイル指定用プロパティ・`any`・任意のキーを許す型を拒否します。通常のpropsの組み合わせを一律には禁止しません。通常UIのコントロール・Typographyは公開Componentで表現します。Visualのクラス・Keyframesは前項の局所的な形式だけを検査し、関数の戻り値や別ファイルをたどる値追跡は行いません。Surfaceの`padding`は公開variantとして扱い、任意のCSSの`padding`指定とは区別します。
+パッケージの`exports`が公開エントリーポイントを定め、`scripts/design-guardrails.mjs`がそれをimportできる場所を検査します。`/css`はReact実装と許可されたVisual、`/recipes`・`/patterns`はフレームワーク実装から利用します。スクリプトはインポート・再エクスポート・動的インポート・JSXを構文解析し、通常UIの`style`要素とスタイルシートを読み込む`link`も拒否します。JSX spreadはTypeScriptで解決した閉じたprops型を許可し、禁止するstyling props・`any`・index signatureを持つ型を拒否します。通常のpropsの組み合わせを一律には禁止しません。通常UIのコントロール・Typographyは公開Componentで表現します。Visualのクラス・Keyframesは前項の局所的な形式だけを検査し、関数の戻り値や別ファイルをたどる値追跡は行いません。Surfaceの`padding`は公開variantとして扱い、任意のCSSの`padding`指定とは区別します。
 
 既存画面のCSSとそれを使うルートは、内容のハッシュを固定した限定的な例外です。例外を新しいファイルへ広げず、画面を移行する際に削除します。生成コードを除き、ディレクトリ全体を検査対象外にはしません。これはコードの契約検査であり、任意のJavaScriptを隔離するセキュリティ機構ではありません。
 
@@ -121,15 +123,15 @@ GridとSplitは、内部の外側要素をクエリコンテナ、内側要素�
 
 #### フォーカス
 
-フォーカスリングは`recipes/control.ts`の共通Styleで所有し、コントロールの状態を示す境界線とは分けます。通常のフォーカス対象には`:focus-visible`、非表示のラジオボタンを含むSegmentedControlには子のラジオボタンの`:focus-visible`を検出するセレクターを利用します。フォーカスによって入力エラーを示す境界線を置き換えません。
+フォーカスリングは`recipes/control.ts`の共通Styleで定義し、コントロールの状態を示す境界線とは分けます。通常のフォーカス対象には`:focus-visible`、非表示のラジオボタンを含むSegmentedControlには子のラジオボタンの`:focus-visible`を検出するセレクターを利用します。フォーカスによって入力エラーを示す境界線を置き換えません。
 
-状態の重なりやPortal・書字方向を含む検証と修正の経緯は、[Interaction / Environmentの設計事例](design-system/case-studies/interaction-environment.md)を参照してください。
+状態の重なりやPortal・テキスト方向（LTR・RTL）を含む検証と修正の経緯は、[Interaction / Environmentの設計事例](design-system/case-studies/interaction-environment.md)を参照してください。
 
 ### 生成と開発支援
 
 Pandaのcodegenで型付きSDKとNative Specを、cssgenでCSSを生成します。
 
-`packages/styled-system/package.json`とCSS入口の`styles.css`はGit管理し、`generated/`は管理しません。生成コードは手で編集せず、手順は[CONTRIBUTING.md](../CONTRIBUTING.md#design-systemの生成と検証)に従います。
+`packages/styled-system/package.json`とCSSエントリーポイントの`styles.css`はGit管理し、`generated/`は管理しません。生成コードは手で編集せず、手順は[CONTRIBUTING.md](../CONTRIBUTING.md#design-systemの生成と検証)に従います。
 
 Panda Native Specは、Design Systemの定義から生成する機械向けの一覧情報です。定義全体の再構築は要求せず、含まれない詳細は`packages/design-system/src/`を確認します。全体を別の独自スキーマ・JSONで再定義しません。Panda MCPは定義済みのToken・Recipe・Pattern等、Ark UI MCPは内部利用する操作APIを調べる開発支援です。AIはPanda MCPで既存の定義を調べ、不足する詳細をソースコードで確認します。`panda analyze`は実際の利用状況を調べます。MCPとanalyzeはUIの実行・ビルドに必要な依存ではありません。
 
@@ -174,7 +176,7 @@ DOの状態はSQLiteストレージに永続化し、再起動・再接続後に
 
 画像生成・AI採点などの外部通信中に、ルーム全体の処理をロックしません。結果を反映するときに対戦ID・処理ID・現在の状態を検証し、遅れて届いた結果や重複通知が別の対戦や確定済みの提出を変更しないようにします。生成の受付・処理中・成功・失敗を区別し、受付記録だけで生成完了とは扱いません。
 
-生成の試行記録とスコア用の生成回数は区別します。試行記録には失敗も残し、スコア用の回数は[ゲーム仕様](product.md#スコアと勝敗)に従って成功した生成から算出します。同じ処理の完了通知を重複して受けても二重に数えません。提出を確定するときに、その時点の成功回数・提出時刻・速度加点の対象かどうかを保存します。提出後に生成が完了しても、この記録を変更しません。
+生成の試行記録とスコア用の生成回数は区別します。試行記録には失敗も残し、スコア用の回数は[ゲーム仕様](product.md#対戦の流れ)に従って成功した生成から算出します。同じ処理の完了通知を重複して受けても二重に数えません。提出を確定するときに、その時点の成功回数・提出時刻・速度加点の対象かどうかを保存します。提出後に生成が完了しても、この記録を変更しません。
 
 ### 採点
 
@@ -193,7 +195,7 @@ DOの状態はSQLiteストレージに永続化し、再起動・再接続後に
 | `src/lib/`      | 参加者の識別・DB接続など、複数の機能で使う処理                            |
 | `src/styles/`   | アプリケーション全体のCSS読み込み。既存画面のスタイルは移行対象ごとに整理 |
 
-### 各機能の役割
+### 各featureの役割
 
 | 配置                             | 役割                                                                 |
 | -------------------------------- | -------------------------------------------------------------------- |
@@ -204,14 +206,14 @@ DOの状態はSQLiteストレージに永続化し、再起動・再接続後に
 
 `battle`は対戦中に生成・提出できるかどうかを判断し、スコアに使う生成回数を確定します。`image-generation`は生成処理と履歴を扱い、`scoring`は確定した提出と評価条件からスコアを算出します。生成・採点処理が独立して対戦の進行状態を変更することはありません。
 
-ルームのDOは`room`に配置します。DOは永続化・排他制御・状態配信を担当し、対戦ルールの判断は`battle`の業務処理を呼び出して行います。`battle`から`image-generation`・`scoring`のサーバー処理を利用し、処理結果を呼び出し側が受け取って対戦へ反映します。DOクラスへ各機能の業務処理を集めず、生成・採点処理からDOを呼び出すコードも作りません。
+ルームのDOは`room`に配置します。DOは永続化・排他制御・状態配信を担当し、対戦ルールの判断は`battle`の業務処理を呼び出して行います。`battle`から`image-generation`・`scoring`のサーバー処理を利用し、処理結果を呼び出し側が受け取って対戦へ反映します。DOクラスへ各featureの業務処理を集めず、生成・採点処理からDOを呼び出すコードも作りません。
 
-この分割はコードの役割によるものです。機能ごとにWorkerやDOを分割することは要求しません。結果画面は`battle`、招待リンクのコピーとQR表示は`room`に含めます。
+この分割はコードの役割によるものです。featureごとにWorkerやDOを分割することは要求しません。結果画面は`battle`、招待リンクのコピーとQR表示は`room`に含めます。
 
 ## 依存関係とクライアント・サーバーの分離
 
-- `src/routes/`から各機能のUIや処理を呼び出し、各機能から共通のUIや処理を利用します。
-- 共通のコードから特定の機能をインポートせず、循環依存も避けます。
+- `src/routes/`から各featureのUIや処理を呼び出し、各featureから共通のUIや処理を利用します。
+- 共通のコードから特定のfeatureをimportせず、循環依存も避けます。
 - 画面の組み立ては`src/routes/`で行い、業務処理の連携はサーバー側で扱います。
 - 通常のデータ取得・操作には`createServerFn`で定義したServer Functionsを使い、サーバー専用のコードをクライアントのバンドルに含めないようにします。ファイルの命名は[実装規約](conventions.md#クライアントとサーバーの分離)に従います。
 - 入力検証・認証・認可はサーバー側で行います。画面側の遷移制御だけに依存しません。
@@ -234,15 +236,15 @@ DOの状態はSQLiteストレージに永続化し、再起動・再接続後に
 
 | 用途                       | 呼び出し順序                                                          |
 | -------------------------- | --------------------------------------------------------------------- |
-| ルーム操作・生成要求・提出 | UI → 担当機能のServer Function → DOのRPC → 業務処理                   |
-| お題・保存済み結果の取得   | loaderまたはUI → 担当機能のServer Function → D1                       |
+| ルーム操作・生成要求・提出 | UI → 担当featureのServer Function → DOのRPC → 業務処理                |
+| お題・保存済み結果の取得   | loaderまたはUI → 担当featureのServer Function → D1                    |
 | ルーム・対戦状態の配信     | ルームのDO → WebSocket → UI                                           |
 | 採点ジョブの受け渡し       | 採点ワーカー → `src/server.ts` → `scoring`のサーバー処理 → D1         |
 | 採点結果の反映             | ルームのDOのAlarm → `scoring`のサーバー処理 → D1 → `battle`の業務処理 |
 
 ルームや対戦を更新するServer Functionsは入力検証と参加者の識別を行ってDOを呼び出し、DOは対象ルームでの権限と状態遷移を検証します。参加者IDはブラウザが指定した値をそのまま信用せず、サーバー側で検証した参加者情報から取得します。保存済み結果の参照も公開範囲に応じて認可します。
 
-依存は機能名だけでなく、ファイルの役割で管理します。各機能の`*.functions.ts`からルームのDOを呼び出せますが、DOと業務処理は`*.functions.ts`をインポートしません。DOが呼ぶ`battle`の業務処理も、DOクラスやDOを呼び出すコードをインポートせず、渡された状態と入力から判断します。業務処理を呼ぶためにServer Functionsを経由することはありません。
+依存はfeature名だけでなく、ファイルの役割で管理します。各featureの`*.functions.ts`からルームのDOを呼び出せますが、DOと業務処理は`*.functions.ts`をimportしません。DOが呼ぶ`battle`の業務処理も、DOクラスやDOを呼び出すコードをimportせず、渡された状態と入力から判断します。業務処理を呼ぶためにServer Functionsを経由することはありません。
 
 ### 状態の配信と画面表示
 
@@ -264,9 +266,9 @@ WebSocketは状態の配信に使い、開始・生成・提出などの操作�
 
 ### DBアクセスの配置
 
-`src/lib/`にはD1接続など、複数の機能で使う処理を置き、機能固有のDrizzleスキーマ・クエリは担当する機能内に置きます。お題と保存済み結果は`battle`、DO内のルームと対戦の永続化は`room`、採点ワーカー・採点ジョブ・採点結果は`scoring`が担当します。DBクライアントと業務処理を一律の共通リポジトリ層に集約しません。
+`src/lib/`にはD1接続など、複数の機能で使う処理を置き、機能固有のDrizzleスキーマ・クエリは担当するfeature内に置きます。お題と保存済み結果は`battle`、DO内のルームと対戦の永続化は`room`、採点ワーカー・採点ジョブ・採点結果は`scoring`が担当します。DBクライアントと業務処理を一律の共通repository層に集約しません。
 
-`src/server.ts`では、通常のリクエストをTanStack Startに渡し、採点ワーカー向けAPIを`scoring`に渡し、WebSocket接続をDOに転送し、DOクラスをエクスポートします。アプリをフロントエンドと独立した業務APIサーバーへ分割しません。
+`src/server.ts`では、通常のリクエストをTanStack Startに渡し、採点ワーカー向けAPIを`scoring`に渡し、WebSocket接続をDOに転送し、DOクラスをexportします。アプリをフロントエンドと独立した業務APIサーバーへ分割しません。
 
 ## 参加者と対戦の関係
 
