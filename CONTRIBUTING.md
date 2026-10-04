@@ -146,7 +146,10 @@ vp run check
 
 画像比較テストのベースライン画像は`tests/design-system/browser/snapshots/linux/`で管理します。Playwrightが指定するChrome for Testingを`channel: "chromium"`で起動し、ビューポート・ロケールを固定してフォントの読み込みを待ちます。Headless Shellとは文字描画が異なるため混用しません。画像比較はLinux上で実行・更新し、CIでも必ず実行します。Linux以外では画像比較だけをスキップし、操作・アクセシビリティ等のテストは実行します。更新時は意図した表示変更であることを画像で確認します。差分を消すためだけにベースライン画像を更新しません。
 
+画像比較の環境は[CIのUbuntu環境](.github/workflows/checks.yml)に合わせ、次のコマンドでブラウザとシステム依存をインストールします。JetBrains Monoに含まれない日本語はシステムフォントへフォールバックするため、IPA Gothicを含むPlaywrightのフォント依存も必要です。個人のフォントやfontconfig設定が優先される環境では、CIと同じフォールバックになることを確認してから比較・更新します。
+
 ```sh
+vp exec playwright install --with-deps --no-shell chromium
 vp run test:design-system:browser --update-snapshots
 ```
 
