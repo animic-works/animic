@@ -163,30 +163,35 @@ describe("NovelAIへの生成の要求", () => {
       input: "1girl",
     });
   });
-  it("429のときだけ期限内で再試行する", async () => {
-    const fetch = vi
-      .fn<typeof globalThis.fetch>()
-      .mockResolvedValueOnce(new Response(null, { status: 429, headers: { "Retry-After": "0" } }))
-      .mockResolvedValueOnce(new Response(png));
-    vi.stubGlobal("fetch", fetch);
-    expect(await requestImage({ ...request, deadline: Date.now() + 60_000 })).toEqual({
-      ok: true,
-      image: png,
-    });
-    expect(fetch).toHaveBeenCalledTimes(2);
-  });
-  it("401は再試行せず、エラー文に含まれたトークンを伏せる", async () => {
+  it("429は送り直さず、すぐ失敗にする", async () => {
     const fetch = vi.fn<typeof globalThis.fetch>(
-      async () => new Response('{"message":"Invalid API key: pst-test"}', { status: 401 }),
+      async () =>
+        new Response('{"statusCode":429,"message":"Concurrent generation is locked"}', {
+          status: 429,
+        }),
     );
     vi.stubGlobal("fetch", fetch);
+    expect(await requestImage({ ...request, deadline: Date.now() + 60_000 })).toEqual({
+      ok: false,
+      reason: "http",
+      status: 429,
+      detail: '{"statusCode":429,"message":"Concurrent generation is locked"}',
+    });
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+  it("エラー文に含まれたトークンを伏せる", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof globalThis.fetch>(
+        async () => new Response('{"message":"Invalid API key: pst-test"}', { status: 401 }),
+      ),
+    );
     expect(await requestImage({ ...request, deadline: Date.now() + 60_000 })).toEqual({
       ok: false,
       reason: "http",
       status: 401,
       detail: '{"message":"Invalid API key: ***"}',
     });
-    expect(fetch).toHaveBeenCalledTimes(1);
   });
   it("期限までの残りが短ければNovelAIへ送らない", async () => {
     const fetch = vi.fn<typeof globalThis.fetch>();

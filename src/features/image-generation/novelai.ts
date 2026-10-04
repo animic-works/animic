@@ -5,7 +5,6 @@ const undesiredContent =
 
 const minimumTimeMs = 20_000;
 const abortMarginMs = 5000;
-const defaultRetryMs = 2000;
 
 const pngSignature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 const zipLocalFileSignature = 0x04034b50;
@@ -123,53 +122,42 @@ export async function readImageResponse(bytes: Uint8Array, contentType: string |
   return image;
 }
 
-function retryDelay(retryAfter: string | null) {
-  const seconds = retryAfter === null ? Number.NaN : Number(retryAfter);
-  return Number.isFinite(seconds) && seconds >= 0 ? seconds * 1000 : defaultRetryMs;
-}
-
 // 期限までに必ず終わる。完了の通知と保存の時間を残し、間に合わない生成はNovelAIへ送らない。
+// 429（同じアカウントの別の生成が終わっていない）は、ロック中に送り直さず失敗にする。
 export async function requestImage(request: {
   apiUrl: string;
   token: string;
   prompt: string;
   deadline: number;
 }): Promise<ImageResult> {
-  const body = JSON.stringify(
-    buildGeneratePayload(request.prompt, Math.floor(Math.random() * 1_000_000_000)),
-  );
-  for (;;) {
-    if (request.deadline - Date.now() < minimumTimeMs) return { ok: false, reason: "deadline" };
-    let response: Response;
-    let bytes: Uint8Array;
-    try {
-      response = await fetch(`${request.apiUrl}/ai/generate-image`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${request.token}`, "Content-Type": "application/json" },
-        body,
-        signal: AbortSignal.timeout(request.deadline - abortMarginMs - Date.now()),
-      });
-      bytes = new Uint8Array(await response.arrayBuffer());
-    } catch {
-      return { ok: false, reason: "network" };
-    }
-    if (response.ok) {
-      try {
-        return {
-          ok: true,
-          image: await readImageResponse(bytes, response.headers.get("Content-Type")),
-        };
-      } catch {
-        return { ok: false, reason: "invalid-response" };
-      }
-    }
-    // ログに残すNovelAIのエラー文にトークンが含まれていても伏せる。
-    const text = new TextDecoder().decode(bytes);
-    const detail = (request.token ? text.replaceAll(request.token, "***") : text).slice(0, 200);
-    const wait = retryDelay(response.headers.get("Retry-After"));
-    // 429は同じアカウントの別の生成が終わっていない場合に返る。
-    if (response.status !== 429 || request.deadline - Date.now() - wait < minimumTimeMs)
-      return { ok: false, reason: "http", status: response.status, detail };
-    await new Promise((resolve) => setTimeout(resolve, wait));
+  if (request.deadline - Date.now() < minimumTimeMs) return { ok: false, reason: "deadline" };
+  let response: Response;
+  let bytes: Uint8Array;
+  try {
+    response = await fetch(`${request.apiUrl}/ai/generate-image`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${request.token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(
+        buildGeneratePayload(request.prompt, Math.floor(Math.random() * 1_000_000_000)),
+      ),
+      signal: AbortSignal.timeout(request.deadline - abortMarginMs - Date.now()),
+    });
+    bytes = new Uint8Array(await response.arrayBuffer());
+  } catch {
+    return { ok: false, reason: "network" };
   }
+  if (response.ok) {
+    try {
+      return {
+        ok: true,
+        image: await readImageResponse(bytes, response.headers.get("Content-Type")),
+      };
+    } catch {
+      return { ok: false, reason: "invalid-response" };
+    }
+  }
+  // ログに残すNovelAIのエラー文にトークンが含まれていても伏せる。
+  const text = new TextDecoder().decode(bytes);
+  const detail = (request.token ? text.replaceAll(request.token, "***") : text).slice(0, 200);
+  return { ok: false, reason: "http", status: response.status, detail };
 }
