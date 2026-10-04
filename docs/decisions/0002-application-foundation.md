@@ -1,6 +1,6 @@
 # 0002: TanStack Startの構成を必要なパッケージから組み立てる
 
-- 状態: 承認済み
+- 状態: UIの方針を[ADR 0004](0004-design-system.md)で変更。その他は承認済み
 - 決定日: 2026-09-23
 - 関連: [アーキテクチャ](../architecture.md)、[実装規約](../conventions.md)
 
@@ -10,7 +10,7 @@ Better T Stackによる一括生成では、採用しないUIや設定まで含�
 
 ## 決定
 
-TanStack Startのフルスタック構成をCloudflare Vite pluginでWorkers上に構築する。公式の最小構成を基に、パッケージ・設定・コードを個別に追加する。通常の業務APIにはServer Functionsを使い、関連する実装はfeature単位に配置する。
+TanStack Startのフルスタック構成をCloudflare Vite pluginでWorkers上に構築する。公式の最小構成を基に、パッケージ・設定・コードを個別に追加する。通常の業務APIにはServer Functionsを使い、関連する実装は機能単位に配置する。
 
 UIはBase UIとCSS Modulesを採用する。React CompilerをVite+のクライアントビルドに組み込み、Knipで不要な依存パッケージやコードを検出する。ディレクトリは必要なコードを書く際に追加する。
 
@@ -18,7 +18,7 @@ UIはBase UIとCSS Modulesを採用する。React CompilerをVite+のクライ�
 
 ## 理由
 
-Startのルーティング・SSR・Server Functionsを一つのアプリで扱い、Cloudflare Vite pluginを通してローカルでもWorkersランタイムで検証できる。Base UIの操作・アクセシビリティの実装を利用しながら、見た目はCSS Modulesで設計できる。
+Startのルーティング・SSR・Server Functionsを一つのアプリで扱い、Cloudflare Vite pluginを通してローカルでもWorkersの実行環境で検証できる。Base UIの操作・アクセシビリティの実装を利用しながら、見た目はCSS Modulesで設計できる。
 
 一括生成より初期設定の確認は増えるが、必要なパッケージを選んで構成し、セットアップ手順とCIで再現性を維持できる。React CompilerはReactプラグインの公式プリセットを使い、Vite+が利用するRolldownの変換処理に合わせる。
 

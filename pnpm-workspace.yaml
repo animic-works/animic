@@ -1,13 +1,19 @@
+packages:
+  - packages/*
 # Vite+と同梱Viteの解決先を一致させる。
 overrides:
   vite: npm:@voidzero-dev/vite-plus-core@0.3.3
   # GHSA-67mh-4wv8-2f99対策。依存元が修正済みesbuildへ更新されたら削除する。
   "@esbuild-kit/core-utils@3.3.2>esbuild": "0.25.12"
+  # GHSA-rfgv-xxqx-mfg5・GHSA-w293-vg96-wgc3対策。Miniflareの更新後に解除を確認する。
+  "miniflare@5.20260921.0-alpha>undici": "7.29.1"
 # 同梱Vite 8.3.0の代わりに別名パッケージの0.3.3がpeer判定されるため、
 # この確認済みバージョンだけを許可する。更新時は同梱版との互換性を再確認する。
 peerDependencyRules:
   allowedVersions:
     vite: "0.3.3"
+    # StorybookのVite+検出とブラウザビルドをこの組み合わせで検証する。
+    "storybook@10.6.1>vite-plus": "0.3.3"
 # ローカルWorkers実行に必要なネイティブバイナリの準備だけを許可する。
 onlyBuiltDependencies:
   - esbuild

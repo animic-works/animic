@@ -5,6 +5,7 @@
 - [ゲーム仕様](docs/product.md): プロダクトの要件
 - [アーキテクチャ](docs/architecture.md): 構成と各機能の役割
 - [実装規約](docs/conventions.md): コードを書く際の判断基準
+- [Design Systemの設計資料](docs/design-system/README.md): 設計判断の事例・根拠と、再利用する判断材料
 
 ## セットアップと検証
 
@@ -26,57 +27,135 @@ vp hooks enable
 vp run typegen
 vp run db:migrate:local
 vp run test
+vp run test:design-system
 vp exec playwright install --no-shell chromium
 vp run test:e2e
 vp run check
-vp dev
+vp run dev
 ```
 
-開発サーバーは`http://localhost:3000`です。Cloudflare Vite pluginを通じてサーバー処理をローカルのWorkersランタイムで実行します。Linuxでブラウザのシステムライブラリが不足している場合は、Playwrightの[環境構築手順](https://playwright.dev/docs/browsers#install-system-dependencies)に従います。
+開発サーバーは`http://localhost:3000`です。Cloudflare Vite pluginを通じて、サーバー処理をローカルのWorkers実行環境で動かします。Linuxでブラウザのシステムライブラリが不足している場合は、Playwrightの[環境構築手順](https://playwright.dev/docs/browsers#install-system-dependencies)に従います。
 
-| 操作                         | コマンド                               |
-| ---------------------------- | -------------------------------------- |
-| 依存パッケージのインストール | `vp install --frozen-lockfile`         |
-| Git hooksの有効化            | `vp hooks enable`                      |
-| Git hooksの確認              | `vp hooks status`                      |
-| 開発サーバー                 | `vp dev`                               |
-| DB変更のSQL生成              | `vp run db:generate --name <変更名>`   |
-| ローカルD1へのSQL適用        | `vp run db:migrate:local`              |
-| Workers型の生成              | `vp run typegen`                       |
-| クライアント・Workerのビルド | `vp run build`                         |
-| ビルド成果物のローカル起動   | `vp preview`                           |
-| 業務ルールの単体テスト       | `vp run test`                          |
-| ブラウザでのE2E検証          | `vp run test:e2e`                      |
-| 静的検査                     | `vp run check`                         |
-| フォーマット修正             | `vp fmt`                               |
-| 未使用コードの検査           | `vp run knip`                          |
-| コミットメッセージの検証     | `vp exec commitlint --edit <ファイル>` |
+| 操作                          | コマンド                               |
+| ----------------------------- | -------------------------------------- |
+| 依存パッケージのインストール  | `vp install --frozen-lockfile`         |
+| Gitフックの有効化             | `vp hooks enable`                      |
+| Gitフックの確認               | `vp hooks status`                      |
+| 開発サーバー                  | `vp run dev`                           |
+| DB変更のSQL生成               | `vp run db:generate --name <変更名>`   |
+| ローカルD1へのSQL適用         | `vp run db:migrate:local`              |
+| Workers型の生成               | `vp run typegen`                       |
+| クライアント・Workerのビルド  | `vp run build`                         |
+| ビルド成果物のローカル起動    | `vp run preview`                       |
+| 業務ルールの単体テスト        | `vp run test`                          |
+| Design Systemの生成・契約検証 | `vp run test:design-system`            |
+| Design Systemのブラウザ検証   | `vp run test:design-system:browser`    |
+| Storybookの起動               | `vp run storybook`                     |
+| ブラウザでのE2E検証           | `vp run test:e2e`                      |
+| 静的検査                      | `vp run check`                         |
+| フォーマット修正              | `vp fmt`                               |
+| 未使用コードの検査            | `vp run knip`                          |
+| コミットメッセージの検証      | `vp exec commitlint --edit <ファイル>` |
 
-`vp run check`はフォーマット・lint・型チェック・Knipを実行します。`vp check`ではフォーマットと型情報を使うlintを実行し、プロジェクト全体の型チェックは`tsc --noEmit`、未使用コードの検査はKnipが担当します。コマンドの定義は[package.json](package.json)、lint・format・staged設定は[vite.config.ts](vite.config.ts)を参照してください。
+`vp run check`はDesign Systemを生成してから、インポートの利用場所・スタイル指定用プロパティの検査、フォーマット・lint・型チェック・Knipを実行します。`vp check`ではフォーマットと型情報を使うlintを実行し、プロジェクト全体の型チェックは`tsc --noEmit`、未使用コードの検査はKnipが担当します。現在の設定とKnipの例外は[静的検査の設定](#静的検査の設定)を参照してください。
 
-E2Eは[playwright.config.ts](playwright.config.ts)がビルド・DBの初期化・プレビュー起動を行います。テストごとではなく実行ごとに`.wrangler/e2e/`を初期化し、開発用の`.wrangler/state/`とは分けます。Wranglerによるテストデータ操作と他のテストが同じSQLiteを同時に更新しないよう、E2Eは1 workerで順に実行します。複数人の同時操作は各テスト内で複数のブラウザコンテキストを使って確認します。認証URLと鍵はテスト用に設定するため、E2Eだけなら`.env`の用意は不要です。
+E2Eは[playwright.config.ts](playwright.config.ts)がビルド・DBの初期化・プレビュー起動を行います。テストごとではなく実行ごとに`.wrangler/e2e/`を初期化し、開発用の`.wrangler/state/`とは分けます。Wranglerによるテストデータ操作と他のテストが同じSQLiteを同時に更新しないよう、E2Eは1ワーカーで順に実行します。複数人の同時操作は各テスト内で複数のブラウザコンテキストを使って確認します。認証URLと鍵はテスト用に設定するため、E2Eだけなら`.env`の用意は不要です。
 
 E2E専用クライアントは`ANIMIC_E2E=true`のビルドにだけ含め、共通ルートのクライアントコードから読み込みます。通常のビルドや開発サーバーにはこの読み込みを追加しません。E2Eのビルド成果物はデプロイせず、公開用にはこの環境変数を指定せずにビルドし直します。
 
-`vp run test`はVite+内蔵のVitestで`src/**/*.test.ts`を実行します。期限やホストの引き継ぎなど、時刻を指定して確認する業務ルールを対象とします。Workersランタイムが必要な処理はE2Eで実際のD1・DOと組み合わせて確認します。
+`vp run test`はVite+内蔵のVitestで`src/**/*.test.ts`を実行します。期限やホストの引き継ぎなど、時刻を指定して確認する業務ルールを対象とします。Workersの実行環境が必要な処理はE2Eで実際のD1・DOと組み合わせて確認します。
 
-E2Eでは、ロゴのSSR表示・画像の読み込み・狭い画面での表示・404応答をブラウザで確認します。認証・ルーム・対戦は、`tests/fixtures/api-client.ts`をブラウザで読み込んで実際のServer FunctionsとWebSocketを呼び出し、モックUIを経由せずに検証します。匿名セッションの復元・失効、CSRF対策、ルームへの参加と状態同期、複数タブ、ホストの退出・切断、WebSocketの認証、対戦開始・再戦・復帰・途中参加・提出期限による未提出・勝負不成立の確定と、D1への結果保存に失敗した場合の再試行を含めます。採点ワーカー向けAPIは、ブラウザを使わずPlaywrightの`request`から採点ワーカーとして要求を送り、リンク・heartbeat・採点ジョブの割り当て・完了・差し戻しと、D1に保存される状態を確認します。失敗時のtraceは`test-results/`に保存され、CIでは`e2e-failure-traces` artifactから7日間取得できます。展開したtraceは`vp exec playwright show-trace <trace.zipのパス>`で確認します。
+E2Eでは、ロゴのSSR表示・画像の読み込み・狭い画面での表示・404応答をブラウザで確認します。認証・ルーム・対戦は、`tests/fixtures/api-client.ts`をブラウザで読み込んで実際のServer FunctionsとWebSocketを呼び出し、画面実装を経由せずに検証します。匿名セッションの復元・失効、CSRF対策、ルームへの参加と状態同期、複数タブ、ホストの退出・切断、WebSocketの認証、対戦開始・再戦・復帰・途中参加・提出期限による未提出・勝負不成立の確定と、D1への結果保存に失敗した場合の再試行を含めます。採点ワーカー向けAPIは、ブラウザを使わずPlaywrightの`request`から採点ワーカーとして要求を送り、リンク・heartbeat・採点ジョブの割り当て・完了・差し戻しと、D1に保存される状態を確認します。失敗時のトレースは`test-results/`に保存され、CIでは`e2e-failure-traces`という名前の成果物から7日間取得できます。展開したトレースは`vp exec playwright show-trace <trace.zipのパス>`で確認します。
 
-Drizzleスキーマを変更したら`vp run db:generate --name <変更名>`でSQLを生成し、`migrations/`のSQLとスナップショットを確認して一緒に管理します。ローカルへの適用には`vp run db:migrate:local`を使います。適用済みのSQLは書き換えず、追加のmigrationで変更します。
+Drizzleスキーマを変更したら`vp run db:generate --name <変更名>`でSQLを生成し、`migrations/`のSQLとスナップショットを確認して一緒に管理します。ローカルへの適用には`vp run db:migrate:local`を使います。適用済みのSQLは書き換えず、追加のマイグレーションで変更します。
 
-`wrangler.jsonc`のD1設定は`DB` bindingを使います。リモート環境を用意する際は対象DBを作成・確認し、その`database_id`を設定してからmigrationを適用します。`BETTER_AUTH_URL`には公開URL、`BETTER_AUTH_SECRET`には環境固有の鍵を設定します。ローカルの鍵を本番へ流用しません。Cloudflare Vite pluginはプレビュー用の値を`dist/server/.dev.vars`へ出力するため、`dist/`全体を共有用artifactにしません。
+`wrangler.jsonc`のD1設定は`DB`バインディングを使います。リモート環境を用意する際は対象DBを作成・確認し、その`database_id`を設定してからマイグレーションを適用します。`BETTER_AUTH_URL`には公開URL、`BETTER_AUTH_SECRET`には環境固有の鍵を設定します。ローカルの鍵を本番へ流用しません。Cloudflare Vite pluginはプレビュー用の値を`dist/server/.dev.vars`へ出力するため、`dist/`全体を共有用成果物にしません。
 
 Workers設定は[wrangler.jsonc](wrangler.jsonc)で管理し、変更後は`vp run typegen`を実行します。生成された`worker-configuration.d.ts`はGitに含めません。`src/routeTree.gen.ts`はTanStack Startが開発・ビルド時に生成するルートと型の定義で、Gitで管理します。手で編集せず、ルートの変更と合わせて更新します。
 
-ローカルではVite+のhooksを使用します。`pre-commit`は`vp staged`で対象ファイルを検査・自動修正し、`commit-msg`はcommitlintでメッセージを検証します。hooksとは別に、PR前に静的検査と変更に関連するテスト・動作確認を行います。
+ローカルではVite+のフックを使用します。`pre-commit`は`vp staged`で対象ファイルを検査・自動修正し、`commit-msg`はcommitlintでメッセージを検証します。フックとは別に、PR前に静的検査と変更に関連するテスト・動作確認を行います。
 
-[.gitmessage](.gitmessage)を使う場合は、cloneごとに設定します。
+[.gitmessage](.gitmessage)を使う場合は、クローンごとに設定します。
 
 ```sh
 git config --local commit.template .gitmessage
 ```
 
 テンプレートは`git commit`でエディターを開くと表示されます。`git commit -m`には適用されません。
+
+## 静的検査の設定
+
+コマンドとKnipの設定は[package.json](package.json)、lint・整形・ステージ済みファイルの検査設定は[vite.config.ts](vite.config.ts)で管理します。検出結果への対応と例外の判断は[実装規約](docs/conventions.md#未使用コードとknip)に従います。
+
+Knipには次の理由で例外・入口を設定しています。
+
+- `cloudflare:workers`はWorkersが提供する仮想モジュールのため、`cloudflare`の依存検査を除外します。npmパッケージとして追加しません。
+- 生成CSSの`@import`から書体依存を追跡しないため、`packages/styled-system`のFontsource依存だけを明示的に除外します。対応するCSSの解決は[フォント生成とStorybookのビルド](#design-systemの生成と検証)で検証します。
+- 検査・生成スクリプトのJSに対応する型宣言は、TypeScriptでの利用を解析する際の入口として指定します。
+
+参考: [KnipのVite+対応](https://knip.dev/reference/plugins/vite-plus)。
+
+## Design Systemの変更判断
+
+必要なUIを既存のDesign Systemで表現できない場合も、拡張を前提にせず、次の順で判断します。
+
+1. [デザイン原則](docs/design.md)、[アーキテクチャ](docs/architecture.md#design-system)、既存のデザイン定義を確認し、表現できない内容・状態・操作・利用条件を具体化します。
+2. Panda MCPで既存のToken・Style・Recipe・Patternを調べ、詳細は必要に応じて`packages/design-system/src/`を確認します。React Componentの公開APIと、その組み合わせも確認します。
+3. 不足しているものを、下表の責務に分けます。既存の公開APIの組み合わせで成立するなら、利用側の構成を変更し、Design Systemは変更しません。
+4. 通常UIの不足を、任意CSS、`style`、自由な`className`、styled-systemの低レベルAPI、Visual領域による迂回で解決しません。
+5. 新しいToken・Style・Recipe・Pattern・Component・variant・Responsive条件・公開API等が必要なら、既存定義で不足する理由、変更先、選択肢と影響を示し、新しいDesign判断として実装前に承認を得ます。
+6. 承認後、[各層の責務](docs/architecture.md#design-system)に従って変更します。デザイン定義、DOM・操作、利用側の構成を混同しません。
+7. [生成と検証](#design-systemの生成と検証)から、変更に必要な生成結果・型・Guardrail・Storybook・ブラウザ操作・アクセシビリティ・画像比較等を選び、目的が成立したか確認します。
+8. 現在の仕様・構成・手順が変わった場合は、対応する現行文書も同じ変更で更新します。
+
+| 不足の種類                                                           | 判断すること                                                                                        |
+| -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| 既存APIの組み合わせで表現できる                                      | 利用側の構成を変更し、Design Systemは維持する                                                       |
+| 通常UIに共通する意味・状態・操作・アクセシビリティ上の表現が足りない | Design Systemの変更候補として、共通の責務と影響範囲を確認する                                       |
+| 画面・機能固有の業務上の構成が必要                                   | アプリケーション側で既存のComponent・Patternを組み立てる                                            |
+| 固有のアートワーク・特殊な配置・演出・Motionが必要                   | [Visualの責務](docs/architecture.md#機能固有のvisual)に該当するか確認し、許可された範囲・形式で扱う |
+
+Design Systemを変更しないことも正式な選択肢です。責務の切り分けに迷う場合は、[設計ガイド](docs/design-system/design-guide.md#既存定義で表現できない場合の判断)を判断材料にします。
+
+## Design Systemの生成と検証
+
+依存パッケージはリポジトリ全体のワークスペースとしてインストールします。`panda.config.ts`が`@animic/design-system/preset`を読み込み、`packages/styled-system/generated/`へSDK・Native Spec・CSSを生成します。
+
+```sh
+vp run design-system:generate
+vp run test:design-system
+vp run test:design-system:browser
+vp run design-system:analyze
+vp run check
+```
+
+`design-system:generate`は`panda codegen --spec`、`panda cssgen`、`scripts/generate-fonts.mjs`を実行します。Native Specは`generated/specs/design-system.json`、Panda CSSは`generated/styles.css`、フォントCSSは`generated/fonts.css`です。必要な書体の太さはText Styleから求め、styled-systemの依存からFontsource CSSを解決します。生成物を削除した後も同じコマンドで復元できます。直接値を持つSemantic TokenはNative Specの`semantic`フラグが省略されるため、分類はMCPのSemantic Token問い合わせとソースコードで確認します。アプリの`dev`・`build`・`preview`は`-C .`でルートパッケージを明示し、ワークスペース全体の選択と区別します。`dev`・`build`・`typecheck`・`check`・`test:design-system`も先に生成するため、初回チェックアウトの生成物に依存しません。
+
+`test:design-system`は生成されたSemantic Tokenの参照・CSS変数・非公開サブパスの解決失敗・色ペアのコントラスト・フォントCSSの導出と依存の解決・JSXのスプレッド構文の型を検証します。禁止する値を使った型検証は`tests/design-system/strict-types.ts`と`public-types.tsx`にあり、`check`に含まれる型チェックで確認します。`design-system:analyze`は使用状況を`generated/analysis.json`へ出力します。未使用という結果だけで承認した語彙を削除しません。
+
+定義やReact内のスタイル指定を変更した場合は`vp run design-system:generate`を再実行してから表示を確認します。
+
+生成物はGit管理せず、整形・lintの修正対象にも含めません。各パッケージの`package.json`、CSS入口、生成設定・生成スクリプト・検証コードはGit管理します。
+
+### Storybook・アクセシビリティ・画像比較
+
+`vp run storybook`は`http://localhost:6006`でComponentと状態を確認するStorybookを起動します。`vp run storybook:build`で静的出力を作り、`vp run storybook:preview`で確認できます。アプリ用のCloudflare・ルーティング設定は読み込まず、React Compilerと同じワークスペース内のパッケージを使用します。書体はローカルの依存パッケージから配信し、外部フォントサーバーへ依存しません。
+
+`vp run test:design-system:browser`はStorybookのビルド・起動とPlaywrightを実行します。既存のローカルサーバーは開発時だけ再利用し、CIでは必ずビルドから実行します。ARIAの関連付け、キーボード操作、Dialogのフォーカストラップ・フォーカスの復帰、Toastの積層、動きを抑える設定、文字拡大を検証します。axeによるWCAG A・AAの自動検査を含みますが、読み上げソフトによる確認や人間の使いやすさの評価を置き換えません。
+
+画像比較テストの基準画像は`tests/design-system/browser/snapshots/`で管理します。固定したChromium・ビューポート・ロケールを使い、フォントの読み込みを待って比較します。Linux環境で更新し、意図した表示変更であることを画像で確認します。差分を消すためだけに基準画像を更新しません。
+
+```sh
+vp run test:design-system:browser --update-snapshots
+```
+
+失敗時のトレース・実画像・画像差分は`test-results/design-system/`に保存し、CIの`design-system-failures`という名前の成果物から取得できます。アプリのE2Eとは設定と出力先を分けます。`Layout boundaries`のストーリーでは、同じ内容の列数・縦並びを比較し、利用可能な幅と文字サイズによる成立条件を確認できます。
+
+### AIからの問い合わせ
+
+Panda MCPは既存のデザイン定義、Ark UI MCPは内部利用するUIのAPIを調べる開発支援です。固定した開発依存から起動するプロジェクト設定をリポジトリで管理しています。エージェントの接続方法は[AGENTS.md](AGENTS.md#mcpへの接続)を参照してください。
+
+MCPはDesign Systemの定義元ではありません。実際の定義は`packages/design-system/src/`、責務と利用境界は[アーキテクチャ](docs/architecture.md#design-system)で確認します。MCPへの接続はUIの実行・ビルドの要件ではありません。
 
 ## 本番デプロイ
 
@@ -90,7 +169,7 @@ Cloudflare Workers Buildsは次の設定で通常のアプリをビルド・デ�
 | ビルドコマンド     | `pnpm run build`            |
 | デプロイコマンド   | `pnpm exec wrangler deploy` |
 
-Node.jsは`.node-version`、pnpmは`package.json`の指定に合わせます。初回は本番D1を作成・確認し、`wrangler.jsonc`の`database_id`を設定してから`vp exec wrangler d1 migrations apply DB --remote`でSQLを適用します。Workerの秘密情報として`BETTER_AUTH_SECRET`に本番専用の鍵、`BETTER_AUTH_URL`に`https://animic.party`を設定します。DOのクラス登録は`wrangler.jsonc`のmigrationによってデプロイ時に行います。
+Node.jsは`.node-version`、pnpmは`package.json`の指定に合わせます。初回は本番D1を作成・確認し、`wrangler.jsonc`の`database_id`を設定してから`vp exec wrangler d1 migrations apply DB --remote`でSQLを適用します。Workerの秘密情報として`BETTER_AUTH_SECRET`に本番専用の鍵、`BETTER_AUTH_URL`に`https://animic.party`を設定します。DOのクラス登録は`wrangler.jsonc`のマイグレーションによってデプロイ時に行います。
 
 Custom Domainに`animic.party`を設定します。公開前に変更が`main`へ取り込まれていることと、Cloudflareがビルドするコミットを確認します。公開後はHTTPS、トップページ、アイコン・OGP画像、robots.txt、sitemap.xml、存在しないページの404を確認します。`www`を使う場合は正規ホストへ恒久リダイレクトします。開発環境を公開する場合は、Accessによる閲覧制限と、本番から独立したD1・DO・認証情報を設定します。
 
@@ -209,13 +288,13 @@ Issue・PRのタイトルとコミットの件名は`type(scope): 日本語の�
 
 ## CIとレビュー
 
-- [Checks](.github/workflows/checks.yml)はPRの作成・更新・再オープン時と手動実行時に起動します。pushを起点にした重複実行は行いません。`Quality`でWorkers型生成、単体テスト、E2Eに含まれるビルドとローカルD1・DOでの検証、生成ルートの差分確認、静的検査を実行します。
+- [Checks](.github/workflows/checks.yml)はPRの作成・更新・再オープン時と手動実行時に起動します。pushを起点にした重複実行は行いません。`Quality`でWorkers型生成、業務ルールとDesign Systemの契約・ブラウザ・画像比較検証、E2Eに含まれるビルドとローカルD1・DOでの検証、生成ルートの差分確認、静的検査を実行します。
 - `Quality`ではワークフローの変更時にactionlint、依存関係の変更時に`vp pm audit -- --audit-level high`も実行します。手動実行では両方を検査します。脆弱性検査は開発用の依存関係も含め、High・Criticalを失敗条件にします。依存関係を変更しないPRでは実行しないため、新たに公表された脆弱性を継続監視するものではありません。actionlintはバージョンと配布バイナリのSHA-256を固定します。
 - [Commit policy](.github/workflows/commit-policy.yml)でPRのブランチ名・取り込み先・タイトル・コミット形式を検証します。
 - テスト・ビルド対象を追加する変更では、それに対応する検証もCIに組み込みます。
 - PRには実行したコマンド・操作と結果を記録します。未実施・適用外は理由を明記し、ビルドと起動確認を区別します。
 
-main・developの保護要件は、PR経由、1名以上の承認、必須のCIチェックの成功、レビューの未解決スレッドなし、force push・削除禁止です。必須チェックには実際のCIジョブを指定します。ローカルhooksの通過だけを取り込み条件にはしません。
+main・developの保護要件は、PR経由、1名以上の承認、必須のCIチェックの成功、レビューの未解決スレッドなし、force push・削除禁止です。必須チェックには実際のCIジョブを指定します。ローカルフックの通過だけを取り込み条件にはしません。
 
 ## マージとリリース
 
@@ -230,17 +309,32 @@ main・developの保護要件は、PR経由、1名以上の承認、必須のCI�
 
 ## 文書の管理
 
-| 文書                 | 記載する内容                             |
-| -------------------- | ---------------------------------------- |
-| README.md            | 概要と開発・設計文書へのリンク           |
-| docs/product.md      | プロダクトの要件                         |
-| docs/architecture.md | 構成・各機能の役割・依存関係             |
-| docs/conventions.md  | 配置・命名・コード分割・共通化の判断基準 |
-| CONTRIBUTING.md      | 開発・検証・Git運用の手順                |
-| AGENTS.md            | 参照先とAIエージェントへの指示           |
-| ADR                  | 重要な設計判断の背景・決定・理由・影響   |
+| 文書                                                                    | 所有するもの                                                             |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| README.md                                                               | 概要と開発・設計文書への入口                                             |
+| docs/product.md                                                         | 現在のプロダクト要件                                                     |
+| docs/design.md                                                          | 現在承認されているデザイン原則                                           |
+| docs/architecture.md                                                    | 現在の構成・責務・依存関係・公開境界・利用形式                           |
+| docs/conventions.md                                                     | 現在コードを書く際の配置・命名・分割・共通化の規則                       |
+| CONTRIBUTING.md                                                         | 現在の開発・生成・検証・Git運用と文書管理の手順                          |
+| AGENTS.md                                                               | 参照先とAIエージェントへの指示                                           |
+| ADR                                                                     | 重要な設計判断の背景・判断基準・決定・理由・影響・見直す条件             |
+| ソースコード / テスト                                                   | 現在の具体的なAPI・値・実装・自動検証                                    |
+| docs/design-system/README.md                                            | 設計資料の目的・読み方と、作成済みの文書への入口                         |
+| [Design Systemの設計ガイド](docs/design-system/design-guide.md)         | 再利用可能な問い・前提・選択肢・判断基準・トレードオフ・適用条件         |
+| Design Systemの設計事例                                                 | 実際の前提・比較・失敗・検証・判断変更・適用範囲                         |
+| Design Systemの検証記録                                                 | 設計事例を裏付ける入力・環境・観測結果と、証明できること・できないこと   |
+| [Design Systemの設計レビューガイド](docs/design-system/review-guide.md) | レビュー方法・証拠の扱い・判断と実装の区別・AI利用時の判断の偏りへの対処 |
 
-規則の本文を置く場所を一つに決め、他の文書からは参照します。仕様・設計・手順の変更時は、対応する文書も同じ変更で更新します。会話ログ、進捗メモ、検討中の案はリポジトリ外の一時ファイルに置きます。
+規則の本文を置く場所を一つに決め、他の文書からは参照します。現行資料にあたる要件・原則・構成・実装規則・手順とソースコード・テストは、現在の仕様・実装へ追従させます。仕様・設計・手順の変更時は、対応する現行資料も同じ変更で更新します。実装方法を知るために過去の設計事例を読むことは要求しません。
+
+[Design Systemの設計資料](docs/design-system/README.md)は、現在の仕様を複製せず、別のDesign Systemでも使える判断材料を残します。設計ガイドと設計レビューガイドは新しい知見に応じて更新できます。設計事例は当時の前提・比較・判断変更を、検証記録は当時の観測事実を保持します。現在の設計や推奨が変わっても過去を現行仕様へ書き換えず、事実誤認があれば訂正します。現在のAPI・Token値・利用規則は現行資料へリンクし、重要な決定と見直す条件はADRが所有します。
+
+会話ログ、進捗メモ、検討中の案はリポジトリ外の一時ファイルに置きます。これらをそのまま保存することと、検証済みの事実・実際に比較した選択肢・承認された判断変更を検証記録や設計事例へ編集して残すことは区別します。不採用案は当時比較された案として扱い、決定と混同しません。観測事実・当時の提案・決定・後からの解釈を分け、何を入力し、どの環境で何を観測したかを記載します。
+
+限界は、それを書かなければ読者が結論の強さ・適用範囲・検証範囲を誤解する場合にだけ残します。例えば、別々の入力による検査を一貫したE2Eと扱わないこと、8文字コードの成功をnumeric全般へ広げないこと、forced-colorsの模擬環境を全OS・支援技術の保証にしないことは明記します。結論の解釈に影響しない調査上の不足や、作業者が確認できなかった事項の一覧は残しません。
+
+独立した検証記録は、設計事例の重要な観測事実を本文と分けて保存する必要がある場合に作ります。すべての事例に要求せず、作成自体を品質条件にしません。作る場合は、事例から安定して参照できる識別子を使います。生ログやリポジトリ外の一時ファイル名に依存せず、必要な入力・観測結果を文書内に残し、現在参照できる実装・テスト等へ接続します。リポジトリ内へのリンクには相対パスを使います。
 
 - 機能やサブシステムの設計には[設計テンプレート](docs/templates/design.md)を使い、必要な節を選びます。
 - 後から選定理由を確認する必要がある判断には[ADRテンプレート](docs/decisions/template.md)を使います。日常的な実装判断すべてにADRを要求しません。

@@ -19,7 +19,7 @@ export default defineConfig({
       "node -e \"require('node:fs').rmSync('.wrangler/e2e', { recursive: true, force: true })\"",
       "vp run build",
       "vp run db:migrate:local --persist-to .wrangler/e2e",
-      "vp preview --host 127.0.0.1 --port 4173 --strictPort",
+      "vp run preview --host 127.0.0.1 --port 4173 --strictPort",
     ].join(" && "),
     env: {
       ANIMIC_E2E: "true",

@@ -1,0 +1,38 @@
+{
+  "name": "@animic/react",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./button": "./src/button.tsx",
+    "./icon-button": "./src/icon-button.tsx",
+    "./link": "./src/link.tsx",
+    "./text": "./src/text.tsx",
+    "./heading": "./src/heading.tsx",
+    "./surface": "./src/surface.tsx",
+    "./separator": "./src/separator.tsx",
+    "./badge": "./src/badge.tsx",
+    "./field": "./src/field.tsx",
+    "./input": "./src/input.tsx",
+    "./textarea": "./src/textarea.tsx",
+    "./segmented-control": "./src/segmented-control.tsx",
+    "./dialog": "./src/dialog.tsx",
+    "./toast": "./src/toast.tsx",
+    "./avatar": "./src/avatar.tsx",
+    "./progress": "./src/progress.tsx",
+    "./spinner": "./src/spinner.tsx",
+    "./stack": "./src/stack.tsx",
+    "./cluster": "./src/cluster.tsx",
+    "./container": "./src/container.tsx",
+    "./center": "./src/center.tsx",
+    "./grid": "./src/grid.tsx",
+    "./split": "./src/split.tsx"
+  },
+  "dependencies": {
+    "@animic/styled-system": "workspace:*",
+    "@ark-ui/react": "5.39.2"
+  },
+  "peerDependencies": {
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  }
+}

@@ -37,7 +37,7 @@ jobs:
             while IFS= read -r file; do
               case "$file" in
                 .github/workflows/*.yml|.github/workflows/*.yaml) workflows=true ;;
-                package.json|pnpm-lock.yaml|pnpm-workspace.yaml|.npmrc|patches/*) dependencies=true ;;
+                package.json|packages/*/package.json|pnpm-lock.yaml|pnpm-workspace.yaml|.npmrc|patches/*) dependencies=true ;;
               esac
             done <<< "$changed_files"
           fi
@@ -71,8 +71,21 @@ jobs:
         run: vp run typegen
       - name: Test game rules
         run: vp run test
+      - name: Generate and test design system
+        run: vp run test:design-system
       - name: Install test browser
         run: vp exec playwright install --with-deps --no-shell chromium
+      - name: Test design system in the browser
+        id: design-system-browser
+        run: vp run test:design-system:browser
+      - name: Upload design system failure artifacts
+        if: ${{ failure() && steps.design-system-browser.outcome == 'failure' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: design-system-failures
+          path: test-results/design-system/
+          retention-days: 7
+          if-no-files-found: warn
       - name: Build and test production preview
         id: e2e
         run: vp run test:e2e

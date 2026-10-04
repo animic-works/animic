@@ -172,7 +172,7 @@ test("勝負不成立後に再戦し、前の結果のD1保存も再試行する
             );
             return rows[0]?.count;
           } catch (error) {
-            // 別プロセスのWranglerとpreviewが同じローカルSQLiteを開く。
+            // 別プロセスのWranglerとプレビューサーバーが同じローカルSQLiteを開く。
             if (error instanceof Error && error.message.includes("SQLITE_BUSY")) return undefined;
             throw error;
           }
