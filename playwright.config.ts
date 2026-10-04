@@ -2,6 +2,8 @@ import { randomBytes } from "node:crypto";
 
 import { defineConfig, devices } from "@playwright/test";
 
+import { e2eAdminPassword } from "./tests/e2e/admin-password";
+
 export default defineConfig({
   testDir: "./tests/e2e",
   forbidOnly: Boolean(process.env.CI),
@@ -28,6 +30,7 @@ export default defineConfig({
         "animic.party,animic.example.workers.dev,dev.animic.party",
       BETTER_AUTH_URL: "http://127.0.0.1:4173",
       BETTER_AUTH_SECRET: randomBytes(32).toString("hex"),
+      ADMIN_PASSWORD: e2eAdminPassword,
     },
     url: "http://127.0.0.1:4173",
     reuseExistingServer: false,
