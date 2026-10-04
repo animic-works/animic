@@ -2,7 +2,6 @@ import { DurableObject } from "cloudflare:workers";
 import * as v from "valibot";
 
 import { requestImage } from "./novelai";
-import type { ImageResult } from "./novelai";
 
 const apiUrl = "https://image.novelai.net";
 const configSchema = v.object({ NOVELAI_API_TOKEN: v.pipe(v.string(), v.minLength(1)) });
@@ -12,10 +11,7 @@ export class NovelAiQueue extends DurableObject<Env> {
   #tail: Promise<unknown> = Promise.resolve();
   #waiting = 0;
 
-  generate(
-    prompt: string,
-    deadline: number,
-  ): Promise<ImageResult | { ok: false; reason: "not-configured" }> {
+  generate(prompt: string, deadline: number) {
     const queuedAt = Date.now();
     this.#waiting += 1;
     // fetchの応答を待つ間もDOは次の要求を受け付けるため、Promiseをつないで順番を守る。
@@ -43,12 +39,10 @@ export class NovelAiQueue extends DurableObject<Env> {
       prompt,
       deadline,
     });
-    if (!result.ok)
-      console.error("NovelAIで画像を生成できませんでした。", {
-        reason: result.reason,
-        status: result.status,
-        detail: result.detail,
-      });
-    return result;
+    if (result.ok) return result;
+    // NovelAIのエラー文は呼び出し元へ返さず、ログにだけ残す。
+    const { detail, ...failure } = result;
+    console.error("NovelAIで画像を生成できませんでした。", { ...failure, detail });
+    return failure;
   }
 }

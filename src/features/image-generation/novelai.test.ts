@@ -174,18 +174,19 @@ describe("NovelAIへの生成の要求", () => {
       image: png,
     });
     expect(fetch).toHaveBeenCalledTimes(2);
-
-    const unauthorized = vi.fn<typeof globalThis.fetch>(
-      async () => new Response('{"message":"Invalid API key"}', { status: 401 }),
+  });
+  it("401は再試行せず、エラー文に含まれたトークンを伏せる", async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>(
+      async () => new Response('{"message":"Invalid API key: pst-test"}', { status: 401 }),
     );
-    vi.stubGlobal("fetch", unauthorized);
+    vi.stubGlobal("fetch", fetch);
     expect(await requestImage({ ...request, deadline: Date.now() + 60_000 })).toEqual({
       ok: false,
       reason: "http",
       status: 401,
-      detail: '{"message":"Invalid API key"}',
+      detail: '{"message":"Invalid API key: ***"}',
     });
-    expect(unauthorized).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
   it("期限までの残りが短ければNovelAIへ送らない", async () => {
     const fetch = vi.fn<typeof globalThis.fetch>();

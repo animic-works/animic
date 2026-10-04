@@ -163,7 +163,9 @@ export async function requestImage(request: {
         return { ok: false, reason: "invalid-response" };
       }
     }
-    const detail = new TextDecoder().decode(bytes).slice(0, 200);
+    // ログに残すNovelAIのエラー文にトークンが含まれていても伏せる。
+    const text = new TextDecoder().decode(bytes);
+    const detail = (request.token ? text.replaceAll(request.token, "***") : text).slice(0, 200);
     const wait = retryDelay(response.headers.get("Retry-After"));
     // 429は同じアカウントの別の生成が終わっていない場合に返る。
     if (response.status !== 429 || request.deadline - Date.now() - wait < minimumTimeMs)
