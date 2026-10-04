@@ -16,7 +16,7 @@
     },
   ],
   "secrets": {
-    "required": ["BETTER_AUTH_SECRET", "BETTER_AUTH_URL", "ADMIN_PASSWORD"],
+    "required": ["BETTER_AUTH_SECRET", "BETTER_AUTH_URL", "NOVELAI_API_TOKEN", "ADMIN_PASSWORD"],
   },
   "durable_objects": {
     "bindings": [
@@ -24,12 +24,20 @@
         "name": "ROOMS",
         "class_name": "Room",
       },
+      {
+        "name": "NOVELAI_QUEUE",
+        "class_name": "NovelAiQueue",
+      },
     ],
   },
   "migrations": [
     {
       "tag": "v1",
       "new_sqlite_classes": ["Room"],
+    },
+    {
+      "tag": "v2",
+      "new_sqlite_classes": ["NovelAiQueue"],
     },
   ],
 }

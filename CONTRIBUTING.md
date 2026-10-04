@@ -18,6 +18,8 @@ node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
 
 `BETTER_AUTH_URL`は利用するアプリのURLに合わせます。`.env`はGitに含めません。環境変数で値を上書きできるよう、ローカル設定は`.env`に統一し、優先して読み込まれる`.dev.vars`とは併用しません。
 
+NovelAIで画像を生成する場合は、NovelAIのアカウント設定で発行した永続APIトークン（`pst-`で始まる値）を`NOVELAI_API_TOKEN`に設定します。未設定でも起動できますが、画像の生成は失敗します。トークンはサーバー側の生成キューのDOだけで読み、ブラウザへのレスポンスやログには含めません。
+
 管理画面（`/admin`）を使う場合は、12文字以上のパスワードを`ADMIN_PASSWORD`に設定します。`#`や`$`を含む場合は`ADMIN_PASSWORD='...'`のように単一引用符で囲みます。囲まないと`#`以降がコメントとして扱われます。
 
 初回は次の順序で実行します。
@@ -56,7 +58,7 @@ vp dev
 
 `vp run check`はフォーマット・lint・型チェック・Knipを実行します。`vp check`ではフォーマットと型情報を使うlintを実行し、プロジェクト全体の型チェックは`tsc --noEmit`、未使用コードの検査はKnipが担当します。コマンドの定義は[package.json](package.json)、lint・format・staged設定は[vite.config.ts](vite.config.ts)を参照してください。
 
-E2Eは[playwright.config.ts](playwright.config.ts)がビルド・DBの初期化・プレビュー起動を行います。テストごとではなく実行ごとに`.wrangler/e2e/`を初期化し、開発用の`.wrangler/state/`とは分けます。Wranglerによるテストデータ操作と他のテストが同じSQLiteを同時に更新しないよう、E2Eは1 workerで順に実行します。複数人の同時操作は各テスト内で複数のブラウザコンテキストを使って確認します。認証URLと鍵、管理画面のパスワードはテスト用の値を設定するため、E2Eだけなら`.env`の用意は不要です。
+E2Eは[playwright.config.ts](playwright.config.ts)がビルド・DBの初期化・プレビュー起動を行います。テストごとではなく実行ごとに`.wrangler/e2e/`を初期化し、開発用の`.wrangler/state/`とは分けます。Wranglerによるテストデータ操作と他のテストが同じSQLiteを同時に更新しないよう、E2Eは1 workerで順に実行します。複数人の同時操作は各テスト内で複数のブラウザコンテキストを使って確認します。認証URLと鍵、NovelAIのトークン、管理画面のパスワードはテスト用の値を設定するため、E2Eだけなら`.env`の用意は不要です。E2Eのビルドには実際のNovelAIのトークンを含めず、ブラウザへ配信するファイルとトップページのHTMLにテスト用のトークンが含まれないことを確認します。
 
 E2E専用クライアントは`ANIMIC_E2E=true`のビルドにだけ含め、共通ルートのクライアントコードから読み込みます。通常のビルドや開発サーバーにはこの読み込みを追加しません。E2Eのビルド成果物はデプロイせず、公開用にはこの環境変数を指定せずにビルドし直します。
 
@@ -92,7 +94,7 @@ Cloudflare Workers Buildsは次の設定で通常のアプリをビルド・デ�
 | ビルドコマンド     | `pnpm run build`            |
 | デプロイコマンド   | `pnpm exec wrangler deploy` |
 
-Node.jsは`.node-version`、pnpmは`package.json`の指定に合わせます。初回は本番D1を作成・確認し、`wrangler.jsonc`の`database_id`を設定してから`vp exec wrangler d1 migrations apply DB --remote`でSQLを適用します。Workerの秘密情報として`BETTER_AUTH_SECRET`に本番専用の鍵、`BETTER_AUTH_URL`に`https://animic.party`、`ADMIN_PASSWORD`に管理画面のパスワード（ローカルとは別の12文字以上の値）を設定します。これらは`wrangler.jsonc`の`secrets.required`で必須にしているため、設定していないとデプロイが失敗します。DOのクラス登録は`wrangler.jsonc`のmigrationによってデプロイ時に行います。
+Node.jsは`.node-version`、pnpmは`package.json`の指定に合わせます。初回は本番D1を作成・確認し、`wrangler.jsonc`の`database_id`を設定してから`vp exec wrangler d1 migrations apply DB --remote`でSQLを適用します。Workerの秘密情報として`BETTER_AUTH_SECRET`に本番専用の鍵、`BETTER_AUTH_URL`に`https://animic.party`、`NOVELAI_API_TOKEN`にNovelAIの永続APIトークン、`ADMIN_PASSWORD`に管理画面のパスワード（ローカルとは別の12文字以上の値）を設定します。これらは`wrangler.jsonc`の`secrets.required`で必須にしているため、設定していないとデプロイが失敗します。DOのクラス登録は`wrangler.jsonc`のmigrationによってデプロイ時に行います。
 
 Custom Domainに`animic.party`を設定します。公開前に変更が`main`へ取り込まれていることと、Cloudflareがビルドするコミットを確認します。公開後はHTTPS、トップページ、アイコン・OGP画像、robots.txt、sitemap.xml、存在しないページの404を確認します。`www`を使う場合は正規ホストへ恒久リダイレクトします。開発環境を公開する場合は、Accessによる閲覧制限と、本番から独立したD1・DO・認証情報を設定します。
 

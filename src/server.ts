@@ -9,6 +9,7 @@ import {
   isScoringWorkerRequest,
 } from "./features/scoring/scoring-workers.server";
 export { Room } from "./features/room/room.server";
+export { NovelAiQueue } from "./features/image-generation/novelai.server";
 
 const handleStart = createStartHandler(defaultStreamHandler);
 
