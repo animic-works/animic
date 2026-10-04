@@ -54,15 +54,26 @@ const submissionSchema = v.variant("status", [
 const battleResultSchema = v.variant("kind", [
   v.object({
     kind: v.literal("win"),
-    reason: v.literal("opponent-not-submitted"),
+    reason: v.picklist(["opponent-not-submitted", "higher-score"]),
     winnerId: v.string(),
     decidedAt: v.number(),
   }),
   v.object({
-    kind: v.literal("no-contest"),
-    reason: v.literal("no-submissions"),
+    kind: v.literal("draw"),
+    reason: v.literal("same-score"),
     decidedAt: v.number(),
   }),
+  v.object({
+    kind: v.literal("no-contest"),
+    reason: v.picklist(["no-submissions", "scoring-failed"]),
+    decidedAt: v.number(),
+  }),
+]);
+const scoringEntryBase = { participantId: v.string(), jobId: v.string() };
+const scoringEntrySchema = v.variant("status", [
+  v.object({ ...scoringEntryBase, status: v.literal("pending") }),
+  v.object({ ...scoringEntryBase, status: v.literal("succeeded"), total: v.number() }),
+  v.object({ ...scoringEntryBase, status: v.literal("failed") }),
 ]);
 export const battleStateSchema = v.object({
   ...battleHeaderSchema.entries,
@@ -70,9 +81,18 @@ export const battleStateSchema = v.object({
   generations: v.optional(v.array(generationSchema), []),
   submissions: v.optional(v.array(submissionSchema), []),
   selectionEndsAt: v.optional(v.nullable(v.number()), null),
+  scoring: v.optional(
+    v.object({ endsAt: v.nullable(v.number()), entries: v.array(scoringEntrySchema) }),
+    () => ({ endsAt: null, entries: [] }),
+  ),
 });
 export type BattleState = v.InferOutput<typeof battleStateSchema>;
 export type GenerationOutcome = { status: "succeeded"; imageUrl: string } | { status: "failed" };
+export type ScoringJobOutcome = {
+  id: string;
+  state: "queued" | "running" | "succeeded" | "failed";
+  totals: { participantId: string; total: number }[];
+};
 export const battleSnapshotSchema = v.object({
   serverTime: v.number(),
   ...battleHeaderSchema.entries,
@@ -80,6 +100,16 @@ export const battleSnapshotSchema = v.object({
   result: v.nullable(battleResultSchema),
   submissionsClosed: v.boolean(),
   generationClosed: v.boolean(),
+  scoringEndsAt: v.nullable(v.number()),
+  scores: v.nullable(
+    v.array(
+      v.object({
+        participantId: v.string(),
+        total: v.number(),
+        imageUrl: v.pipe(v.string(), v.url()),
+      }),
+    ),
+  ),
   myGenerations: v.array(
     v.variant("status", [
       v.omit(generationSchema.options[0], ["inputHash", "participantId"]),
@@ -93,6 +123,8 @@ export type BattleSnapshot = v.InferOutput<typeof battleSnapshotSchema>;
 
 export type BattleSettings = v.InferOutput<typeof battleSettingsSchema>;
 export type Topic = v.InferOutput<typeof topicSchema>;
+
+const scoringTimeoutMs = 5 * 60_000;
 
 export function canStartBattle(count: number) {
   return count === 2;
@@ -119,6 +151,7 @@ export function createBattle(
     generations: [],
     submissions: [],
     selectionEndsAt: null,
+    scoring: { endsAt: null, entries: [] },
     topic: structuredClone(topic),
     settings: structuredClone(settings),
     participantIds: [...participantIds],
@@ -129,29 +162,31 @@ export function createBattle(
 
 export function reconcileBattle(state: BattleState, now: number): BattleState {
   const next = structuredClone(state);
-  if (next.result || now < next.generationEndsAt) return next;
-  if (
-    next.selectionEndsAt === null &&
-    !next.generations.some((item) => item.status === "pending")
-  ) {
-    const lastFinishedAt = next.generations.reduce(
-      (latest, item) => (item.status === "pending" ? latest : Math.max(latest, item.finishedAt)),
-      next.generationEndsAt,
-    );
-    next.selectionEndsAt = lastFinishedAt + next.settings.selectionSeconds * 1000;
-  }
-  if (next.selectionEndsAt !== null && now >= next.selectionEndsAt) {
-    for (const participantId of next.participantIds) {
-      if (!next.submissions.some((item) => item.participantId === participantId)) {
-        next.submissions.push({
-          participantId,
-          status: "not-submitted",
-          decidedAt: next.selectionEndsAt,
-        });
+  if (next.result) return next;
+  if (now >= next.generationEndsAt) {
+    if (
+      next.selectionEndsAt === null &&
+      !next.generations.some((item) => item.status === "pending")
+    ) {
+      const lastFinishedAt = next.generations.reduce(
+        (latest, item) => (item.status === "pending" ? latest : Math.max(latest, item.finishedAt)),
+        next.generationEndsAt,
+      );
+      next.selectionEndsAt = lastFinishedAt + next.settings.selectionSeconds * 1000;
+    }
+    if (next.selectionEndsAt !== null && now >= next.selectionEndsAt) {
+      for (const participantId of next.participantIds) {
+        if (!next.submissions.some((item) => item.participantId === participantId)) {
+          next.submissions.push({
+            participantId,
+            status: "not-submitted",
+            decidedAt: next.selectionEndsAt,
+          });
+        }
       }
     }
   }
-  // 未提出による勝敗は1対1のルール。複数人の順位や採点による勝敗はここでは決めない。
+  // 勝敗は1対1のルールで決める。複数人の順位はここでは決めない。
   if (
     next.participantIds.length === 2 &&
     next.participantIds.every((id) => next.submissions.some((item) => item.participantId === id))
@@ -167,8 +202,43 @@ export function reconcileBattle(state: BattleState, now: number): BattleState {
         winnerId: submitted[0].participantId,
         decidedAt,
       };
+    else if (submitted.length > 1) {
+      // 採点期限は全員の提出状態が確定した時刻から数える。
+      const settledAt = Math.max(
+        ...next.submissions.map((item) =>
+          item.status === "submitted" ? item.submittedAt : item.decidedAt,
+        ),
+      );
+      next.scoring.endsAt ??= settledAt + scoringTimeoutMs;
+      next.result = decideByScores(next, next.scoring.endsAt, now);
+    }
   }
   return next;
+}
+
+// 採点期限までに全員の採点がそろわなければ勝負不成立にする。
+function decideByScores(state: BattleState, endsAt: number, now: number): BattleState["result"] {
+  const entries = state.submissions
+    .filter((item) => item.status === "submitted")
+    .map((item) =>
+      state.scoring.entries.find((entry) => entry.participantId === item.participantId),
+    );
+  const totals = entries.flatMap((entry) =>
+    entry?.status === "succeeded"
+      ? [{ participantId: entry.participantId, total: entry.total }]
+      : [],
+  );
+  if (totals.length === entries.length) {
+    const best = Math.max(...totals.map((item) => item.total));
+    const leaders = totals.filter((item) => item.total === best);
+    return leaders.length === 1 && leaders[0]
+      ? { kind: "win", reason: "higher-score", winnerId: leaders[0].participantId, decidedAt: now }
+      : { kind: "draw", reason: "same-score", decidedAt: now };
+  }
+  if (entries.some((entry) => entry?.status === "failed"))
+    return { kind: "no-contest", reason: "scoring-failed", decidedAt: now };
+  if (now >= endsAt) return { kind: "no-contest", reason: "scoring-failed", decidedAt: endsAt };
+  return null;
 }
 
 export function acceptGeneration(
@@ -246,7 +316,67 @@ export function submitImage(
     ).length,
     eligibleForSpeedBonus: now < next.generationEndsAt,
   });
-  return next;
+  next.scoring.entries.push({ participantId, jobId: crypto.randomUUID(), status: "pending" });
+  return reconcileBattle(next, now);
+}
+
+function getSubmittedImageUrl(state: BattleState, participantId: string) {
+  const submission = state.submissions.find((item) => item.participantId === participantId);
+  if (submission?.status !== "submitted") return null;
+  const generation = state.generations.find((item) => item.id === submission.generationId);
+  return generation?.status === "succeeded" ? generation.imageUrl : null;
+}
+
+export function getScoringRequests(state: BattleState) {
+  if (state.result) return [];
+  return state.scoring.entries.flatMap((entry) => {
+    const submissionImageUrl = getSubmittedImageUrl(state, entry.participantId);
+    return entry.status === "pending" && submissionImageUrl
+      ? [
+          {
+            jobId: entry.jobId,
+            participantId: entry.participantId,
+            topicImageUrl: state.topic.imageUrl,
+            submissionImageUrl,
+          },
+        ]
+      : [];
+  });
+}
+
+export function applyScoringJobs(
+  state: BattleState,
+  jobs: ScoringJobOutcome[],
+  now: number,
+): BattleState {
+  const next = structuredClone(state);
+  if (next.result) return next;
+  next.scoring.entries = next.scoring.entries.map((entry) => {
+    const job = jobs.find((item) => item.id === entry.jobId);
+    if (entry.status !== "pending" || !job) return entry;
+    const { participantId, jobId } = entry;
+    if (job.state === "failed") return { participantId, jobId, status: "failed" };
+    if (job.state !== "succeeded") return entry;
+    const total = job.totals.find((item) => item.participantId === participantId)?.total;
+    return total === undefined
+      ? { participantId, jobId, status: "failed" }
+      : { participantId, jobId, status: "succeeded", total };
+  });
+  return reconcileBattle(next, now);
+}
+
+// 採点による勝敗が確定するまで、相手の提出画像と採点結果を公開しない。
+function getScores(state: BattleState) {
+  const scored =
+    state.result?.kind === "draw" ||
+    (state.result?.kind === "win" && state.result.reason === "higher-score");
+  if (!scored) return null;
+  return state.scoring.entries.flatMap((entry) => {
+    const imageUrl = getSubmittedImageUrl(state, entry.participantId);
+    return entry.status === "succeeded" && imageUrl
+      ? [{ participantId: entry.participantId, total: entry.total, imageUrl }]
+      : [];
+  });
 }
 
 export function getBattleSnapshot(
@@ -263,6 +393,8 @@ export function getBattleSnapshot(
     submissionsClosed: state.participantIds.every((id) =>
       state.submissions.some((item) => item.participantId === id),
     ),
+    scoringEndsAt: state.scoring.endsAt,
+    scores: getScores(state),
   });
 }
 
@@ -276,6 +408,8 @@ export function serializeBattleResult(battle: BattleState, roomCode: string): st
     participantIds: battle.participantIds,
     submissions: battle.submissions,
     result: battle.result,
+    scores:
+      getScores(battle)?.map(({ participantId, total }) => ({ participantId, total })) ?? null,
     startedAt: battle.startedAt,
     submittedImages: battle.generations
       .filter(
