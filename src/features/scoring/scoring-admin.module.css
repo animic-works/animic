@@ -1,0 +1,38 @@
+.section {
+  margin-block: 2rem;
+}
+
+.form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: end;
+}
+
+.form label {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.code {
+  font-family: ui-monospace, monospace;
+  font-size: 1.25rem;
+  font-weight: bold;
+}
+
+.scroll {
+  overflow-x: auto;
+}
+
+.table {
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.table th,
+.table td {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid #c8ced4;
+  text-align: left;
+  vertical-align: top;
+}
