@@ -3,7 +3,7 @@ const qualityTags = "very aesthetic, masterpiece, no text";
 const undesiredContent =
   ", lowres, bad hands, bad anatomy, artistic error, sepia, white haze, worst quality, very displeasing, jpeg artifacts, 0::ai-generated::, ";
 
-const minimumTimeMs = 20_000;
+export const minimumTimeMs = 20_000;
 const abortMarginMs = 5000;
 
 const pngSignature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
@@ -123,7 +123,7 @@ export async function readImageResponse(bytes: Uint8Array, contentType: string |
 }
 
 // 期限までに必ず終わる。完了の通知と保存の時間を残し、間に合わない生成はNovelAIへ送らない。
-// 429（同じアカウントの別の生成が終わっていない）は、ロック中に送り直さず失敗にする。
+// 1回だけ送る。429を受けて送り直すかどうかは呼び出し側が決める。
 export async function requestImage(request: {
   apiUrl: string;
   token: string;

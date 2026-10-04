@@ -163,7 +163,7 @@ describe("NovelAIへの生成の要求", () => {
       input: "1girl",
     });
   });
-  it("429は送り直さず、すぐ失敗にする", async () => {
+  it("429は自分では送り直さず、状態コードを返す", async () => {
     const fetch = vi.fn<typeof globalThis.fetch>(
       async () =>
         new Response('{"statusCode":429,"message":"Concurrent generation is locked"}', {

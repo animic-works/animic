@@ -1,9 +1,12 @@
 import { DurableObject } from "cloudflare:workers";
 import * as v from "valibot";
 
-import { requestImage } from "./novelai";
+import { minimumTimeMs, requestImage } from "./novelai";
 
 const apiUrl = "https://image.novelai.net";
+// 429は同じアカウントの別の生成が終わっていない状態。短い間隔で送り直すとロックが続くため、間を空ける。
+const lockedRetryIntervalMs = 10_000;
+const maxAttempts = 3;
 const configSchema = v.object({ NOVELAI_API_TOKEN: v.pipe(v.string(), v.minLength(1)) });
 
 // NovelAIは1アカウントで同時に1件しか生成できないため、全ルームの生成を受付順に1件ずつ送る。
@@ -33,12 +36,15 @@ export class NovelAiQueue extends DurableObject<Env> {
       waitedMs: Date.now() - queuedAt,
       waiting: this.#waiting,
     });
-    const result = await requestImage({
-      apiUrl,
-      token: config.output.NOVELAI_API_TOKEN,
-      prompt,
-      deadline,
-    });
+    const request = { apiUrl, token: config.output.NOVELAI_API_TOKEN, prompt, deadline };
+    let result = await requestImage(request);
+    for (let attempt = 1; attempt < maxAttempts; attempt += 1) {
+      if (result.ok || result.status !== 429) break;
+      if (deadline - Date.now() - lockedRetryIntervalMs < minimumTimeMs) break;
+      console.info("NovelAIの生成がロック中のため、間を空けて送り直します。", { attempt });
+      await new Promise((resolve) => setTimeout(resolve, lockedRetryIntervalMs));
+      result = await requestImage(request);
+    }
     if (result.ok) return result;
     // NovelAIのエラー文は呼び出し元へ返さず、ログにだけ残す。
     const { detail, ...failure } = result;
