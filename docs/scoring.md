@@ -92,7 +92,7 @@ desktop-comfyui-serverの通信仕様で決まっているURLパスとキー名�
 | 入力画像の上限                 | 10MB |
 | リンクコードの有効期間         | 10分 |
 
-リンクコードは運営者だけが発行し、認証なしで発行できるAPIは作りません。リンクの要求は誰でも送れますが、未知・期限切れ・使用済みのコードを区別せず拒否します。8文字（1兆通り以上）で10分で失効し1回だけ使えるコードは、現実的に推測で当てられないため、リンクに回数制限は付けません。desktop-comfyui-serverのREADMEはIPごとの回数制限を勧めていますが、この理由から採用していません。
+リンクコードは運営者だけが管理画面（`/admin`）から発行し、認証なしで発行できるAPIは作りません。リンクの要求は誰でも送れますが、未知・期限切れ・使用済みのコードを区別せず拒否します。8文字（1兆通り以上）で10分で失効し1回だけ使えるコードは、現実的に推測で当てられないため、リンクに回数制限は付けません。desktop-comfyui-serverのREADMEはIPごとの回数制限を勧めていますが、この理由から採用していません。
 
 ワークフロー定義と勝敗の判定は単体テスト（`scoring-workflows.test.ts`、`battle-progress.test.ts`）、採点ワーカー向けAPIはE2E（`tests/e2e/scoring.spec.ts`）で確認します。提出から勝敗の確定までを通すE2Eは、画像生成の実装後に追加します。
 
@@ -101,4 +101,5 @@ desktop-comfyui-serverの通信仕様で決まっているURLパスとキー名�
 - [ゲーム仕様](product.md#対戦の流れ)
 - [アーキテクチャ](architecture.md#採点)
 - [ADR 0004](decisions/0004-scoring-workers.md)
+- [ADR 0005](decisions/0005-operator-password.md)
 - [desktop-comfyui-server](https://github.com/mintani/desktop-comfyui-server)
