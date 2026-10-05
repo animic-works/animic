@@ -20,6 +20,8 @@ node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
 
 NovelAIで画像を生成する場合は、NovelAIのアカウント設定で発行した永続APIトークン（`pst-`で始まる値）を`NOVELAI_API_TOKEN`に設定します。未設定でも起動できますが、画像の生成は失敗します。トークンはサーバー側の生成キューのDOだけで読み、ブラウザへのレスポンスやログには含めません。
 
+管理画面（`/admin`）を使う場合は、12文字以上のパスワードを`ADMIN_PASSWORD`に設定します。`#`や`$`を含む場合は`ADMIN_PASSWORD='...'`のように単一引用符で囲みます。囲まないと`#`以降がコメントとして扱われます。
+
 初回は次の順序で実行します。
 
 ```sh
@@ -56,13 +58,13 @@ vp dev
 
 `vp run check`はフォーマット・lint・型チェック・Knipを実行します。`vp check`ではフォーマットと型情報を使うlintを実行し、プロジェクト全体の型チェックは`tsc --noEmit`、未使用コードの検査はKnipが担当します。コマンドの定義は[package.json](package.json)、lint・format・staged設定は[vite.config.ts](vite.config.ts)を参照してください。
 
-E2Eは[playwright.config.ts](playwright.config.ts)がビルド・DBの初期化・プレビュー起動を行います。テストごとではなく実行ごとに`.wrangler/e2e/`を初期化し、開発用の`.wrangler/state/`とは分けます。Wranglerによるテストデータ操作と他のテストが同じSQLiteを同時に更新しないよう、E2Eは1 workerで順に実行します。複数人の同時操作は各テスト内で複数のブラウザコンテキストを使って確認します。認証URLと鍵、NovelAIのトークンはテスト用の値を設定するため、E2Eだけなら`.env`の用意は不要です。E2Eのビルドには実際のNovelAIのトークンを含めず、ブラウザへ配信するファイルとトップページのHTMLにテスト用のトークンが含まれないことを確認します。
+E2Eは[playwright.config.ts](playwright.config.ts)がビルド・DBの初期化・プレビュー起動を行います。テストごとではなく実行ごとに`.wrangler/e2e/`を初期化し、開発用の`.wrangler/state/`とは分けます。Wranglerによるテストデータ操作と他のテストが同じSQLiteを同時に更新しないよう、E2Eは1 workerで順に実行します。複数人の同時操作は各テスト内で複数のブラウザコンテキストを使って確認します。認証URLと鍵、NovelAIのトークン、管理画面のパスワードはテスト用の値を設定するため、E2Eだけなら`.env`の用意は不要です。E2Eのビルドには実際のNovelAIのトークンを含めず、ブラウザへ配信するファイルとトップページのHTMLにテスト用のトークンが含まれないことを確認します。
 
 E2E専用クライアントは`ANIMIC_E2E=true`のビルドにだけ含め、共通ルートのクライアントコードから読み込みます。通常のビルドや開発サーバーにはこの読み込みを追加しません。E2Eのビルド成果物はデプロイせず、公開用にはこの環境変数を指定せずにビルドし直します。
 
 `vp run test`はVite+内蔵のVitestで`src/**/*.test.ts`を実行します。期限やホストの引き継ぎなど、時刻を指定して確認する業務ルールを対象とします。Workersランタイムが必要な処理はE2Eで実際のD1・DOと組み合わせて確認します。
 
-E2Eでは、ロゴのSSR表示・画像の読み込み・狭い画面での表示・404応答をブラウザで確認します。認証・ルーム・対戦は、`tests/fixtures/api-client.ts`をブラウザで読み込んで実際のServer FunctionsとWebSocketを呼び出し、モックUIを経由せずに検証します。匿名セッションの復元・失効、CSRF対策、ルームへの参加と状態同期、複数タブ、ホストの退出・切断、WebSocketの認証、対戦開始・再戦・復帰・途中参加・提出期限による未提出・勝負不成立の確定と、D1への結果保存に失敗した場合の再試行を含めます。採点ワーカー向けAPIは、ブラウザを使わずPlaywrightの`request`から採点ワーカーとして要求を送り、リンク・heartbeat・採点ジョブの割り当て・完了・差し戻しと、D1に保存される状態を確認します。失敗時のtraceは`test-results/`に保存され、CIでは`e2e-failure-traces` artifactから7日間取得できます。展開したtraceは`vp exec playwright show-trace <trace.zipのパス>`で確認します。
+E2Eでは、ロゴのSSR表示・画像の読み込み・狭い画面での表示・404応答をブラウザで確認します。認証・ルーム・対戦は、`tests/fixtures/api-client.ts`をブラウザで読み込んで実際のServer FunctionsとWebSocketを呼び出し、モックUIを経由せずに検証します。匿名セッションの復元・失効、CSRF対策、ルームへの参加と状態同期、複数タブ、ホストの退出・切断、WebSocketの認証、対戦開始・再戦・復帰・途中参加・提出期限による未提出・勝負不成立の確定と、D1への結果保存に失敗した場合の再試行を含めます。採点ワーカー向けAPIは、ブラウザを使わずPlaywrightの`request`から採点ワーカーとして要求を送り、リンク・heartbeat・採点ジョブの割り当て・完了・差し戻しと、D1に保存される状態を確認します。管理画面は、ログイン前の表示と管理用の操作の拒否、ログイン後のリンクコードの発行から採点ワーカーのリンク・一覧・失効、ログアウトまでを確認します。失敗時のtraceは`test-results/`に保存され、CIでは`e2e-failure-traces` artifactから7日間取得できます。展開したtraceは`vp exec playwright show-trace <trace.zipのパス>`で確認します。
 
 Drizzleスキーマを変更したら`vp run db:generate --name <変更名>`でSQLを生成し、`migrations/`のSQLとスナップショットを確認して一緒に管理します。ローカルへの適用には`vp run db:migrate:local`を使います。適用済みのSQLは書き換えず、追加のmigrationで変更します。
 
@@ -92,7 +94,7 @@ Cloudflare Workers Buildsは次の設定で通常のアプリをビルド・デ�
 | ビルドコマンド     | `pnpm run build`            |
 | デプロイコマンド   | `pnpm exec wrangler deploy` |
 
-Node.jsは`.node-version`、pnpmは`package.json`の指定に合わせます。初回は本番D1を作成・確認し、`wrangler.jsonc`の`database_id`を設定してから`vp exec wrangler d1 migrations apply DB --remote`でSQLを適用します。Workerの秘密情報として`BETTER_AUTH_SECRET`に本番専用の鍵、`BETTER_AUTH_URL`に`https://animic.party`、`NOVELAI_API_TOKEN`にNovelAIの永続APIトークンを設定します。これらは`wrangler.jsonc`の`secrets.required`で必須にしているため、設定していないとデプロイが失敗します。DOのクラス登録は`wrangler.jsonc`のmigrationによってデプロイ時に行います。
+Node.jsは`.node-version`、pnpmは`package.json`の指定に合わせます。初回は本番D1を作成・確認し、`wrangler.jsonc`の`database_id`を設定してから`vp exec wrangler d1 migrations apply DB --remote`でSQLを適用します。Workerの秘密情報として`BETTER_AUTH_SECRET`に本番専用の鍵、`BETTER_AUTH_URL`に`https://animic.party`、`NOVELAI_API_TOKEN`にNovelAIの永続APIトークン、`ADMIN_PASSWORD`に管理画面のパスワード（ローカルとは別の12文字以上の値）を設定します。これらは`wrangler.jsonc`の`secrets.required`で必須にしているため、設定していないとデプロイが失敗します。DOのクラス登録は`wrangler.jsonc`のmigrationによってデプロイ時に行います。
 
 Custom Domainに`animic.party`を設定します。公開前に変更が`main`へ取り込まれていることと、Cloudflareがビルドするコミットを確認します。公開後はHTTPS、トップページ、アイコン・OGP画像、robots.txt、sitemap.xml、存在しないページの404を確認します。`www`を使う場合は正規ホストへ恒久リダイレクトします。開発環境を公開する場合は、Accessによる閲覧制限と、本番から独立したD1・DO・認証情報を設定します。
 
@@ -137,32 +139,10 @@ E2Eは専用DBへテスト用のお題を登録するため、開発用データ
 
 1. PCにdesktop-comfyui-serverとComfyUIを用意し、ComfyUIの`custom_nodes`にcomfyui-illust-similarityを配置して依存パッケージを入れます。平坦な画像でも厳密なJSONを出力する版を使います。
 2. 初回の採点でモデル（約5GB）をダウンロードするため、登録の前に一度評価を実行しておきます。ダウンロード中はAnimicの割り当ての期限（2分）に間に合いません。
-3. D1にリンクコードを登録します。コードは英大文字と数字の`XXXX-XXXX`形式、有効期限はUNIX時刻のミリ秒で、発行から10分後を指定します。
-
-   ```sh
-   node -e "console.log(Date.now() + 10 * 60_000)"
-   ```
-
-   ```sql
-   INSERT INTO scoring_link_code (code, name, expires_at)
-   VALUES ('K7M2-Q9XD', 'studio-pc', 1790000000000);
-   ```
-
-   ローカルD1には`vp exec wrangler d1 execute DB --local --command "<SQL>"`、本番には`--remote`で適用します。
-
+3. 管理画面（`/admin`）に`ADMIN_PASSWORD`でログインし、「リンクコードの発行」で採点ワーカーの名前を入力して、リンクコードを発行します。コードは10分間有効で、1回だけ使えます。
 4. desktop-comfyui-serverのサーバー設定にAnimicのURLを追加し、リンクコードを入力してリンクします。ローカルでは`vp dev`の`http://localhost:3000`を指定できます。
 
-採点ワーカーを止める場合は、失効日時を設定します。以後その採点ワーカーの要求は拒否されます。
-
-```sql
-UPDATE scoring_worker SET revoked_at = 1790000000000 WHERE id = '<採点ワーカーのID>';
-```
-
-採点ジョブの状態は次のSQLで確認できます。
-
-```sql
-SELECT id, state, attempts, worker_id, error FROM scoring_job ORDER BY created_at DESC LIMIT 20;
-```
+採点ワーカーを止める場合は、管理画面の「採点ワーカー」で「失効させる」を押します。以後その採点ワーカーの要求は拒否されます。採点ジョブの状態は、管理画面の「採点ジョブ」で新しい順に最大100件を確認できます。
 
 ## 作業の流れ
 

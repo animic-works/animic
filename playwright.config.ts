@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 
 import { defineConfig, devices } from "@playwright/test";
 
+import { e2eAdminPassword } from "./tests/e2e/admin-password";
 import { e2eNovelAiToken } from "./tests/e2e/novelai-token";
 
 export default defineConfig({
@@ -30,6 +31,7 @@ export default defineConfig({
         "animic.party,animic.example.workers.dev,dev.animic.party",
       BETTER_AUTH_URL: "http://127.0.0.1:4173",
       BETTER_AUTH_SECRET: randomBytes(32).toString("hex"),
+      ADMIN_PASSWORD: e2eAdminPassword,
       NOVELAI_API_TOKEN: e2eNovelAiToken,
     },
     url: "http://127.0.0.1:4173",

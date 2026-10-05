@@ -10,6 +10,11 @@ import {
 } from "../../src/features/room/room.functions";
 import { startBattle, submitBattleImage } from "../../src/features/battle/battle.functions";
 import { connectRoom } from "../../src/features/room/room-connection";
+import {
+  getScoringAdminData,
+  issueScoringLinkCode,
+  revokeScoringWorker,
+} from "../../src/features/scoring/scoring-admin.functions";
 import type { RoomSnapshot } from "../../src/features/room/room-state";
 
 let disconnect: (() => void) | undefined;
@@ -27,6 +32,9 @@ const api = {
   setRoomSettings,
   startBattle,
   submitBattleImage,
+  issueScoringLinkCode,
+  getScoringAdminData,
+  revokeScoringWorker,
   async connect(code: string) {
     disconnect?.();
     const entry = await getRoomEntry({ data: { code } });
