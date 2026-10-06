@@ -1,0 +1,93 @@
+@layer recipes.slots.base {
+  .figure {
+    background: var(--colors-bg-surface);
+    margin: var(--spacing-0);
+    border-radius: var(--radii-md);
+    overflow: hidden;
+    aspect-ratio: 1;
+    position: relative;
+  }
+
+  .image {
+    display: block;
+    object-fit: cover;
+    height: var(--sizes-full);
+    width: var(--sizes-full);
+  }
+
+  .missing {
+    place-items: center;
+    color: var(--colors-fg-muted);
+    display: grid;
+    font-weight: var(--font-weights-bold);
+    height: var(--sizes-full);
+    width: var(--sizes-full);
+  }
+
+  .tag {
+    background: var(--colors-bg-inverse);
+    padding-inline: 0.7rem;
+    padding-block: 0.2rem;
+    border-radius: var(--radii-control);
+    color: var(--colors-fg-inverse);
+    font-family: var(--fonts-latin);
+    font-size: 0.7rem;
+    font-style: italic;
+    letter-spacing: var(--letter-spacings-widest);
+    position: absolute;
+    left: 0.7rem;
+    top: 0.7rem;
+  }
+}
+
+@layer recipes.slots.variants {
+  .figure--variant_topic {
+    border-color: var(--colors-border-default);
+    border-style: solid;
+    border-width: var(--border-widths-thick);
+  }
+
+  @media (width < 35.0625rem) {
+    .figure--variant_topic {
+      justify-self: center;
+      width: min(100%, 13rem);
+    }
+  }
+
+  .figure--variant_confirm {
+    margin-inline: auto;
+    border-color: var(--colors-accent-brand);
+    border-style: solid;
+    border-width: 3px;
+    width: 11rem;
+  }
+
+  .figure--variant_missing {
+    background: var(--colors-bg-sunken);
+    border-color: var(--colors-border-default);
+    border-style: dashed;
+    border-width: var(--border-widths-thick);
+    place-items: center;
+    display: grid;
+  }
+
+  .figure--variant_submission {
+    background: var(--colors-bg-sunken);
+  }
+
+  .figure--variant_topicPortrait {
+    border-color: var(--colors-border-strong);
+    border-radius: var(--radii-lg);
+    border-style: solid;
+    border-width: var(--border-widths-heavy);
+    aspect-ratio: 832 / 1216;
+  }
+
+  .figure--variant_topicResult {
+    border-color: var(--colors-border-strong);
+    border-radius: var(--radii-lg);
+    border-style: solid;
+    border-width: var(--border-widths-heavy);
+    rotate: -2deg;
+  }
+}
