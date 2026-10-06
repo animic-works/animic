@@ -16,9 +16,8 @@ type TextElement =
   | "em"
   | "code"
   | "output";
-type HeadingLevel = 1 | 2 | 3 | 4;
 
-export type TextVariant =
+type TextVariant =
   | "display"
   | "display-sm"
   | "hero-title"
@@ -35,7 +34,7 @@ export type TextVariant =
   | "caption"
   | "eyebrow"
   | "code";
-export type TextTone =
+type TextTone =
   | "default"
   | "muted"
   | "subtle"
@@ -71,40 +70,5 @@ export function Text({
 }: TextProps) {
   return (
     <Element {...rest} className={configVariant(textStyles, { variant, tone, align, shadow })} />
-  );
-}
-
-export type HeadingProps = BaseProps & {
-  /** 見出しの階層（h1〜h4）。見た目の大きさはvariantで別に選べる */
-  level?: HeadingLevel;
-};
-
-const HEADING_VARIANT = {
-  1: "heading-lg",
-  2: "heading-md",
-  3: "heading-sm",
-  4: "label",
-} as const satisfies Record<HeadingLevel, TextVariant>;
-
-// 見出し。階層と見た目を分けて選べる（例: 画面の唯一の見出しでも中くらいの大きさにする）
-export function Heading({
-  level = 2,
-  variant,
-  tone,
-  align = "start",
-  shadow,
-  ...rest
-}: HeadingProps) {
-  const Element = `h${level}` as const;
-  return (
-    <Element
-      {...rest}
-      className={configVariant(textStyles, {
-        variant: variant ?? HEADING_VARIANT[level],
-        tone,
-        align,
-        shadow,
-      })}
-    />
   );
 }

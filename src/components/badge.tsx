@@ -3,7 +3,7 @@ import type { HTMLAttributes, ReactNode } from "react";
 import { configVariant, cx } from "./cx";
 import badgeStyles from "./badge.module.css";
 
-export type BadgeTone = "neutral" | "accent" | "info" | "success" | "warning" | "danger";
+type BadgeTone = "neutral" | "accent" | "info" | "success" | "warning" | "danger";
 
 export type BadgeProps = Omit<HTMLAttributes<HTMLSpanElement>, "className" | "style"> & {
   tone?: BadgeTone;

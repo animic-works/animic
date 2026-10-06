@@ -4,8 +4,8 @@ import { configVariant } from "./cx";
 import iconStyles from "./icon.module.css";
 import iconButtonStyles from "./icon-button.module.css";
 
-export type IconSize = "2xs" | "xs" | "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "4xl" | "5xl";
-export type IconButtonVariant = "sticker" | "soft" | "row" | "rowDanger" | "float";
+type IconSize = "2xs" | "xs" | "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "4xl" | "5xl";
+type IconButtonVariant = "sticker" | "soft" | "row" | "rowDanger" | "float";
 
 // 線で描いたアイコン。色は置いた場所の文字色（currentColor）を受け継ぐ
 const STROKE = {

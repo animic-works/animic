@@ -13,14 +13,7 @@ type SurfaceElement =
   | "li"
   | "figure";
 
-export type SurfaceVariant =
-  | "raised"
-  | "outline"
-  | "sunken"
-  | "inverse"
-  | "accent"
-  | "sticker"
-  | "soft";
+type SurfaceVariant = "raised" | "outline" | "sunken" | "inverse" | "accent" | "sticker" | "soft";
 
 export type SurfaceProps = Omit<HTMLAttributes<HTMLElement>, "className" | "style"> & {
   as?: SurfaceElement;

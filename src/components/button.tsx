@@ -5,7 +5,7 @@ import { configVariant, cx } from "./cx";
 import buttonStyles from "./button.module.css";
 import spinnerStyles from "./spinner.module.css";
 
-export type ButtonVariant =
+type ButtonVariant =
   | "primary"
   | "secondary"
   | "ghost"
@@ -13,7 +13,7 @@ export type ButtonVariant =
   | "destructive"
   | "link"
   | "discord";
-export type ButtonSize = "xs" | "sm" | "md" | "lg" | "provider" | "hero";
+type ButtonSize = "xs" | "sm" | "md" | "lg" | "provider" | "hero";
 
 // 見た目はデザインシステムのbuttonレシピで決まる。classNameとstyleは受け取らない（画面側で見た目を作らない）
 export type ButtonProps = Omit<ComponentProps<typeof ark.button>, "className" | "style"> & {

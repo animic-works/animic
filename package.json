@@ -62,7 +62,12 @@
   "packageManager": "pnpm@10.33.4",
   "knip": {
     "ignoreDependencies": [
-      "cloudflare"
+      "cloudflare",
+      "@fontsource/dela-gothic-one",
+      "@fontsource/jetbrains-mono",
+      "@fontsource/montserrat",
+      "@fontsource/zen-kaku-gothic-new",
+      "@fontsource/zen-maru-gothic"
     ]
   }
 }

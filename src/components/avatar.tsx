@@ -4,7 +4,7 @@ import { variant } from "./cx";
 import avatarStyles from "./avatar.module.css";
 
 export type AvatarPlayer = "1" | "2" | "3" | "4" | "5" | "6" | "7";
-export type AvatarSize = "sm" | "md" | "lg" | "tile" | "row" | "who" | "nav" | "profile";
+type AvatarSize = "sm" | "md" | "lg" | "tile" | "row" | "who" | "nav" | "profile";
 
 export type AvatarProps = {
   /** 参加者の名前。頭文字と、画像の代わりの文字に使う */

@@ -52,7 +52,7 @@ type WipeState = {
   skipDisabled: boolean;
 };
 
-export type BuildRoomOptions = {
+type BuildRoomOptions = {
   /** 演出中の説明（例: ルームを作っています） */
   label: string;
   /** コードが決まったあとの説明（例: ルームができました！） */

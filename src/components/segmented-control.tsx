@@ -3,7 +3,7 @@ import { RadioGroup } from "@ark-ui/react/radio-group";
 import { variant } from "./cx";
 import segmentedStyles from "./segmented-control.module.css";
 
-export type SegmentedOption = { value: string; label: string };
+type SegmentedOption = { value: string; label: string };
 
 export type SegmentedControlProps = {
   /** 読み上げ用の名前（例: 難易度） */

@@ -14,7 +14,6 @@ type StackElement =
   | "ol"
   | "form"
   | "fieldset";
-type ClusterElement = "div" | "ul" | "ol" | "nav" | "header" | "footer" | "p";
 
 type Align = "start" | "center" | "end" | "stretch" | "baseline";
 type Justify = "start" | "center" | "end" | "between";
@@ -59,35 +58,6 @@ export function Stack({
     flexDirection: direction,
     gap: gapVar(gap),
     alignItems: align ? ALIGN[align] : undefined,
-    justifyContent: justify ? JUSTIFY[justify] : undefined,
-    minWidth: 0,
-  };
-  return <Element {...rest} style={style} />;
-}
-
-export type ClusterProps = Omit<HTMLAttributes<HTMLElement>, "className" | "style"> & {
-  as?: ClusterElement;
-  gap?: string;
-  align?: Align;
-  justify?: Justify;
-  nowrap?: boolean;
-  children?: ReactNode;
-};
-
-// 横に並べ、幅が足りなければ折り返す
-export function Cluster({
-  as: Element = "div",
-  gap = "2",
-  align = "center",
-  justify,
-  nowrap = false,
-  ...rest
-}: ClusterProps) {
-  const style: CSSProperties = {
-    display: "flex",
-    flexWrap: nowrap ? "nowrap" : "wrap",
-    gap: gapVar(gap),
-    alignItems: ALIGN[align],
     justifyContent: justify ? JUSTIFY[justify] : undefined,
     minWidth: 0,
   };

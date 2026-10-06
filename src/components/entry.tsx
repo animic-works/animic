@@ -103,17 +103,3 @@ export function EntryCard({
 export function EntryContext({ children }: { children: ReactNode }) {
   return <p className={entryCardStyles.context}>{children}</p>;
 }
-
-// 操作の結果を知らせる帯（読み上げでもすぐに伝える）
-export function EntryAlert({ children }: { children: ReactNode }) {
-  return (
-    <p className={entryCardStyles.alert} role="alert">
-      {children}
-    </p>
-  );
-}
-
-// 補足の文（この環境では〜、など）
-export function EntryNote({ children }: { children: ReactNode }) {
-  return <p className={entryCardStyles.note}>{children}</p>;
-}
