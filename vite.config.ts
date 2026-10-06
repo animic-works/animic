@@ -7,6 +7,14 @@ import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 
 import { defineConfig } from "vite-plus";
 
+// 部品のCSSは別ファイルに分かれ、全体のCSSより先に読み込まれることがある。
+// どのファイルが先でも@layerの順序が同じになるよう、すべてのCSSの先頭で宣言する。
+const layerOrder = [
+  "@layer reset, base, tokens, recipes, utilities;",
+  "@layer recipes.base, recipes.slots, recipes.variants, recipes.compound_variants;",
+  "@layer recipes.slots.base, recipes.slots.variants, recipes.slots.compound_variants;",
+].join("\n");
+
 export default defineConfig({
   plugins: [
     cloudflare({
@@ -29,6 +37,13 @@ export default defineConfig({
       },
     },
   ],
+  css: {
+    postcss: {
+      plugins: [
+        { postcssPlugin: "animic-layer-order", Once: (root) => void root.prepend(layerOrder) },
+      ],
+    },
+  },
   server: { port: 3000, strictPort: true },
   lint: {
     plugins: ["typescript", "unicorn", "oxc", "react", "promise", "import"],

@@ -1,7 +1,5 @@
-/* 部品のスタイルは各部品のCSS Modulesに置き、ここには全体の土台だけを置く。 */
-@layer reset, base, tokens, recipes, utilities;
-@layer recipes.base, recipes.slots, recipes.variants, recipes.compound_variants;
-@layer recipes.slots.base, recipes.slots.variants, recipes.slots.compound_variants;
+/* 部品のスタイルは各部品のCSS Modulesに置き、ここには全体の土台だけを置く。
+   @layerの順序は、vite.config.tsですべてのCSSの先頭に宣言する。 */
 
 @import "@fontsource/dela-gothic-one/400.css";
 @import "@fontsource/zen-maru-gothic/700.css";

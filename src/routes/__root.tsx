@@ -1,10 +1,12 @@
+// 部品のCSSより先に読み込み、@layerの順序を最初に宣言する。
+import "../styles/global.css";
+
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 
 import { Button } from "../components/button";
 import { EntryCard, EntryPage } from "../components/entry";
 import { Toaster } from "../components/toast";
 import { WipeProvider } from "../components/transition";
-import "../styles/global.css";
 
 export const Route = createRootRoute({
   head: () => ({
