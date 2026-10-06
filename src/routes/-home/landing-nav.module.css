@@ -1,0 +1,189 @@
+@layer recipes.slots.base {
+  .account {
+    display: inline-flex;
+    position: relative;
+    border-left-color: var(--colors-border-default);
+    border-left-style: solid;
+    border-left-width: var(--border-widths-thick);
+    margin-left: calc(0.4rem - clamp(1rem, 3.5vw, 3.5rem) / 2);
+    padding-left: calc(clamp(1rem, 3.5vw, 3.5rem) / 2);
+  }
+
+  .accountLink {
+    --transition-duration: var(--durations-fast);
+    --transition-prop: transform;
+    border-radius: var(--radii-full);
+    display: inline-flex;
+    transition-duration: var(--durations-fast);
+    transition-property: transform;
+  }
+
+  .accountLink:is(:hover, [data-hover]) {
+    transform: translateY(-2px);
+  }
+
+  .accountLink:is(:focus-visible, [data-focus-visible]) {
+    outline-offset: 6px;
+  }
+
+  .cta {
+    --transition-duration: var(--durations-fast);
+    --transition-prop: transform;
+    background: var(--colors-accent-default);
+    padding-inline: 1.2rem;
+    padding-block: 0.55rem;
+    border-radius: var(--radii-control);
+    gap: 0.45rem;
+    text-decoration: none;
+    align-items: center;
+    box-shadow: var(--shadows-glow-soft);
+    color: var(--colors-accent-fg);
+    display: inline-flex;
+    font-size: 0.95rem;
+    font-weight: var(--font-weights-bold);
+    letter-spacing: var(--letter-spacings-wide);
+    transition-duration: var(--durations-fast);
+    transition-property: transform;
+    white-space: nowrap;
+  }
+
+  .cta:is(:hover, [data-hover]) {
+    transform: translateY(-2px);
+  }
+
+  .cta:is(:focus-visible, [data-focus-visible]) {
+    outline-offset: 4px;
+  }
+
+  .indicator {
+    background: var(--colors-accent-default);
+    border-radius: 3px;
+    transition:
+      left 0.5s var(--easings-sweep),
+      width 0.5s var(--easings-sweep),
+      top 0.5s var(--easings-sweep),
+      opacity 0.3s;
+    opacity: var(--nav-indicator-opacity, 0);
+    pointer-events: none;
+    position: absolute;
+    height: 3px;
+    left: var(--nav-indicator-left, 0);
+    top: var(--nav-indicator-top, 0);
+    width: var(--nav-indicator-width, 0);
+  }
+
+  .indicator[data-appearing] {
+    transition: opacity 0.3s;
+  }
+
+  html:not([data-scroll]) .indicator {
+    display: none;
+  }
+
+  .link {
+    --transition-duration: var(--durations-normal);
+    --transition-prop: color;
+    padding-block: var(--spacing-2);
+    text-decoration: none;
+    color: var(--colors-fg-default);
+    font-size: 0.95rem;
+    font-weight: var(--font-weights-bold);
+    letter-spacing: var(--letter-spacings-wide);
+    position: relative;
+    transition-duration: var(--durations-normal);
+    transition-property: color;
+    white-space: nowrap;
+  }
+
+  html:not([data-scroll]) .link[aria-current="page"]::after {
+    background: var(--colors-accent-default);
+    inset: auto 0 0;
+    border-radius: 3px;
+    content: "";
+    position: absolute;
+    height: 3px;
+  }
+
+  .link:not([aria-current]):hover {
+    color: var(--colors-accent-default);
+  }
+
+  .link:is(:focus-visible, [data-focus-visible]) {
+    outline-offset: 4px;
+  }
+
+  .login {
+    --transition-duration: var(--durations-fast);
+    --transition-prop: background-color;
+    background: rgb(11 27 43 / 0.06);
+    padding-inline: 0.95rem;
+    border-radius: var(--radii-control);
+    border-width: var(--border-widths-none);
+    gap: 0.4rem;
+    align-items: center;
+    color: var(--colors-fg-default);
+    cursor: pointer;
+    display: inline-flex;
+    font-family: var(--fonts-body);
+    font-size: 0.85rem;
+    font-weight: var(--font-weights-bold);
+    letter-spacing: var(--letter-spacings-wide);
+    transition-duration: var(--durations-fast);
+    transition-property: background-color;
+    white-space: nowrap;
+    height: var(--sizes-10);
+  }
+
+  .login[data-compact] span {
+    display: none;
+  }
+
+  .login[data-compact] {
+    padding-inline: var(--spacing-0);
+    justify-content: center;
+    width: var(--sizes-10);
+  }
+
+  .login:is(:hover, [data-hover]) {
+    background: rgb(11 27 43 / 0.12);
+  }
+
+  .root {
+    background: var(--colors-bg-surface);
+    padding-inline: clamp(1.25rem, 4vw, 4.5rem);
+    padding-block: 1.4rem;
+    gap: clamp(1rem, 3.5vw, 3.5rem);
+    align-items: center;
+    box-shadow: var(--shadows-bar);
+    display: flex;
+    position: fixed;
+    z-index: var(--z-index-sticky);
+    border-bottom-left-radius: 1.5rem;
+    right: var(--spacing-0);
+    top: var(--spacing-0);
+  }
+
+  @media (max-width: 900px) {
+    .root {
+      border-radius: 0 0 1.25rem 1.25rem;
+      justify-content: center;
+      overflow-x: auto;
+      left: var(--spacing-0);
+    }
+  }
+
+  @media (max-width: 560px) {
+    .root {
+      display: none;
+    }
+  }
+}
+
+@layer recipes.slots.variants {
+  .cta--cta_join {
+    background: var(--colors-bg-surface);
+    box-shadow: inset 0 0 0 2px currentColor;
+    color: var(--colors-fg-default);
+    margin-left: calc(0.6rem - clamp(1rem, 3.5vw, 3.5rem));
+  }
+}
