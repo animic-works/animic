@@ -6,10 +6,12 @@ import {
   battleSnapshotSchema,
 } from "../battle/battle-state";
 
+// 読み間違えやすい0・O・1・I・Lを除く。
+export const ROOM_CODE_CHARS = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
 export const roomCodeSchema = v.pipe(
   v.string(),
   v.toUpperCase(),
-  v.regex(/^[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{8}$/),
+  v.regex(new RegExp(`^[${ROOM_CODE_CHARS}]{8}$`)),
 );
 export const participantNameSchema = v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(20));
 const memberSchema = v.object({ id: v.string(), name: participantNameSchema, ready: v.boolean() });
