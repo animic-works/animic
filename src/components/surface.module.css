@@ -1,0 +1,84 @@
+@layer recipes.base {
+  .root {
+    display: block;
+    position: relative;
+    min-width: var(--sizes-0);
+  }
+}
+
+@layer recipes.variants {
+  .padding_md {
+    padding: var(--spacing-5);
+  }
+
+  .variant_raised {
+    border-radius: var(--radii-card);
+    border-width: var(--border-widths-none);
+    background-color: var(--colors-bg-surface);
+    box-shadow: var(--shadows-elevated);
+  }
+
+  .padding_fluid {
+    padding: clamp(1.1rem, 2.5vw, 1.5rem);
+  }
+
+  .padding_lg {
+    padding: var(--spacing-8);
+  }
+
+  .padding_none {
+    padding: var(--spacing-0);
+  }
+
+  .padding_sm {
+    padding: var(--spacing-3);
+  }
+
+  .variant_accent {
+    background: var(--colors-accent-subtle);
+    border-color: var(--colors-accent-muted);
+    border-radius: var(--radii-panel);
+    border-style: solid;
+    border-width: var(--border-widths-thick);
+  }
+
+  .variant_inverse {
+    background: var(--colors-bg-inverse);
+    border-radius: var(--radii-panel);
+    color: var(--colors-fg-inverse);
+  }
+
+  .variant_outline {
+    border-color: var(--colors-border-default);
+    border-radius: var(--radii-panel);
+    border-style: solid;
+    border-width: var(--border-widths-thick);
+    background-color: var(--colors-bg-surface);
+    box-shadow: var(--shadows-none);
+  }
+
+  .variant_soft {
+    border-color: var(--colors-border-default);
+    border-radius: 1.6rem;
+    border-style: solid;
+    border-width: var(--border-widths-thick);
+    background-color: var(--colors-bg-surface);
+    box-shadow: var(--shadows-surface);
+  }
+
+  .variant_sticker {
+    border-color: var(--colors-border-strong);
+    border-radius: var(--radii-lg);
+    border-style: solid;
+    border-width: var(--border-widths-heavy);
+    background-color: var(--colors-bg-surface);
+    box-shadow: var(--shadows-sticker-sm);
+  }
+
+  .variant_sunken {
+    border-radius: var(--radii-panel);
+    border-width: var(--border-widths-none);
+    background-color: var(--colors-bg-sunken);
+    box-shadow: var(--shadows-none);
+  }
+}

@@ -1,0 +1,126 @@
+@layer recipes.slots.base {
+  .errorText {
+    margin: var(--spacing-0);
+    color: var(--colors-danger-default);
+    font-family: var(--fonts-body);
+    font-size: 0.8rem;
+    font-weight: var(--font-weights-bold);
+    letter-spacing: var(--letter-spacings-normal);
+    line-height: var(--line-heights-normal);
+  }
+
+  .helperText {
+    margin: var(--spacing-0);
+    color: var(--colors-fg-muted);
+    font-family: var(--fonts-body);
+    font-size: 0.78rem;
+    font-weight: var(--font-weights-regular);
+    letter-spacing: var(--letter-spacings-normal);
+    line-height: var(--line-heights-normal);
+  }
+
+  .input {
+    --transition-duration: var(--durations-fast);
+    --transition-prop: border-color;
+    background: var(--colors-bg-surface);
+    padding-inline: 1.1rem;
+    padding-block: 0.85rem;
+    border-color: var(--colors-border-default);
+    border-radius: var(--radii-field);
+    border-style: solid;
+    border-width: var(--border-widths-thick);
+    outline: 2px solid transparent;
+    color: var(--colors-fg-default);
+    font-family: var(--fonts-body);
+    font-size: var(--font-sizes-md);
+    font-weight: var(--font-weights-regular);
+    letter-spacing: var(--letter-spacings-normal);
+    line-height: var(--line-heights-normal);
+    outline-offset: 2px;
+    transition-duration: var(--durations-fast);
+    transition-property: border-color;
+    width: var(--sizes-full);
+  }
+
+  .input[data-invalid] {
+    border-color: var(--colors-danger-default);
+  }
+
+  .input:is(:disabled, [disabled], [data-disabled], [aria-disabled="true"]) {
+    background: var(--colors-bg-sunken);
+    color: var(--colors-fg-subtle);
+    cursor: default;
+  }
+
+  .input:is(:focus, [data-focus]) {
+    border-color: var(--colors-border-strong);
+  }
+
+  .input::placeholder,
+  .input[data-placeholder] {
+    color: var(--colors-fg-subtle);
+  }
+
+  .label {
+    color: var(--colors-fg-default);
+    font-family: var(--fonts-body);
+    font-size: 0.88rem;
+    font-weight: var(--font-weights-bold);
+    letter-spacing: var(--letter-spacings-normal);
+    line-height: var(--line-heights-normal);
+  }
+
+  .root {
+    gap: 0.4rem;
+    display: grid;
+    min-width: var(--sizes-0);
+  }
+
+  .textarea {
+    --transition-duration: var(--durations-fast);
+    --transition-prop: border-color;
+    background: var(--colors-bg-surface);
+    padding-inline: 1.1rem;
+    padding-block: 0.85rem;
+    border-color: var(--colors-border-default);
+    border-radius: var(--radii-field);
+    border-style: solid;
+    border-width: var(--border-widths-thick);
+    outline: 2px solid transparent;
+    color: var(--colors-fg-default);
+    font-family: var(--fonts-body);
+    font-size: var(--font-sizes-md);
+    font-weight: var(--font-weights-regular);
+    letter-spacing: var(--letter-spacings-normal);
+    line-height: var(--line-heights-relaxed);
+    outline-offset: 2px;
+    resize: vertical;
+    transition-duration: var(--durations-fast);
+    transition-property: border-color;
+    min-height: 6.5rem;
+    width: var(--sizes-full);
+  }
+
+  .textarea[data-invalid] {
+    border-color: var(--colors-danger-default);
+  }
+
+  .textarea[readonly] {
+    background: var(--colors-bg-sunken);
+  }
+
+  .textarea:is(:disabled, [disabled], [data-disabled], [aria-disabled="true"]) {
+    background: var(--colors-bg-sunken);
+    color: var(--colors-fg-subtle);
+    cursor: default;
+  }
+
+  .textarea:is(:focus, [data-focus]) {
+    border-color: var(--colors-border-strong);
+  }
+
+  .textarea::placeholder,
+  .textarea[data-placeholder] {
+    color: var(--colors-fg-subtle);
+  }
+}

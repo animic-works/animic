@@ -1,0 +1,15 @@
+@layer recipes.base {
+  .root {
+    inset: var(--spacing-0);
+    pointer-events: none;
+    position: fixed;
+    height: var(--sizes-full);
+    width: var(--sizes-full);
+  }
+
+  @media (width < 35.0625rem) {
+    .root {
+      display: none;
+    }
+  }
+}
