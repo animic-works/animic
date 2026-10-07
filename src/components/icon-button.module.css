@@ -1,0 +1,123 @@
+@layer recipes.base {
+  .root {
+    --transition-duration: var(--durations-fast);
+    --transition-easing: var(--easings-standard);
+    --transition-prop: transform, box-shadow, background-color, color;
+    background: var(--colors-bg-surface);
+    padding: var(--spacing-0);
+    border-color: var(--colors-border-strong);
+    border-radius: var(--radii-full);
+    border-style: solid;
+    place-items: center;
+    color: var(--colors-fg-default);
+    cursor: pointer;
+    display: grid;
+    flex-shrink: 0;
+    transition-duration: var(--durations-fast);
+    transition-property: transform, box-shadow, background-color, color;
+    transition-timing-function: var(--easings-standard);
+  }
+
+  .root:is(:disabled, [disabled], [data-disabled], [aria-disabled="true"]) {
+    border-color: var(--colors-border-default);
+    color: var(--colors-fg-subtle);
+    cursor: default;
+  }
+}
+
+@layer recipes.variants {
+  .variant_sticker {
+    border-width: var(--border-widths-heavy);
+    box-shadow: var(--shadows-sticker-xs);
+    height: 3.2rem;
+    width: 3.2rem;
+  }
+
+  .variant_sticker:is(:active, [data-active]) {
+    box-shadow: 0 1px 0 #0b1b2b;
+    transform: translateY(4px);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .variant_sticker:is(:hover, [data-hover]) {
+      background: var(--colors-accent-default);
+      color: var(--colors-accent-fg);
+    }
+  }
+
+  .variant_float {
+    border-width: var(--border-widths-thick);
+    box-shadow: var(--shadows-float);
+    height: var(--sizes-12);
+    width: var(--sizes-12);
+  }
+
+  .variant_row {
+    border-color: var(--colors-border-default);
+    border-width: var(--border-widths-thick);
+    height: 2rem;
+    width: 2rem;
+  }
+
+  .variant_row:is(:active, [data-active]) {
+    transform: scale(0.94);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .variant_row:is(:hover, [data-hover]) {
+      border-color: var(--colors-border-strong);
+    }
+  }
+
+  .variant_rowDanger {
+    border-color: var(--colors-border-default);
+    border-width: var(--border-widths-thick);
+    color: var(--colors-danger-default);
+    height: 2rem;
+    width: 2rem;
+  }
+
+  .variant_rowDanger:is(:active, [data-active]) {
+    transform: scale(0.94);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .variant_rowDanger:is(:hover, [data-hover]) {
+      border-color: var(--colors-danger-default);
+    }
+  }
+
+  .variant_soft {
+    border-color: var(--colors-border-default);
+    border-width: var(--border-widths-thick);
+    box-shadow: var(--shadows-surface);
+    height: 3.2rem;
+    width: 3.2rem;
+  }
+
+  .variant_soft:is(:active, [data-active]) {
+    transform: scale(0.94);
+  }
+
+  @media (width < 35.0625rem) {
+    .variant_soft {
+      height: 48px;
+      width: 48px;
+    }
+  }
+
+  @media (max-width: 560px) and (max-height: 700px) {
+    .variant_soft {
+      height: 44px;
+      width: 44px;
+    }
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .variant_soft:is(:hover, [data-hover]) {
+      background: var(--colors-accent-default);
+      border-color: var(--colors-accent-default);
+      color: var(--colors-accent-fg);
+    }
+  }
+}

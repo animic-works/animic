@@ -1,0 +1,128 @@
+@layer recipes.slots.base {
+  .chip {
+    background: var(--colors-bg-surface);
+    padding-inline: var(--spacing-3);
+    padding-block: 0.3rem;
+    border-color: var(--colors-border-default);
+    border-radius: var(--radii-control);
+    border-style: solid;
+    border-width: var(--border-widths-thick);
+    gap: 0.4rem;
+    align-items: center;
+    display: inline-flex;
+    font-size: 0.8rem;
+    font-weight: var(--font-weights-bold);
+    white-space: nowrap;
+  }
+
+  .chip code {
+    font-family: var(--fonts-mono);
+    letter-spacing: 0.1em;
+  }
+
+  .chip[data-level] {
+    background: var(--colors-tint-cyan);
+    border-color: var(--colors-transparent);
+  }
+
+  .left {
+    gap: var(--spacing-4);
+    align-items: center;
+    display: flex;
+    min-width: var(--sizes-0);
+  }
+
+  .levelChip {
+    display: inline-flex;
+  }
+
+  @media (width < 53.8125rem) {
+    .levelChip {
+      display: none;
+    }
+  }
+
+  .phase {
+    background: var(--colors-warning-default);
+    margin: var(--spacing-0);
+    padding-inline: var(--spacing-4);
+    padding-block: 0.7rem;
+    gap: 0.4rem 1rem;
+    align-items: center;
+    color: var(--colors-fg-default);
+    display: flex;
+    flex-wrap: wrap;
+    font-weight: var(--font-weights-bold);
+    justify-content: center;
+    text-align: center;
+  }
+
+  .phaseStrong {
+    font-family: var(--fonts-display);
+    font-size: 1.2rem;
+    font-weight: var(--font-weights-regular);
+  }
+
+  .right {
+    justify-self: end;
+  }
+
+  @media (width < 53.8125rem) {
+    .right {
+      display: none;
+    }
+  }
+
+  .timer {
+    display: grid;
+    justify-items: center;
+    line-height: var(--line-heights-none);
+  }
+
+  .timerLabel {
+    color: var(--colors-fg-muted);
+    font-family: var(--fonts-latin);
+    font-size: 0.68rem;
+    font-style: italic;
+    letter-spacing: 0.25em;
+  }
+
+  .timerNumber {
+    --transition-duration: var(--durations-normal);
+    --transition-prop: color;
+    font-family: var(--fonts-display);
+    font-size: clamp(2rem, 4vw, 2.8rem);
+    font-variant-numeric: tabular-nums;
+    transition-duration: var(--durations-normal);
+    transition-property: color;
+  }
+
+  .timerNumber[data-hurry] {
+    animation: beat 1s ease-in-out infinite;
+    color: var(--colors-accent-default);
+  }
+
+  .track {
+    background: var(--colors-grid-line);
+    position: sticky;
+    z-index: 5;
+    height: 6px;
+    top: var(--spacing-0);
+  }
+
+  .trackBar {
+    background: linear-gradient(90deg, var(--colors-info-default), var(--colors-accent-brand));
+    transition: transform 0.25s linear;
+    display: block;
+    transform: scaleX(var(--progress, 1));
+    transform-origin: left;
+    height: var(--sizes-full);
+    width: var(--sizes-full);
+  }
+}
+
+@keyframes beat {
+  50% {
+    transform: scale(1.08);
+  }
+}

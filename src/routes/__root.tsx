@@ -1,6 +1,12 @@
+// 部品のCSSより先に読み込み、@layerの順序を最初に宣言する。
+import "../styles/global.css";
+
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 
-import "../styles/global.css";
+import { Button } from "../components/button";
+import { EntryCard, EntryPage } from "../components/entry";
+import { Toaster } from "../components/toast";
+import { WipeProvider } from "../components/transition";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -12,17 +18,24 @@ export const Route = createRootRoute({
     ],
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { name: "theme-color", content: "#ffffff" },
       { title: "Animic" },
     ],
   }),
   component: Root,
   notFoundComponent: () => (
-    <main>
-      <h1>ページが見つかりません</h1>
-      <a href="/">トップへ戻る</a>
-    </main>
+    <EntryPage>
+      <EntryCard
+        logoSrc="/animic-logo.svg"
+        title="ページが見つかりません"
+        titleId="not-found-title"
+      >
+        <Button asChild fullWidth size="lg">
+          <a href="/">トップへ戻る</a>
+        </Button>
+      </EntryCard>
+    </EntryPage>
   ),
 });
 
@@ -33,7 +46,11 @@ function Root() {
         <HeadContent />
       </head>
       <body>
-        <Outlet />
+        {/* 画面遷移の帯はルートに1つだけ置き、画面をまたいで表示する */}
+        <WipeProvider logoSrc="/favicon.svg">
+          <Outlet />
+        </WipeProvider>
+        <Toaster />
         <Scripts />
       </body>
     </html>

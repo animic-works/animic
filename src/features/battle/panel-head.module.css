@@ -1,0 +1,20 @@
+@layer recipes.slots.base {
+  .note {
+    color: var(--colors-fg-muted);
+    font-size: 0.8rem;
+  }
+
+  .root {
+    gap: var(--spacing-3);
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .title {
+    margin: var(--spacing-0);
+    font-family: var(--fonts-round);
+    font-size: 1.15rem;
+    font-weight: var(--font-weights-heavy);
+  }
+}

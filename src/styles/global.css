@@ -1,14 +1,255 @@
-:root {
-  font-family: system-ui, sans-serif;
-  color: #051523;
-  background: #fff;
-  color-scheme: light;
+/* 部品のスタイルは各部品のCSS Modulesに置き、ここには全体の土台だけを置く。
+   @layerの順序は、vite.config.tsですべてのCSSの先頭に宣言する。 */
+
+@import "@fontsource/dela-gothic-one/400.css";
+@import "@fontsource/zen-maru-gothic/700.css";
+@import "@fontsource/zen-maru-gothic/900.css";
+@import "@fontsource/zen-kaku-gothic-new/500.css";
+@import "@fontsource/zen-kaku-gothic-new/700.css";
+@import "@fontsource/zen-kaku-gothic-new/900.css";
+@import "@fontsource/montserrat/latin-500-italic.css";
+@import "@fontsource/montserrat/latin-900-italic.css";
+@import "@fontsource/jetbrains-mono/latin-500.css";
+@import "@fontsource/jetbrains-mono/latin-700.css";
+@import "./tokens.css";
+
+@layer reset {
+  html,
+  :host {
+    line-height: 1.5;
+    --font-fallback:
+      ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+      "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+      "Segoe UI Symbol", "Noto Color Emoji";
+    -webkit-text-size-adjust: 100%;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -moz-tab-size: 4;
+    tab-size: 4;
+    font-family: var(--global-font-body, var(--font-fallback));
+    -webkit-tap-highlight-color: transparent;
+  }
+  *,
+  ::before,
+  ::after,
+  ::backdrop,
+  ::file-selector-button {
+    margin: 0px;
+    padding: 0px;
+    box-sizing: border-box;
+    border-width: 0px;
+    border-style: solid;
+    border-color: var(--global-color-border, currentcolor);
+  }
+  hr {
+    height: 0px;
+    color: inherit;
+    border-top-width: 1px;
+  }
+  body {
+    height: 100%;
+    line-height: inherit;
+  }
+  img {
+    border-style: none;
+  }
+  img,
+  svg,
+  video,
+  canvas,
+  audio,
+  iframe,
+  embed,
+  object {
+    display: block;
+    vertical-align: middle;
+  }
+  img,
+  video {
+    max-width: 100%;
+    height: auto;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-size: inherit;
+    font-weight: inherit;
+    text-wrap: balance;
+  }
+  p,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    overflow-wrap: break-word;
+  }
+  ol,
+  ul,
+  menu {
+    list-style: none;
+  }
+  button,
+  input:where([type="button"], [type="reset"], [type="submit"]),
+  ::file-selector-button {
+    appearance: button;
+  }
+  button,
+  input,
+  optgroup,
+  select,
+  textarea,
+  ::file-selector-button {
+    font: inherit;
+    font-feature-settings: inherit;
+    font-variation-settings: inherit;
+    letter-spacing: inherit;
+    color: inherit;
+    background: transparent;
+  }
+  ::placeholder {
+    opacity: 1;
+    --placeholder-fallback: rgba(0, 0, 0, 0.5);
+    color: var(--global-color-placeholder, var(--placeholder-fallback));
+  }
+  ::selection {
+    background-color: var(--global-color-selection, rgba(0, 115, 255, 0.3));
+  }
+  textarea {
+    resize: vertical;
+  }
+  table {
+    text-indent: 0px;
+    border-color: inherit;
+    border-collapse: collapse;
+  }
+  summary {
+    display: list-item;
+  }
+  small {
+    font-size: 80%;
+  }
+  sub,
+  sup {
+    font-size: 75%;
+    line-height: 0;
+    position: relative;
+    vertical-align: baseline;
+  }
+  sub {
+    bottom: -0.25em;
+  }
+  sup {
+    top: -0.5em;
+  }
+  dialog {
+    padding: 0px;
+  }
+  a {
+    color: inherit;
+    text-decoration: inherit;
+  }
+  abbr:where([title]) {
+    text-decoration: underline dotted;
+  }
+  b,
+  strong {
+    font-weight: bolder;
+  }
+  code,
+  kbd,
+  samp,
+  pre {
+    --font-mono-fallback:
+      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New";
+    font-family: var(--global-font-mono, var(--font-mono-fallback));
+    font-size: 1em;
+    font-feature-settings: normal;
+    font-variation-settings: normal;
+  }
+  progress {
+    vertical-align: baseline;
+  }
+  ::-webkit-search-decoration,
+  ::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+  }
+  ::-webkit-inner-spin-button,
+  ::-webkit-outer-spin-button {
+    height: auto;
+  }
+  :-moz-ui-invalid {
+    box-shadow: none;
+  }
+  :-moz-focusring {
+    outline: auto;
+  }
+  [hidden]:where(:not([hidden="until-found"])) {
+    display: none !important;
+  }
+  @supports (not (-webkit-appearance: -apple-pay-button)) or (contain-intrinsic-size: 1px) {
+    ::placeholder {
+      --placeholder-fallback: color-mix(in oklab, currentcolor 50%, transparent);
+    }
+  }
 }
 
-* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+  html {
+    color-scheme: light;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    margin: var(--spacing-0);
+    min-height: 100svh;
+    overflow-x: hidden;
+    color: var(--colors-fg-default);
+    font-family: var(--fonts-body);
+    line-height: var(--line-heights-normal);
+    background: var(--colors-bg-canvas);
+    background-image:
+      linear-gradient(var(--colors-grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--colors-grid-line) 1px, transparent 1px);
+    background-size: 56px 56px;
+    -webkit-font-smoothing: antialiased;
+  }
+  html[data-scroll] {
+    scroll-behavior: smooth;
+    scroll-snap-type: y mandatory;
+  }
+  [hidden] {
+    display: none !important;
+  }
+  ::selection {
+    background: var(--colors-accent-subtle);
+    color: var(--colors-fg-default);
+  }
+  :focus-visible {
+    outline-width: 3px;
+    outline-style: solid;
+    outline-color: var(--colors-focus-ring);
+    outline-offset: 3px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html[data-scroll] {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: var(--durations-instant) !important;
+      animation-iteration-count: 1 !important;
+      --transition-duration: var(--durations-instant) !important;
+      transition-duration: var(--durations-instant) !important;
+    }
+  }
 }

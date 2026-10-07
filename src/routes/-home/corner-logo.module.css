@@ -1,0 +1,52 @@
+@layer recipes.base {
+  .root {
+    transition:
+      opacity 0.4s ease,
+      transform 0.5s var(--easings-pop),
+      visibility 0s linear 0.5s;
+    display: block;
+    opacity: 0;
+    position: fixed;
+    transform: translateY(-1rem) rotate(-4deg);
+    visibility: hidden;
+    z-index: var(--z-index-sticky);
+    left: clamp(1.25rem, 4vw, 3rem);
+    top: 1.1rem;
+  }
+
+  .root img {
+    --transition-duration: var(--durations-fast);
+    --transition-prop: transform;
+    display: block;
+    transition-duration: var(--durations-fast);
+    transition-property: transform;
+    height: auto;
+    width: clamp(8rem, 12vw, 11rem);
+  }
+
+  .root:hover img {
+    transform: rotate(-3deg) scale(1.04);
+  }
+
+  .root:is(:focus-visible, [data-focus-visible]) {
+    border-radius: var(--radii-sm);
+    outline-offset: 4px;
+  }
+
+  @media (max-width: 900px) {
+    .root {
+      display: none;
+    }
+  }
+}
+
+@layer recipes.variants {
+  .shown_true {
+    transition:
+      opacity 0.4s ease 0.1s,
+      transform 0.5s var(--easings-pop) 0.1s;
+    opacity: 1;
+    transform: none;
+    visibility: visible;
+  }
+}
