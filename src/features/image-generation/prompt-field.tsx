@@ -23,7 +23,7 @@ export type PromptFieldProps = {
   tokens: readonly PromptToken[];
   /** 区切りのない書きかけ */
   draft: string;
-  onDraftChange: (value: string) => void;
+  onDraftChange: (value: string, composing: boolean) => void;
   /** 書きかけをすべて語句にする（Enter・欄を離れたとき） */
   onCommit: () => void;
   placeholder: string;
@@ -237,7 +237,7 @@ export function PromptField({
           onChange={(event) => {
             setHot(0);
             setDismissed(false);
-            onDraftChange(event.target.value);
+            onDraftChange(event.target.value, composing.current);
           }}
           onKeyDown={onKeyDown}
           onFocus={() => setFocused(true)}
@@ -248,10 +248,13 @@ export function PromptField({
           onCompositionStart={() => {
             composing.current = true;
           }}
-          onCompositionEnd={() => {
+          onCompositionEnd={(event) => {
             composing.current = false;
             const id = queued.current;
-            if (id === null) return;
+            if (id === null) {
+              onDraftChange(event.currentTarget.value, false);
+              return;
+            }
             setTimeout(() => {
               queued.current = null;
               pick(id);

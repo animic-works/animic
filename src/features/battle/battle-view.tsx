@@ -95,7 +95,7 @@ export function BattleView({
 }) {
   // 履歴で選んだ1枚と、選んだときの成功数。成功数が増えたら新しい画像を自動で出す
   const [pick, setPick] = useState<{ id: string; after: number } | null>(null);
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [zoomOpen, setZoomOpen] = useState(false);
   const [reveal, setReveal] = useState<TopicReveal>(() => initialReveal(battle));
@@ -118,6 +118,7 @@ export function BattleView({
   const selected = autoPick
     ? newest
     : (succeeded.find((generation) => generation.id === pick.id) ?? newest);
+  const confirmed = succeeded.find((generation) => generation.id === confirmId);
 
   // 新しくできた1枚は、3色の帯が駆け抜けて現れる
   const [seenCount, setSeenCount] = useState(successCount);
@@ -184,15 +185,15 @@ export function BattleView({
     return () => clearTimeout(timer);
   }, [kickoff]);
 
-  async function submit() {
-    if (!selected || submitting) return;
+  async function submit(generationId: string) {
+    if (submitted || submitting) return;
     setSubmitting(true);
     try {
-      await submitBattleImage({ data: { code, battleId: battle.id, generationId: selected.id } });
+      await submitBattleImage({ data: { code, battleId: battle.id, generationId } });
     } catch {
       toast("提出できませんでした。もう一度お試しください。");
     } finally {
-      setConfirmOpen(false);
+      setConfirmId(null);
       setSubmitting(false);
     }
   }
@@ -340,8 +341,9 @@ export function BattleView({
                 disabled={!selected || submitted}
                 loading={submitting}
                 onSubmit={() => {
-                  if (quick) void submit();
-                  else setConfirmOpen(true);
+                  if (!selected) return;
+                  if (quick) void submit(selected.id);
+                  else setConfirmId(selected.id);
                 }}
               />
             }
@@ -368,8 +370,10 @@ export function BattleView({
       </BattleLayout>
 
       <Dialog
-        open={confirmOpen}
-        onOpenChange={setConfirmOpen}
+        open={Boolean(confirmed) && !submitted}
+        onOpenChange={(open) => {
+          if (!open) setConfirmId(null);
+        }}
         title="提出してもよろしいですか？"
         description="提出したあとは変更できません。"
         descriptionPlacement="bottom"
@@ -384,16 +388,19 @@ export function BattleView({
               size="lg"
               loading={submitting}
               loadingText="提出しています…"
-              onClick={() => void submit()}
+              disabled={!confirmed || submitted}
+              onClick={() => {
+                if (confirmed) void submit(confirmed.id);
+              }}
             >
               提出する
             </Button>
           </>
         }
       >
-        {selected ? (
+        {confirmed ? (
           <ArtFrame variant="confirm">
-            <ArtImage src={selected.imageUrl} alt="提出する画像" />
+            <ArtImage src={confirmed.imageUrl} alt="提出する画像" />
           </ArtFrame>
         ) : null}
         <ConfirmOption>

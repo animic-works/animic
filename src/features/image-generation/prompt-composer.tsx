@@ -348,8 +348,9 @@ export function PromptComposer({
           label={`プロンプト（${activeLabel}）`}
           tokens={tokens}
           draft={draft}
-          onDraftChange={(value) =>
+          onDraftChange={(value, composing) =>
             update((current) => {
+              if (composing) return { ...current, draft: value };
               const list = current.blocks[current.active] ?? [];
               const committed = commitDraft(list, value);
               return { ...withTokens(current, committed.tokens), draft: committed.draft };
