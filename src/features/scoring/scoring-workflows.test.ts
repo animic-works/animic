@@ -14,13 +14,27 @@ function run(text: unknown) {
   return [{ nodeId: "3", label: "similarity", values: { text } }];
 }
 
-describe("illust-similarity-v1", () => {
+describe("illust-similarity-v2", () => {
   it("お題画像を1枚目、提出画像を2枚目として読み込むワークフローを返す", () => {
     const workflow: unknown = JSON.parse(buildScoringWorkflow(scoringWorkflowVersion, inputs));
     expect(workflow).toMatchObject({
       "1": { inputs: { image: "__INPUT_IMAGE__" } },
       "2": { inputs: { image: "__INPUT_IMAGE_2__" } },
       "3": { class_type: "IllustSimilarityAll", _meta: { title: "similarity" } },
+    });
+  });
+  it("CCIP・PixAI Tagger・SigLIP 2・DINOv2・Depthの5つの指標を使う", () => {
+    const workflow: unknown = JSON.parse(buildScoringWorkflow(scoringWorkflowVersion, inputs));
+    expect(workflow).toMatchObject({
+      "3": {
+        inputs: {
+          use_ccip: true,
+          use_pixai: true,
+          use_siglip2: true,
+          use_dinov2: true,
+          use_depth: true,
+        },
+      },
     });
   });
   it("お題画像と提出画像の組以外は受け付けない", () => {
