@@ -60,6 +60,8 @@ export const tileCollection = defineSlotRecipe({
       _tileCollectionCompact: { marginBlockStart: "0", gridArea: "2 / 2", alignSelf: "start" },
     },
     badge: {
+      // 名札を行の高さに乗せず、指定した位置にそのまま置く。
+      display: "flex",
       position: "absolute",
       top: "-0.75rem",
       left: "50%",
