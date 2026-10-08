@@ -6,6 +6,7 @@ import type { AvatarPlayer } from "../../components/avatar";
 import { Button } from "../../components/button";
 import { variant } from "../../components/cx";
 import { Icon } from "../../components/icon";
+import { VisuallyHidden } from "../../components/layout";
 import { Switch } from "../../components/switch";
 import actionRowStyles from "./action-row.module.css";
 import artFrameStyles from "./art-frame.module.css";
@@ -50,12 +51,13 @@ export function HudTimer({ label, value, tone }: { label: string; value: string;
   return (
     <div className={hudStyles.timer} data-tone={tone} role="timer" aria-live="off">
       <span className={hudStyles.timerLabel}>{label}</span>
-      <span className={hudStyles.timerNumber} aria-label={value}>
+      {/* 1文字ずつの枠は読み上げず、残り時間はまとめて読み上げる */}
+      <VisuallyHidden>{value}</VisuallyHidden>
+      <span className={hudStyles.timerNumber} aria-hidden="true">
         {value.split("").map((char, index) => (
           <span
             // 桁の位置で見分ける（数字が変わっても枠は作り直さない）
             key={index}
-            aria-hidden="true"
             data-colon={char === ":" || undefined}
           >
             {char}
