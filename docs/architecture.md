@@ -120,6 +120,8 @@ DOの状態はSQLiteストレージに永続化し、再起動・再接続後に
 
 NovelAIは1アカウントで同時に1件しか生成できないため、生成キューのDO（`NovelAiQueue`、`src/features/image-generation/novelai.server.ts`）の1つのインスタンスが、全ルームの生成を受付順に1件ずつ送ります。順番が来たら、運営者が選んだモデルをこのDOのストレージから読み、Workerの環境変数`NOVELAI_STYLE_PROMPT`の規定の絵柄を参加者のプロンプトと品質タグの間に加えます。絵柄と品質タグはNovelAIの`v4_prompt`にだけ入れ、`input`には参加者のプロンプトをそのまま送ります。モデルをこのDOに置くのは、生成のたびにD1を読まないためです。モデルごとの品質タグ・ネガティブプロンプト・パラメーターは`src/features/image-generation/novelai.ts`にあります。
 
+NovelAIはPNGのtEXtチャンクと、アルファ値の最下位ビット（`stealth_pngcomp`）に生成の条件を埋め込みます。生成キューのDOは、受け取ったPNGの画素を`src/features/image-generation/generated-image.ts`で取り出してアルファを捨て、libwebpのWASM（`@jsquash/webp`）で品質90の非可逆のWebPに書き出します。Workersは実行時にWASMをコンパイルできないため、`.wasm`はCloudflare Vite pluginでコンパイル済みのモジュールとして読み込みます。変換は1枚あたり約0.4秒のCPU時間を使うため、Workers Freeでも1リクエストあたり30秒まで使えるDOで行い、NovelAIの順番待ちの外に置いて次の生成の通信と重ねます。選定理由は[ADR 0008](decisions/0008-generated-image-webp.md)を参照してください。
+
 ### 匿名参加のセッション
 
 アカウントへログインしない参加者も、サーバーが発行したセッションで識別します。セッションの秘密情報と画面に公開する参加者IDは分け、表示名・ルームコード・IPアドレスだけで同じ参加者と判断しません。セッションの発行・検証・失効にはBetter Authのanonymousプラグインを使い、ユーザーとセッションをD1へ保存します。Better AuthのユーザーIDを参加者の識別に使い、DBアクセスはDrizzleアダプターを通します。接続と認証設定はリクエスト内で生成します。
@@ -154,7 +156,7 @@ NovelAIは1アカウントで同時に1件しか生成できないため、生�
 
 お題の画像はR2のバケット（binding `TOPIC_IMAGES`）の`topics/<お題ID>/<画像ID>`に保存し、`src/routes/topic-images.$topicId.$imageId.ts`のServer Routeで配信します。配信ではセッションを確かめず、`Cache-Control: public, max-age=31536000, immutable`を付けます。画像を差し替えると画像IDを変えて新しいURLにし、古い画像は過去の対戦結果のために消しません。`topic.image_url`には`BETTER_AUTH_URL`を基にした配信URLを保存し、対戦の状態と採点が絶対URLを使えるようにします。
 
-画像のメタデータは管理画面で消します。ブラウザーで画像を白で塗ったcanvasに描き直してWebPにし、Server FunctionへFormDataで送ります。サーバーは`src/features/battle/topic-images.ts`でWebPのチャンクを確かめ、EXIF・XMP・アニメーションがあれば保存しません。Workersでは画像を変換しません。
+画像のメタデータは管理画面で消します。ブラウザーで画像を白で塗ったcanvasに描き直してWebPにし、Server FunctionへFormDataで送ります。サーバーは`src/features/battle/topic-images.ts`でWebPのチャンクを確かめ、EXIF・XMP・アニメーションがあれば保存しません。お題の画像はWorkersでは変換しません。
 
 画像生成の画面は、`image-generation`のServer Function（`src/features/image-generation/image-generation-admin.functions.ts`）から生成キューのDOを呼び、モデルを読み書きします。値はValibotの`picklist`で検証し、V5 CuratedとV4.5 Curated以外は保存しません。
 
