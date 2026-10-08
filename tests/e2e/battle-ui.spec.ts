@@ -136,6 +136,8 @@ test("対戦画面でプロンプトを入力し、候補・重み・検索・�
 });
 
 test("むずかしいではキャラ2の欄を足して消せる", async ({ page, browser }) => {
+  // Wranglerでのお題の登録と2人の接続を含むため、既定の30秒より長くする。
+  test.setTimeout(60_000);
   // ほかのテストで「この難易度のお題がありません」を確かめるため、このテストの中だけお題を置く。
   await executeLocalD1(
     "INSERT OR REPLACE INTO topic (id, difficulty, image_url) VALUES ('e2e-topic-hard', 'hard', 'https://example.invalid/animic-topic-hard.svg')",

@@ -32,8 +32,6 @@ import {
   KickoffBand,
   LevelBadge,
   OverlayCard,
-  OverlayProgress,
-  OverlayScan,
   OverlayWaitRow,
   RosterMember,
   ScreenOverlay,
@@ -421,16 +419,8 @@ export function BattleView({
 
       {kickoff && !reducedMotion ? <KickoffBand /> : null}
 
-      {stage === "scoring" ? (
-        <ScreenOverlay
-          eyebrow="Judging"
-          title="採点中…"
-          sub="AIが再現度を評価しています"
-          footer={<OverlayProgress />}
-        >
-          <OverlayScan mine={submittedImage?.imageUrl ?? null} topic={battle.topic.imageUrl} />
-        </ScreenOverlay>
-      ) : stage === "waiting" ? (
+      {/* 採点中も提出後と同じ表示のまま待つ（採点の様子は画面に出さない） */}
+      {submitted ? (
         mySubmission?.status === "not-submitted" ? (
           <ScreenOverlay title="時間内に提出できませんでした" sub="結果を待っています" />
         ) : (

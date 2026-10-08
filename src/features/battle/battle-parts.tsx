@@ -531,7 +531,7 @@ export function KickoffBand() {
   );
 }
 
-// 提出後・採点中など、操作を止めて待つ間の全面表示。children は見出しの上、footer は下に置く
+// 提出後など、操作を止めて結果を待つ間の全面表示。children は見出しの上、footer は下に置く
 export function ScreenOverlay({
   eyebrow,
   title,
@@ -595,34 +595,6 @@ export function OverlayWaitRow({
         ))}
       </span>
       <span>{children}</span>
-    </div>
-  );
-}
-
-// 採点中: 2枚を並べ、光の線が行き来する
-export function OverlayScan({ mine, topic }: { mine: string | null; topic: string }) {
-  return (
-    <div className={screenOverlayStyles.scan} aria-hidden="true">
-      <figure>
-        {mine ? (
-          <img src={mine} alt="" />
-        ) : (
-          <span className={screenOverlayStyles.scanNone}>未提出</span>
-        )}
-      </figure>
-      <figure>
-        <img src={topic} alt="" />
-      </figure>
-      <span className={screenOverlayStyles.beam} />
-    </div>
-  );
-}
-
-// 採点の進み具合（見た目だけの縞のバー）
-export function OverlayProgress() {
-  return (
-    <div className={screenOverlayStyles.progress} aria-hidden="true">
-      <i />
     </div>
   );
 }
