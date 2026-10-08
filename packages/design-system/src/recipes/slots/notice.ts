@@ -57,6 +57,16 @@ export const notice = defineSlotRecipe({
         root: { background: "bg.subtle", borderWidth: "0" },
         icon: { boxShadow: "none" },
       },
+      danger: {
+        root: {
+          borderWidth: "0",
+          background:
+            "color-mix(in srgb, token(colors.status.danger.fg) 8%, token(colors.bg.surface))",
+        },
+        title: { color: "status.danger.fg", textAlign: "center" },
+        description: { color: "status.danger.fg", fontWeight: "bold", textAlign: "center" },
+        icon: { color: "status.danger.fg", boxShadow: "none" },
+      },
       success: {
         root: {
           borderStyle: "solid",
@@ -82,4 +92,14 @@ export const notice = defineSlotRecipe({
       },
     },
   },
+  compoundVariants: [
+    {
+      tone: "danger",
+      density: "compact",
+      css: {
+        root: { padding: "0.6rem 0.9rem", borderRadius: "0.8rem" },
+        description: { fontSize: "0.85rem", fontWeight: "bold" },
+      },
+    },
+  ],
 });

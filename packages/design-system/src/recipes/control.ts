@@ -1,5 +1,10 @@
 import { defineStyles } from "@pandacss/dev";
-export const enabled = "&:not(:disabled, [disabled], [data-disabled], [aria-disabled=true])";
+const enabled = "&:not(:disabled, [disabled], [data-disabled], [aria-disabled=true])";
+// 処理待ちのボタンは通常の外観を保つ。業務条件による操作不可だけを無効色にする。
+export const buttonAvailable = `${enabled}, &[data-loading]`;
+export const buttonUnavailable =
+  "&:is(:disabled, [disabled], [data-disabled], [aria-disabled=true]):not([data-loading])";
+
 export const focus = defineStyles({
   outlineWidth: "2px",
   outlineStyle: "solid",
@@ -36,7 +41,7 @@ export const disabled = defineStyles({
   transform: "none",
   cursor: "not-allowed",
 });
-export const control = defineStyles({
+export const buttonControl = defineStyles({
   boxSizing: "border-box",
   textStyle: "label",
   fontSynthesis: "none",
@@ -49,5 +54,5 @@ export const control = defineStyles({
   transitionTimingFunction: "standard",
   _focusVisible: focus,
   _motionReduce: { transitionDuration: "0", transform: "none" },
-  _disabled: disabled,
+  [buttonUnavailable]: disabled,
 });

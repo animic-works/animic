@@ -4,13 +4,14 @@ type FileButtonProps = {
   label: string;
   accept: string;
   disabled?: boolean;
+  loading?: boolean;
 } & (
   | { multiple: true; onFiles: (files: File[]) => void; onFile?: never }
   | { multiple?: false; onFile: (file: File) => void; onFiles?: never }
 );
 
 export function FileButton(props: FileButtonProps) {
-  const { label, accept, disabled } = props;
+  const { label, accept, disabled, loading } = props;
   const input = useRef<HTMLInputElement>(null);
   return (
     <>
@@ -18,6 +19,7 @@ export function FileButton(props: FileButtonProps) {
         appearance="secondary"
         shape="pill"
         disabled={disabled}
+        loading={loading}
         onClick={() => input.current?.click()}
       >
         {label}
@@ -28,7 +30,7 @@ export function FileButton(props: FileButtonProps) {
         type="file"
         accept={accept}
         multiple={props.multiple}
-        disabled={disabled}
+        disabled={disabled || loading}
         aria-label={label}
         onChange={(event) => {
           const files = Array.from(event.target.files ?? []);

@@ -64,7 +64,7 @@ Panda JSX Componentsは公開・使用しません。Textの`wrap="balance"`は�
 | `field`、`input`、`textarea`                               | `Field`、`Input`、`Textarea`                                       | Fieldがラベル・説明・エラーを関連付け、コントロールを子として組み合わせる                |
 | `segmented-control`                                        | `SegmentedControl`                                                 | 値と表示名の選択肢、選択値、値だけを渡す変更通知                                         |
 | `dialog`                                                   | `Dialog`                                                           | 開閉状態、開閉の変更通知、見出し・説明・内容、`presentation`・`size`・`titleAlign`       |
-| `toast`                                                    | `ToastProvider`、`useToast`                                        | 通知の表示・閉じる操作。Arkのストアは公開しない                                          |
+| `toast`                                                    | `ToastProvider`、`useToast`                                        | 通知の表示と時間による消去。新しい通知は前の通知を置き換える。Arkのストアは公開しない    |
 | `avatar`、`progress`、`spinner`                            | `Avatar`、`Progress`、`Spinner`                                    | 画像失敗時の代替、進捗率またはindeterminate状態、文言を伴う処理中表示                    |
 | `stack`、`cluster`、`container`、`center`、`grid`、`split` | 同名のPatternのReact Component                                     | 意味のある配置だけを公開し、Containerの`size`、Gridの`columns`、Splitの`layout`は必須    |
 | `code-input`                                               | `CodeInput`                                                        | 単一の入力欄と文字ごとの表示枠。ラベル・説明・エラーはFieldと組み合わせる                |
@@ -93,9 +93,9 @@ Panda JSX Componentsは公開・使用しません。Textの`wrap="balance"`は�
 | `code-display`、`qr-code`                                | CodeDisplay・QrCode                                                                                      | コードとコピー操作、URLのQR表示。招待URLの作成は利用側が行う                                                  |
 | `article`、`footer`、`action-bar`                        | Article・ArticleSection・ArticleParagraph・ArticleList・ArticleTable・TableOfContents・Footer・ActionBar | 長文・目次・フッター・狭い画面で下端に置く操作と要約                                                          |
 
-Textの`eyebrow.strong`は強い小見出し、`label.display`は大きく見せる短いラベルです。`emphasis="outline"`は文字の輪郭を残し、forced-colorsでは塗り文字に戻します。SegmentedControlは選択肢だけでなく、グループの読み上げ名と表示ラベルを管理します。既定ではラベルを視覚的に隠し、`labelVisibility="visible"`で表示します。`labelPlacement="inline"`はラベル列と選択肢列を揃え、配置領域が狭い場合は縦に積みます。`appearance="pill"`の選択肢は利用可能幅を等分し、`density="compact"`は編集ツールなどの小さな選択操作に使います。
+Textの`eyebrow.strong`は強い小見出し、`label.display`は大きく見せる短いラベルです。`emphasis="outline"`は文字の輪郭を残し、forced-colorsでは塗り文字に戻します。SegmentedControlは選択肢だけでなく、グループの読み上げ名と表示ラベルを管理します。既定ではラベルを視覚的に隠し、`labelVisibility="visible"`で表示します。`labelPlacement="inline"`はラベル列と選択肢列を揃え、配置領域が狭い場合は縦に積みます。`appearance="pill"`の選択肢は利用可能幅を等分し、`density="compact"`は編集ツールなどの小さな選択操作に使います。選択肢の`label`は名前、`leadingIcon`は装飾アイコン、`markerTone`は識別用の丸の配色、`detail`は件数などの補足表示を受けます。アイコンや色だけで選択肢を識別させず、値・文言・集計は利用側が決めます。
 
-Progressは`presentation="track"`でも読み上げ名と進捗率を保ち、文字を併記しない表示を選べます。`tone`による配色と`striped`による縞の動きを独立して指定します。割合は小数を保持し、縞とグラデーションを縮めず表示範囲だけを切り取ります。Meterは確定値の測定、ProgressListは手順ごとの状態を表し、処理や評価の計算は持ちません。Readoutは短いラベルと値をまとめ、`presentation="stamp"`は傾けた輪郭の強調に切り替えます。`format="clock"`は数字と区切りの幅を固定し、読み上げには分割前の値を使います。ProgressとReadoutの`emphasis="urgent"`は視覚的な強調を表し、reduced motionでは点滅・脈動を止めます。配色や強調を切り替える条件、時間の計算は利用側に置きます。AvatarButton（`/avatar`）はアバターを選択・編集する操作で、読み上げ名を必須とします。`selected`を指定した場合は選択状態を外周と`aria-pressed`で示します。AvatarとAvatarButtonの`size="fill"`は親の幅に合わせて正方形を保ち、`fluid`は表示領域に応じた寸法を使います。Avatarの`status`と任意の`badge`は同じ位置を使うため、同時に指定しません。FileButtonは単一選択の`onFile`と、`multiple`を有効にした複数選択の`onFiles`を区別します。選択後に同じファイルを選び直せるよう入力をリセットし、ファイルの検証・変換・保存は利用側へ渡します。Dialogの`footer`は内容がスクロールしても操作を保持し、`headerActions`は見出しと並ぶ補助操作を受けます。
+Progressは`presentation="track"`でも読み上げ名と進捗率を保ち、文字を併記しない表示を選べます。`tone`による配色と`striped`による縞の動きを独立して指定します。割合は小数を保持し、縞とグラデーションを縮めず表示範囲だけを切り取ります。Meterは確定値の測定、ProgressListは手順ごとの状態を表し、処理や評価の計算は持ちません。Readoutは短いラベルと値をまとめ、`presentation="stamp"`は傾けた輪郭の強調に切り替えます。`format="clock"`は数字と区切りの幅を固定し、読み上げには分割前の値を使います。ProgressとReadoutの`emphasis="urgent"`は視覚的な強調を表し、reduced motionでは点滅・脈動を止めます。配色や強調を切り替える条件、時間の計算は利用側に置きます。AvatarButton（`/avatar`）はアバターを選択・編集する操作で、読み上げ名を必須とします。`selected`を指定した場合は選択状態を外周と`aria-pressed`で示します。AvatarとAvatarButtonの`size="fill"`は親の幅に合わせて正方形を保ち、`fluid`は表示領域に応じた寸法を使います。Avatarの`status`と任意の`badge`は同じ位置を使うため、同時に指定しません。FileButtonは単一選択の`onFile`と、`multiple`を有効にした複数選択の`onFiles`を区別します。選択後に同じファイルを選び直せるよう入力をリセットし、ファイルの検証・変換・保存は利用側へ渡します。Dialogの`footer`は下部の補足・操作を区切り線とともに配置し、`headerActions`は見出しと並ぶ補助操作を受けます。`headerMedia`は見出しより前の画像などを受けます。指定した場合は閉じる操作と重ならない余白を画像の上に確保し、見出しの幅を狭めません。見出しと説明のARIA関連付けは維持し、画像の内容・読み上げ名は利用側が指定します。
 
 `Lead`（`/lead`）は導入文と結びの文を組み合わせ、狭い画面では縦の色帯と語句の強調を加えます。`span`による語句のまとまり、`strong`と`mark`の強調をRecipeで扱います。文言と区切りは利用側が持ちます。
 
@@ -119,7 +119,7 @@ ButtonとButtonLink（`/link`）は同じRecipeとアイコン・ラベル構造
 
 コントラストの許容範囲と検査の扱いは[デザイン原則](design.md#コントラストの扱い)に従います。`feedback="press"`はクリック時の短い縮小アニメーションで、reduced motionでは再生しません。Linkの`inverse`は濃い背景のコンパクトな遷移操作です。
 
-Surfaceの`card`・`illustrated`は共通の面の定義を使い、内側余白を外観とは独立して指定します。`content`・`section`・`frame`などの余白の選択肢は、それぞれの配置密度を表します。`adaptive`の条件による扱いは[レスポンシブ](#レスポンシブ)を参照してください。Mediaの`captioned`は画像上のぼかした説明帯と寸法制約を持ち、文言や難易度の判断は利用側が組み立てます。`appearance`は通常・白枠・強調枠、`size="preview"`は確認用の小さい画像を表し、比率とは独立して指定します。MediaPlaceholderの`footer`には進行などの補足を配置できます。Spinnerは寸法と配色を独立して選び、`labelVisibility="hidden"`でも読み上げ名を保持します。Badgeの`glass`は画像上の透過ラベル、`sticker`は傾けた強調、`stamp`は押印状の強調、`translucent`は濃い背景上の補足を表します。これらの固有の配色へ`tone`を重ねず、状態に応じた色は標準外観の`tone`で指定します。配置方向は親のPatternに従います。Badgeの`annotation`は画像上の対象などへ付ける、等幅書体の短い注釈です。Badgeは状態の補足に使い、`shape="rounded"`は浅い角丸、`highlight`は黄色の強調を選びます。StatusLabelは丸と文言を横に揃え、`appearance="badge"`では背景付きの補足として表示します。丸は文字グリフを使わず、状態の文字色と識別色を別のSemantic Tokenで持ちます。状態の判定は利用側の責務です。Avatarの代替文字は表示用書体で揃え、代替文字・補足アイコン・配色・外周の強調は公開propsで指定し、名前や認証サービスとの対応付けは利用側が担当します。`status`は待機・処理中・完了・未完了の視覚表現を受け、実際の状態判定と状態を説明する文言は利用側に置きます。AvatarGroupの`expanded`は横にスクロールできる状態一覧、既定の`compact`はヘッダーなどの短い一覧です。compactの名前と状態は一覧自身の利用可能幅に応じて省略し、expandedでは維持します。一覧自身もキーボードフォーカスを受け、横にはみ出した項目へ移動できます。項目の`state`は待機・処理中・完了、`value`は数値、`marker`は短い補足を受けます。人数や並べ替え、進行の判定は持ちません。
+Surfaceの`card`・`illustrated`は共通の面の定義を使い、内側余白を外観とは独立して指定します。`content`・`section`・`frame`などの余白の選択肢は、それぞれの配置密度を表します。`adaptive`の条件による扱いは[レスポンシブ](#レスポンシブ)を参照してください。Mediaの`captioned`は画像上のぼかした説明帯と寸法制約を持ち、文言や難易度の判断は利用側が組み立てます。`appearance`は通常・白枠・強調枠、`size="preview"`は確認用の小さい画像を表し、比率とは独立して指定します。MediaPlaceholderの`footer`には進行などの補足を配置できます。ChoiceCardのプレビューには画像URLの`src`か、画像未登録の案内など非対話的な内容の`media`を指定し、両方は指定しません。選択状態は`selected`で受け、輪郭・チェックと`aria-pressed`で示します。プレビューの内容と選択の意味は利用側が持ちます。Spinnerは寸法と配色を独立して選び、`labelVisibility="hidden"`でも読み上げ名を保持します。Badgeの`glass`は画像上の透過ラベル、`sticker`は傾けた強調、`stamp`は押印状の強調、`translucent`は濃い背景上の補足を表します。これらの固有の配色へ`tone`を重ねず、状態に応じた色は標準外観の`tone`で指定します。配置方向は親のPatternに従います。Badgeの`annotation`は画像上の対象などへ付ける、等幅書体の短い注釈です。Badgeは状態の補足に使い、`shape="rounded"`は浅い角丸、`highlight`は黄色の強調を選びます。StatusLabelは丸と文言を横に揃え、`appearance="badge"`では背景付きの補足として表示します。丸は文字グリフを使わず、状態の文字色と識別色を別のSemantic Tokenで持ちます。状態の判定は利用側の責務です。Avatarの代替文字は表示用書体で揃え、代替文字・補足アイコン・配色・外周の強調は公開propsで指定し、名前や認証サービスとの対応付けは利用側が担当します。`status`は待機・処理中・完了・未完了の視覚表現を受け、実際の状態判定と状態を説明する文言は利用側に置きます。AvatarGroupの`expanded`は横にスクロールできる状態一覧、既定の`compact`はヘッダーなどの短い一覧です。compactの名前と状態は一覧自身の利用可能幅に応じて省略し、expandedでは維持します。一覧自身もキーボードフォーカスを受け、横にはみ出した項目へ移動できます。項目の`state`は待機・処理中・完了、`value`は数値、`marker`は短い補足を受けます。人数や並べ替え、進行の判定は持ちません。
 
 SegmentedControlの`appearance`は選択肢の形、`enclosure`は選択肢全体を包む面と輪郭を選びます。`enclosure="outlined"`は白い面と輪郭を持ち、選択肢自身の選択状態とは独立しています。StatGroupは集計値専用のText Styleで数値を表示し、幅に応じて項目の列数を減らします。順位の短い表記にはTextの`numeric.rank`を使います。
 
@@ -131,13 +131,15 @@ Carouselは重ねたスライドをtransformで配置するため、スクロー
 
 Comparisonは画像とキャプションを別の行として揃え、説明の長さで画像の位置をずらしません。画像自身が比率を持ち、比較欄は画像の比率や説明の高さを仮定して寸法を逆算しません。内容で高さが決まる領域にサイズ包含を使いません。Workspaceは自身の幅と文字サイズに応じて編集・比較領域を横並びから縦並びへ切り替えます。ヘッダーと本文は、横に並べるために必要な幅を同じコンテナ条件で判定します。短い横長画面では、本文が成立する幅を確保したうえで編集・比較領域を横に並べます。ロゴの縮小は、本文の段組みとは別に狭い幅や低い高さに応じて行います。狭く高さのある画面では比較欄の内容に必要な高さを確保し、その下の領域へ編集欄を配置します。編集欄を本文の上へ重ねたり、その高さを余白で補いません。短い画面や内容が収まらない場合は文書の流れでスクロールでき、固定高の外へ内容だけをはみ出させません。ComparisonStageは自身の利用可能な幅に応じて、2つの比較対象の間に本文を置く構成から、比較対象を上段・本文を下段へ置く構成に切り替えます。Podiumは項目が1つや2つでも先頭を中央に保ち、次点を左・右へ配置します。MediaとPodium、RecordList、ThumbnailListの各項目は`entering`を指定したときだけ登場を再生します。新しく追加された項目か、再読み込みで復元した項目かの判断は利用側が持ちます。RecordListの登場は待機時間を持たず、結果発表の待ち時間と各行の開始順序は機能側のVisualが所有します。ThumbnailListは用途を固定せず、一覧とスクロール領域の読み上げ名を`label`で受けます。
 
-Noticeは`title`・説明・任意の`icon`と`actions`をまとめます。`tone`は通常の案内・補足・成功、`density`は情報の密度を選びます。操作が本文を圧迫する幅では、その操作を次の行へ配置します。保存・認証などの状態判断、文言、遷移先は利用側が持ちます。
+Button・IconButton・ProviderButton・FileButtonの`loading`は処理待ちを表し、通常の色・影・フォーカスを維持したまま再実行を止めます。`disabled`は入力条件不足や権限などによる操作不可を表し、無効色とnative disabledを使います。処理待ちを`disabled`へ混ぜず、両方指定された場合は操作不可を優先します。認証ボタンのように別の操作を待つ場合も`aria-busy`で共通の待機処理を使えます。待機の開始・終了は利用側、クリック・キーボード・送信の抑止と状態のARIA表現は共通部品が担当します。
+
+Noticeは説明・任意の`title`・`icon`と`actions`をまとめます。短い通知は見出しなしで示せます。`tone`は通常の案内・補足・成功・失敗、`density`は情報の密度を選びます。操作が本文を圧迫する幅では、その操作を次の行へ配置します。保存・認証などの状態判断、文言、遷移先は利用側が持ちます。
 
 DataTableは列見出しと行データを表として関連付け、`rowHeader`を指定した列を行見出しにします。幅が足りない場合は表自身をキーボードでも横スクロールでき、ページ全体をはみ出させません。データの取得・並べ替え・操作の意味は利用側が持ちます。
 
 OutputPanelは濃い背景の見出しと内容を分け、長い出力をキーボードでもスクロールできる領域へ収めます。OutputTagsはタグ群を利用可能な幅に応じて並べ、ラベル・値・強調状態を受けます。値の計算や逐次表示の時刻は利用側が持ちます。Meterの`appearance="inverse"`は濃い背景に合わせた外観を選びます。
 
-TokenInputはArk Comboboxで候補の開閉・ハイライト・画面内への追従・ARIAを管理します。Enterと前進するTabは表示中の候補を確定し、Shift+Tabは前の操作へ移動します。候補がなければEnterで入力の確定を通知します。Escapeで閉じた後は再入力で開き、IME変換中のキーを候補操作へ流用しません。確定済みの語句・重み・辞書・構文は利用側が持ち、AdjustableTokenは編集と増減を通知します。TagsInputの値管理は持ち込みません。
+TokenInputはArk Comboboxで候補の開閉・ハイライト・画面内への追従・ARIAを管理します。Enterと前進するTabは表示中の候補を確定し、Shift+Tabは前の操作へ移動します。候補がなければEnterで入力の確定を通知します。Escapeで閉じた後は再入力で開きます。IME変換中のEnterは入力の確定・候補の選択・送信として扱いません。変換中に前進するTabで候補を選んだ場合は、変換終了を待って候補の採用を通知します。確定済みの語句・重み・辞書・構文は利用側が持ち、AdjustableTokenは編集と増減を通知します。TagsInputの値管理は持ち込みません。`commitOnBlur`を指定した場合はフォーカスを離れると入力の確定を通知します。`onSubmitShortcut`は修飾キー付きEnterを候補選択と分けて通知し、実際の送信可否は利用側で判断します。候補の読み上げ名は文字列の`label`で保ち、表示の強調や補足は`labelContent`・`detail`で受けます。`font`は通常書体とコード書体を選び、AdjustableTokenの`valueLabel`は値の読み上げ表現を受けます。
 
 ### Ark UIとの対応
 
@@ -154,7 +156,7 @@ Animic側でスロット名を定義し、React実装で対応するArk UIの要
 | `token-input`       | Combobox               | 入力と候補の状態・選択・読み上げ。確定済み語句の管理は利用側に残す                                                               |
 | `toast`             | Toaster・Toast・Portal | `viewport`へToaster。内部の位置情報をAnimicのCSS変数へ対応付け、重なり順はSemantic Tokenを優先                                   |
 
-ArkのAnatomy・型・状態変更の詳細情報を公開APIにしません。Toastの配置余白と重なり順もRecipeに置き、safe-areaと余白の大きい方を使用します。ToastのReact実装はPortalのテキスト方向（LTR・RTL）に応じて物理方向のsafe-areaを論理方向へ対応付け、祖先の方向指定の変更にも追従します。ToastではArkのインラインスタイルによる位置・z-index指定を除外します。Popoverの位置計算はArkを使い、z-indexはSemantic Tokenを優先します。
+ArkのAnatomy・型・状態変更の詳細情報を公開APIにしません。Toastの配置余白と重なり順もRecipeに置き、safe-areaと余白の大きい方を使用します。Toastは画面下の中央に置きます。React実装はPortalの書字方向に応じて下端（block-end）に当たる物理方向のsafe-areaを対応付け、祖先の方向指定の変更にも追従します。ToastではArkのインラインスタイルによる位置・z-index指定を除外します。Popoverの位置計算はArkを使い、z-indexはSemantic Tokenを優先します。
 
 ### UIからの利用
 
@@ -170,11 +172,7 @@ React UIは`@animic/react`の公開サブパスからComponentを組み合わせ
 
 ### レスポンシブと操作状態
 
-##### 機能固有のVisual
-
-アートワークやMotionなど、通常UIと異なる表現の責務をVisualとして区別します。業務状態に基づく文言・入力・操作・アクセシビリティは通常UIに置き、Visualへ移して公開APIの制約を迂回しません。共通の外観と操作はDesign System、固有の絵柄や演出は利用側が所有します。Layer・Overlayなどの公開APIは、この区別を保ちながら内容を組み合わせるためのものです。
-
-### レスポンシブ
+#### レスポンシブ
 
 レスポンシブデザインの`base`は条件のない既定値です。特定の端末を意味しません。ブレークポイントの追加・変更もデザイン判断として扱い、アプリケーションUIで任意のメディアクエリを追加しません。
 

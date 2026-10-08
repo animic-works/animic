@@ -105,3 +105,36 @@ test("拡縮した領域でも両軸の端を揃え、RTLでは左下の角を�
     }
   }
 });
+
+test("スクロールバーは待機中に消え、端への移動・ページ送り・キーボード操作で使える", async ({
+  page,
+}) => {
+  await page.goto("/iframe.html?id=controls--inputs&viewMode=story");
+  const input = page.getByRole("textbox", { name: "説明", exact: true });
+  await input.fill(Array.from({ length: 40 }, (_, i) => `入力の${i + 1}行目`).join("\n"));
+  const bar = page.getByRole("scrollbar", { name: "入力内容（縦スクロール）" });
+  await input.evaluate((node) => node.scrollTo({ top: 0, behavior: "instant" }));
+  await page.mouse.move(0, 0);
+  await expect(bar).toHaveCSS("opacity", "0");
+  await expect(bar).toHaveCSS("pointer-events", "none");
+  const track = (await bar.boundingBox())!;
+  const point = { x: track.x + track.width / 2, y: track.y + track.height - 4 };
+  expect(
+    await page.evaluate(
+      ({ x, y }) => document.elementFromPoint(x, y)?.closest('[role="scrollbar"]') !== null,
+      point,
+    ),
+  ).toBe(false);
+  await page.mouse.move(point.x, point.y);
+  await expect(bar).toHaveCSS("opacity", "1");
+  await page.mouse.click(point.x, point.y);
+  await expect.poll(() => input.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
+  await page.mouse.move(0, 0);
+  await input.focus();
+  await expect(bar).toHaveCSS("opacity", "0");
+  await bar.press("Home");
+  await expect.poll(() => input.evaluate((node) => node.scrollTop)).toBe(0);
+  await expect(bar).toHaveCSS("opacity", "1");
+  await bar.press("PageDown");
+  await expect.poll(() => input.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
+});

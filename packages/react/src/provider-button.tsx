@@ -1,3 +1,4 @@
+import { buttonState, blockButtonEvent } from "./button-state";
 import type { MouseEventHandler, ReactNode } from "react";
 import { providerButton, spinner } from "@animic/styled-system/recipes";
 import type { CommonProps } from "./dom";
@@ -12,15 +13,17 @@ export interface ProviderButtonProps extends CommonProps<HTMLButtonElement> {
 }
 
 export function ProviderButton({ ref, ...props }: ProviderButtonProps) {
+  const state = buttonState(props);
   return (
     <button
       {...domProps(props)}
       ref={ref}
       type="button"
       className={providerButton({ provider: props.provider })}
-      disabled={props.disabled || props.loading}
-      aria-busy={props.loading || undefined}
-      onClick={props.onClick}
+      {...state.attributes}
+      onClick={(event) => {
+        if (!blockButtonEvent(event, state.blocked)) props.onClick?.(event);
+      }}
     >
       {props.loading ? <span aria-hidden="true" className={spinner()} /> : props.icon}
       <span>{props.children}</span>

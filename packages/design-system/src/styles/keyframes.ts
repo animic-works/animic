@@ -1,5 +1,11 @@
 import { defineKeyframes } from "@pandacss/dev";
 export const keyframes = defineKeyframes({
+  fadeIn: { from: { opacity: 0 }, to: { opacity: 1 } },
+  fadeOut: { from: { opacity: 1 }, to: { opacity: 0 } },
+  dialogEnter: {
+    from: { opacity: 0, transform: "scale(0.96)" },
+    to: { opacity: 1, transform: "scale(1)" },
+  },
   mediaEnter: { from: { transform: "scale(1.12)" }, to: { transform: "none" } },
   thumbnailEnter: {
     from: { opacity: 0, transform: "scale(0.5) rotate(-12deg)" },

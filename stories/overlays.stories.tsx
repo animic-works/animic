@@ -28,6 +28,10 @@ function Notifications() {
     </Button>
   );
 }
+function ShortNotification() {
+  const toast = useToast();
+  return <Button onClick={() => toast.show({ title: "保存しました" })}>短い通知を表示</Button>;
+}
 function Example({
   initialOpen = false,
   presentation,
@@ -135,6 +139,18 @@ export const WithoutDescription: Story = {
   ),
 };
 
+export const Toasts: Story = {
+  render: () => (
+    <ToastProvider>
+      <Container size="reading">
+        <Cluster>
+          <ShortNotification />
+          <Notifications />
+        </Cluster>
+      </Container>
+    </ToastProvider>
+  ),
+};
 export const FullscreenDialog: Story = {
   render: () => (
     <Dialog
@@ -155,6 +171,52 @@ export const FullscreenDialog: Story = {
       <svg width="100%" height="100%" aria-hidden="true">
         <rect width="100%" height="100%" fill="#ff2d87" />
       </svg>
+    </Dialog>
+  ),
+};
+
+export const ExpandedHeaderDialog: Story = {
+  render: () => (
+    <Dialog
+      open
+      onOpenChange={() => {}}
+      title="候補を選択"
+      headerActions={<Input aria-label="候補を検索" />}
+      size="expanded"
+    >
+      <Text>候補の一覧</Text>
+    </Dialog>
+  ),
+};
+
+export const HeaderMediaDialog: Story = {
+  render: () => (
+    <Dialog
+      open
+      onOpenChange={() => {}}
+      title="ログインしてはじめよう"
+      description="ルームを作るには、ログインが必要です。"
+      size="compact"
+      presentation="centered"
+      headerMedia={
+        <svg viewBox="0 0 240 70" width="100%" height="70" role="img" aria-label="サービスのロゴ">
+          <text x="120" y="48" textAnchor="middle" fontSize="44">
+            Animic
+          </text>
+        </svg>
+      }
+      footer={
+        <Text as="p" variant="caption" align="center">
+          利用規約とプライバシーポリシーを確認して続行します。
+        </Text>
+      }
+    >
+      <Stack space="compact">
+        <Button shape="pill">Googleでログイン</Button>
+        <Button shape="pill" appearance="secondary">
+          Discordでログイン
+        </Button>
+      </Stack>
     </Dialog>
   ),
 };

@@ -2,11 +2,11 @@ import type { ReactNode } from "react";
 import { notice } from "@animic/styled-system/recipes";
 
 export interface NoticeProps {
-  title: ReactNode;
+  title?: ReactNode;
   children: ReactNode;
   icon?: ReactNode;
   actions?: ReactNode;
-  tone?: "primary" | "neutral" | "success";
+  tone?: "primary" | "neutral" | "success" | "danger";
   density?: "normal" | "compact";
 }
 export function Notice({ title, children, icon, actions, tone, density }: NoticeProps) {
@@ -19,7 +19,7 @@ export function Notice({ title, children, icon, actions, tone, density }: Notice
         </span>
       )}
       <div className={c.body}>
-        <div className={c.title}>{title}</div>
+        {title != null && <div className={c.title}>{title}</div>}
         <div className={c.description}>{children}</div>
       </div>
       {actions && <div className={c.actions}>{actions}</div>}

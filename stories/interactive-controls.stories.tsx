@@ -32,10 +32,13 @@ function EditingExample() {
   const [weight, setWeight] = useState(1);
   const [mode, setMode] = useState("text");
   const [quick, setQuick] = useState(false);
+  const [commitOnBlur, setCommitOnBlur] = useState(false);
+  const [submissions, setSubmissions] = useState(0);
   const suggestions = ["blue sky", "blue eyes", "pink hair"].filter(
     (word) => value && word.includes(value),
   );
   function add(word: string) {
+    if (!word.trim()) return;
     setTokens((current) => (current.includes(word) ? current : [...current, word]));
     setValue("");
   }
@@ -72,8 +75,21 @@ function EditingExample() {
             defaultValue="base"
           />
         }
-        tools={<Switch checked={quick} onCheckedChange={setQuick} label="確認を省略" />}
-        summary={<Text variant="caption">{tokens.length}語</Text>}
+        tools={
+          <>
+            <Switch checked={quick} onCheckedChange={setQuick} label="確認を省略" />
+            <Switch
+              checked={commitOnBlur}
+              onCheckedChange={setCommitOnBlur}
+              label="フォーカスを外したら確定"
+            />
+          </>
+        }
+        summary={
+          <Text variant="caption">
+            {tokens.length}語 / 送信{submissions}回
+          </Text>
+        }
         action={
           <Button onClick={() => add(value)} disabled={!value}>
             追加
@@ -82,14 +98,19 @@ function EditingExample() {
       >
         <TokenInput
           label="語句"
+          empty="候補がありません"
           value={value}
           onValueChange={setValue}
           onCommit={() => add(value)}
+          commitOnBlur={commitOnBlur}
+          font={mode === "tag" ? "code" : "body"}
+          onSubmitShortcut={() => setSubmissions((count) => count + 1)}
           onSuggestion={add}
           suggestions={suggestions.map((word) => ({
             value: word,
             label: word,
             description: "候補",
+            detail: "英語",
           }))}
         >
           {tokens.map((word) => (
@@ -148,8 +169,13 @@ function CollectionExample() {
               value={group}
               onValueChange={setGroup}
               options={[
-                { value: "all", label: "すべて" },
-                { value: "recent", label: "最近使ったもの" },
+                { value: "all", label: "すべて", markerTone: "ink", detail: words.length },
+                {
+                  value: "recent",
+                  label: "最近使ったもの",
+                  markerTone: "pink",
+                  detail: selected.length,
+                },
               ]}
             />
           }
@@ -158,6 +184,11 @@ function CollectionExample() {
             <ChoiceCard
               key={word}
               label={word}
+              media={
+                <Text variant="caption" tone="muted">
+                  No Image
+                </Text>
+              }
               selected={selected.includes(word)}
               onSelect={() =>
                 setSelected((current) =>

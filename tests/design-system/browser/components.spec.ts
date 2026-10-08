@@ -11,6 +11,7 @@ const stories = [
   "controls--inputs",
   "controls--feedback",
   "overlays--dialog-and-toast",
+  "overlays--toasts",
   "overlays--without-description",
   "overlays--open-dialog",
 ];
@@ -119,15 +120,14 @@ test("Dialogのfocus trap・Escape・復帰・スクロール制限", async ({ p
   await expect(dialog).toBeHidden();
   await expect(trigger).toBeFocused();
 });
-test("ToastのSemantic積層と複数通知の配置・dismiss", async ({ page }) => {
-  await page.goto(
-    "/iframe.html?id=overlays--dialog-and-toast&viewMode=story&globals=a11y.manual:!true",
-  );
-  const trigger = page.getByRole("button", { name: "通知を表示" });
-  await trigger.click();
-  await trigger.click();
+test("Toastは画面下の中央に出し、次の通知で置き換えて時間で閉じる", async ({ page }) => {
+  await page.goto("/iframe.html?id=overlays--toasts&viewMode=story&globals=a11y.manual:!true");
   const notices = page.locator('[data-scope="toast"][data-part="root"]');
-  await expect(notices).toHaveCount(2);
+  const visible = page.locator('[data-scope="toast"][data-part="root"][data-state="open"]');
+  await page.getByRole("button", { name: "通知を表示", exact: true }).click();
+  await page.getByRole("button", { name: "短い通知を表示" }).click();
+  await expect(visible).toHaveCount(1);
+  await expect(visible).toContainText("保存しました");
   const region = page.locator('[data-scope="toast"][data-part="group"]');
   await expect(region).toHaveCSS("z-index", "20");
   await expectAccessible(
@@ -135,12 +135,14 @@ test("ToastのSemantic積層と複数通知の配置・dismiss", async ({ page }
       .include('[data-scope="toast"][data-part="group"]')
       .withTags(["wcag2a", "wcag2aa", "wcag21aa"]),
   );
-  const boxes = await notices.evaluateAll((nodes) =>
-    nodes.map((n) => n.getBoundingClientRect().toJSON()),
-  );
-  expect(Math.abs(boxes[0].top - boxes[1].top)).toBeGreaterThanOrEqual(boxes[0].height);
-  await page.getByRole("button", { name: "通知を閉じる" }).first().click();
-  await expect(notices).toHaveCount(1);
+  const box = await visible.boundingBox();
+  const viewport = page.viewportSize();
+  expect(box && viewport).toBeTruthy();
+  if (box && viewport) {
+    expect(box.x + box.width / 2).toBeCloseTo(viewport.width / 2, 0);
+    expect(box.y + box.height).toBeGreaterThan(viewport.height / 2);
+  }
+  await expect(notices).toHaveCount(0, { timeout: 5000 });
 });
 test("Primary state・focus・reduced motion", async ({ page }) => {
   await page.goto("/iframe.html?id=controls--buttons&viewMode=story");
@@ -210,12 +212,11 @@ for (const story of [
   });
 }
 
-for (const name of ["利用できません", "処理中です", "削除できません"]) {
+for (const name of ["利用できません", "削除できません"]) {
   test(`${name}: disabledの色とhover・pressed抑制`, async ({ page }) => {
     await page.goto("/iframe.html?id=controls--buttons&viewMode=story");
     const button = page.getByRole("button", { name, exact: true });
     await expect(button).toBeDisabled();
-    if (name === "処理中です") await expect(button).toHaveAttribute("aria-busy", "true");
     for (const state of ["default", "hover", "pressed"]) {
       if (state === "hover") await button.hover();
       if (state === "pressed") {
@@ -319,4 +320,120 @@ test("Fieldがid・ラベル・説明・エラーの関連付けを管理する"
       .include("main")
       .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]),
   );
+});
+
+for (const story of ["overlays--expanded-header-dialog", "overlays--hidden-title-with-actions"]) {
+  for (const viewport of [
+    { width: 1440, height: 900 },
+    { width: 900, height: 900 },
+    { width: 390, height: 844 },
+    { width: 844, height: 390 },
+  ]) {
+    test(`Dialogの検索欄と閉じる操作は重ならない: ${story} ${viewport.width}x${viewport.height}`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(viewport);
+      await page.goto(`/iframe.html?id=${story}&viewMode=story`);
+      const search = page.getByRole("textbox", { name: "候補を検索" });
+      const close = page.getByRole("button", { name: "閉じる", exact: true });
+      await expect(search).toBeVisible();
+      await expect(close).toBeVisible();
+      const inputBounds = (await search.boundingBox())!;
+      const closeBounds = (await close.boundingBox())!;
+      const overlaps =
+        inputBounds.x < closeBounds.x + closeBounds.width &&
+        inputBounds.x + inputBounds.width > closeBounds.x &&
+        inputBounds.y < closeBounds.y + closeBounds.height &&
+        inputBounds.y + inputBounds.height > closeBounds.y;
+      expect(overlaps).toBe(false);
+      await search.fill("候補");
+      await expect(search).toHaveValue("候補");
+    });
+  }
+}
+
+for (const viewport of [
+  { width: 1440, height: 900 },
+  { width: 390, height: 844 },
+  { width: 667, height: 320 },
+]) {
+  test(`Dialogの見出し前の画像・操作・補足が順序と中央配置を維持する ${viewport.width}x${viewport.height}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(viewport);
+    await page.goto("/iframe.html?id=overlays--header-media-dialog&viewMode=story");
+    const dialog = page.getByRole("dialog", { name: "ログインしてはじめよう" });
+    const logo = dialog.getByRole("img", { name: "サービスのロゴ" });
+    const title = dialog.getByRole("heading", { name: "ログインしてはじめよう" });
+    await expect(dialog).toBeVisible();
+    const logoBox = await logo.boundingBox();
+    const titleBox = await title.boundingBox();
+    const dialogBox = await dialog.boundingBox();
+    if (!logoBox || !titleBox || !dialogBox) throw new Error("Dialogの配置を取得できません。");
+    const closeBox = await dialog
+      .getByRole("button", { name: "閉じる", exact: true })
+      .boundingBox();
+    if (!closeBox) throw new Error("閉じる操作の配置を取得できません。");
+    expect(closeBox.y + closeBox.height).toBeLessThanOrEqual(logoBox.y);
+    expect(logoBox.y + logoBox.height).toBeLessThanOrEqual(titleBox.y);
+    expect(
+      Math.abs(titleBox.x + titleBox.width / 2 - (dialogBox.x + dialogBox.width / 2)),
+    ).toBeLessThan(1);
+    await expect(title).toHaveCSS("padding-left", "0px");
+    expect(
+      await title.evaluate((element) => {
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        return range.getClientRects().length;
+      }),
+    ).toBe(1);
+    expect(await dialog.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(
+      true,
+    );
+    const action = dialog.getByRole("button", { name: "Discordでログイン" });
+    await action.focus();
+    await expect(action).toBeInViewport();
+    await dialog
+      .getByText("利用規約とプライバシーポリシーを確認して続行します。")
+      .scrollIntoViewIfNeeded();
+    await expect(
+      dialog.getByText("利用規約とプライバシーポリシーを確認して続行します。"),
+    ).toBeInViewport();
+    await expect(dialog).toHaveAttribute("aria-describedby");
+  });
+}
+
+test("処理中の共通ボタンは外観とフォーカスを保ち再実行を止める", async ({ page }) => {
+  await page.goto("/iframe.html?id=controls--pending-buttons&viewMode=story");
+  let count = 0;
+  for (const name of ["保存", "追加", "認証"]) {
+    const action = page.getByRole("button", { name, exact: true });
+    await action.hover();
+    await action.evaluate((element) =>
+      Promise.all(element.getAnimations().map((animation) => animation.finished)),
+    );
+    const colors = await action.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return [style.backgroundColor, style.color, style.boxShadow];
+    });
+    await action.click();
+    count++;
+    await expect(action).toBeFocused();
+    await expect(action).toHaveAttribute("aria-busy", "true");
+    await expect(action).toHaveAttribute("aria-disabled", "true");
+    await expect(action).not.toHaveAttribute("disabled");
+    expect(
+      await action.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return [style.backgroundColor, style.color, style.boxShadow];
+      }),
+    ).toEqual(colors);
+    await action.click({ force: true });
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("Space");
+    await expect(page.getByText(`実行回数: ${count}`, { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "条件不足" })).toBeDisabled();
+    await page.getByRole("button", { name: "待機を解除" }).click();
+    await expect(action).not.toHaveAttribute("aria-busy", "true");
+  }
 });

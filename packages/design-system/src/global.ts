@@ -1,5 +1,6 @@
 import { defineGlobalStyles } from "@pandacss/dev";
 export const globalCss = defineGlobalStyles({
+  ":where(html:has([data-animic-root]))": { WebkitTapHighlightColor: "transparent" },
   ":where(html:is([data-animic-scrollbars=pending], [data-animic-scrollbars=ready]), html:is([data-animic-scrollbars=pending], [data-animic-scrollbars=ready]) [data-animic-scroll-viewport])":
     {
       scrollbarWidth: "none",

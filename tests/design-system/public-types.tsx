@@ -1,3 +1,5 @@
+import { Notice } from "@animic/react/notice";
+import { ChoiceCard } from "@animic/react/choice-card";
 import { FileButton } from "@animic/react/file-button";
 import { createRef } from "react";
 import { Lead } from "@animic/react/lead";
@@ -183,7 +185,7 @@ grid({ columns: "2", gridTemplateColumns: "1fr 2fr" });
 // ボタン型リンクは同じ外観を持つが、操作ではなく遷移として扱う。
 import { ButtonLink } from "@animic/react/link";
 import { ThumbnailList } from "@animic/react/thumbnail-list";
-import { TokenInput } from "@animic/react/token-input";
+import { TokenInput, AdjustableToken } from "@animic/react/token-input";
 <ButtonLink href="/" appearance="primary" size="hero" shape="pill" prominence="raised">
   ホームへ
 </ButtonLink>;
@@ -306,3 +308,87 @@ const tableColumns: DataTableColumn<{ id: string; count: number }>[] = [
   onFiles={(_files: File[]) => {}}
   onFile={(_file: File) => {}}
 />;
+
+<TokenInput
+  label="語句"
+  value=""
+  font="code"
+  commitOnBlur
+  suggestions={[
+    {
+      value: "sky",
+      label: "空",
+      labelContent: <strong>空</strong>,
+      description: <span>sky</span>,
+      detail: "背景",
+    },
+  ]}
+  onValueChange={() => {}}
+  onCommit={() => {}}
+  onSuggestion={() => {}}
+  onSubmitShortcut={() => {}}
+>
+  <AdjustableToken
+    label="sky"
+    valueLabel="重み 1.0"
+    font="code"
+    onEdit={() => {}}
+    onIncrease={() => {}}
+    onDecrease={() => {}}
+  />
+</TokenInput>;
+<TokenInput
+  label="語句"
+  value=""
+  suggestions={[]}
+  onValueChange={() => {}}
+  onCommit={() => {}}
+  onSuggestion={() => {}}
+  // @ts-expect-error 入力の書体は用途の選択肢に限定する。
+  font="serif"
+>
+  語句
+</TokenInput>;
+
+<ChoiceCard label="候補" media={<Text>画像なし</Text>} selected={false} onSelect={() => {}}>
+  候補
+</ChoiceCard>;
+<SegmentedControl
+  label="カテゴリ"
+  appearance="list"
+  options={[
+    {
+      value: "all",
+      label: "すべて",
+      markerTone: "ink",
+      leadingIcon: <span>□</span>,
+      detail: <Badge>3</Badge>,
+    },
+  ]}
+/>;
+
+// @ts-expect-error メディアの内容はsrcとmediaの片方だけで指定する。
+<ChoiceCard
+  label="候補"
+  src="/image.png"
+  media={<Text>画像なし</Text>}
+  selected={false}
+  onSelect={() => {}}
+>
+  候補
+</ChoiceCard>;
+
+<Dialog
+  open
+  onOpenChange={() => {}}
+  title="確認"
+  headerMedia={<Text>サービス</Text>}
+  size="compact"
+  presentation="centered"
+>
+  <Text>説明</Text>
+</Dialog>;
+
+<Notice tone="danger" density="compact">
+  操作を完了できませんでした。
+</Notice>;

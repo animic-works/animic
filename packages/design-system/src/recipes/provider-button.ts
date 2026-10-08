@@ -1,10 +1,10 @@
 import { defineRecipe } from "@pandacss/dev";
-import { control, enabled } from "./control";
+import { buttonControl, buttonAvailable } from "./control";
 
 export const providerButton = defineRecipe({
   className: "provider-button",
   base: {
-    ...control,
+    ...buttonControl,
     display: "grid",
     gridTemplateColumns: "1.5rem 1fr 1.5rem",
     alignItems: "center",
@@ -15,7 +15,7 @@ export const providerButton = defineRecipe({
     borderRadius: "full",
     textStyle: "label",
     "& > svg": { width: "1.4rem", height: "1.4rem" },
-    [enabled]: {
+    [buttonAvailable]: {
       _hover: { transform: "translateY(-2px)" },
       _active: { transform: "translateY(1px)" },
       _motionReduce: {
@@ -27,10 +27,14 @@ export const providerButton = defineRecipe({
   variants: {
     provider: {
       google: {
-        [enabled]: { background: "bg.surface", color: "fg.default", borderColor: "border.default" },
+        [buttonAvailable]: {
+          background: "bg.surface",
+          color: "fg.default",
+          borderColor: "border.default",
+        },
       },
       discord: {
-        [enabled]: {
+        [buttonAvailable]: {
           background: "brand.discord",
           color: "fg.inverse",
           borderColor: "brand.discord",

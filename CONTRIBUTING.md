@@ -162,7 +162,7 @@ vp run check
 
 `vp run storybook`は`http://localhost:6006`でComponentと状態を確認するStorybookを起動します。`vp run storybook:build`で静的出力を作り、`vp run storybook:preview`で確認できます。アプリ用のCloudflare・ルーティング設定は読み込まず、React Compilerと同じワークスペース内のパッケージを使用します。フォントはローカルの依存パッケージから配信し、外部フォントサーバーへ依存しません。
 
-`vp run test:design-system:browser`はStorybookのビルド・起動とPlaywrightを実行します。既存のローカルサーバーは開発時だけ再利用し、CIでは必ずビルドから実行します。ARIAの関連付け、キーボード操作、Dialogのフォーカストラップ・フォーカスの復帰、Toastの重なり、reduced motion設定、文字拡大を検証します。axeによるWCAG A・AAの自動検査を含みますが、スクリーンリーダーによる確認や人間の使いやすさの評価を置き換えません。承認済みの配色は[コントラストの扱い](docs/design.md#コントラストの扱い)に従い、`expectAccessible`で判定します。許容した検出結果は`accepted-text-contrast`添付に残るため、テストの成功をWCAG適合と読み替えません。Storybookのアクセシビリティパネルには元の検出結果を表示します。
+`vp run test:design-system:browser`はStorybookのビルド・起動とPlaywrightを実行します。既存のローカルサーバーは開発時だけ再利用し、CIでは必ずビルドから実行します。ARIAの関連付け、キーボード操作、Dialogのフォーカストラップ・フォーカスの復帰、Toastの配置・置き換え・時間による消去、reduced motion設定、文字拡大を検証します。axeによるWCAG A・AAの自動検査を含みますが、スクリーンリーダーによる確認や人間の使いやすさの評価を置き換えません。承認済みの配色は[コントラストの扱い](docs/design.md#コントラストの扱い)に従い、`expectAccessible`で判定します。許容した検出結果は`accepted-text-contrast`添付に残るため、テストの成功をWCAG適合と読み替えません。Storybookのアクセシビリティパネルには元の検出結果を表示します。
 
 画像比較テストのベースライン画像は`tests/design-system/browser/snapshots/linux/`で管理します。Playwrightが指定するChrome for Testingを`channel: "chromium"`で起動し、ビューポート・ロケールを固定してフォントの読み込みを待ちます。Headless Shellとは文字描画が異なるため混用しません。画像比較はLinux上で実行・更新し、CIでも必ず実行します。Linux以外では画像比較だけをスキップし、操作・アクセシビリティ等のテストは実行します。更新時は意図した表示変更であることを画像で確認します。差分を消すためだけにベースライン画像を更新しません。
 

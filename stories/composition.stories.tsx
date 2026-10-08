@@ -571,6 +571,9 @@ export const Notices: Story = {
         <Notice tone="neutral" density="compact" title="説明を確認する" icon="i">
           関連する操作と補足情報をまとめて案内します。
         </Notice>
+        <Notice tone="danger" density="compact">
+          操作を完了できませんでした。もう一度お試しください。
+        </Notice>
         <ActionGroup layout="responsive" align="center">
           <Button shape="pill">続ける</Button>
           <Button appearance="inverse" shape="pill">

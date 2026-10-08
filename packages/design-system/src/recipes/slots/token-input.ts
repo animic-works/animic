@@ -13,8 +13,18 @@ export const tokenInput = defineSlotRecipe({
     "label",
     "actions",
     "adjustment",
+    "empty",
+    "shortcut",
   ],
   base: {
+    empty: { padding: "3", color: "fg.muted", textStyle: "caption" },
+    shortcut: {
+      border: "1px solid token(colors.border.default)",
+      borderRadius: "1",
+      paddingInline: "1",
+      textStyle: "caption",
+      color: "fg.muted",
+    },
     root: {
       position: "relative",
       display: "flex",
@@ -146,6 +156,10 @@ export const tokenInput = defineSlotRecipe({
     },
   },
   variants: {
+    font: {
+      body: {},
+      code: { input: { textStyle: "code" }, label: { textStyle: "code" } },
+    },
     emphasis: {
       normal: {},
       strong: { token: { background: "bg.accent.primary", borderColor: "accent.primary" } },

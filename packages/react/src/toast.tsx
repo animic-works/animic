@@ -1,11 +1,11 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { createContext, useContext, useState } from "react";
 import { createToaster, Toaster, Toast as ArkToast } from "@ark-ui/react/toast";
 import { Portal } from "@ark-ui/react/portal";
-import { cx } from "@animic/styled-system/css";
-import { toast, iconButton } from "@animic/styled-system/recipes";
+import { toast } from "@animic/styled-system/recipes";
 export interface ToastMessage {
   title: string;
+  /** 理由や次の操作。あるときは読む時間を取るため長く表示する。 */
   description?: string;
 }
 export interface ToastController {
@@ -13,28 +13,17 @@ export interface ToastController {
   dismiss: (id: string) => void;
 }
 const ToastContext = createContext<ToastController | null>(null);
-// safe-areaの環境変数は物理方向なので、Portalの書字方向から論理方向へ対応付ける。
+const duration = { title: 2200, description: 4400 };
+// safe-areaの環境変数は物理方向なので、Portalの書字方向から下端（block-end）の方向を対応付ける。
 function toastViewport(node: HTMLDivElement | null) {
   if (!node) return undefined;
   const updateSafeArea = () => {
-    const { writingMode, direction } = getComputedStyle(node);
-    const rtl = direction === "rtl";
-    const vertical = writingMode !== "horizontal-tb";
-    const blockStart = vertical ? (writingMode.endsWith("-rl") ? "right" : "left") : "top";
-    const inlineEnd = vertical
-      ? rtl !== (writingMode === "sideways-lr")
-        ? "top"
-        : "bottom"
-      : rtl
-        ? "left"
-        : "right";
+    const { writingMode } = getComputedStyle(node);
+    const blockEnd =
+      writingMode === "horizontal-tb" ? "bottom" : writingMode.endsWith("-rl") ? "left" : "right";
     node.style.setProperty(
-      "--animic-toast-safe-block-start",
-      `env(safe-area-inset-${blockStart}, 0px)`,
-    );
-    node.style.setProperty(
-      "--animic-toast-safe-inline-end",
-      `env(safe-area-inset-${inlineEnd}, 0px)`,
+      "--animic-toast-safe-block-end",
+      `env(safe-area-inset-${blockEnd}, 0px)`,
     );
   };
   updateSafeArea();
@@ -46,26 +35,20 @@ function toastViewport(node: HTMLDivElement | null) {
   return () => observer.disconnect();
 }
 export function ToastProvider({ children }: { children: ReactNode }) {
-  const [store] = useState(() =>
-    createToaster({
-      placement: "top-end",
-      max: 3,
-      overlap: false,
-      offsets: "var(--animic-toast-inset)",
-    }),
-  );
+  // 表示数の上限で1件に絞ると、表示中の通知にポインターが乗っている間（Arkはタイマーを止める）
+  // 次の通知が出ない。上限は既定のままにし、表示のたびに前の通知を閉じて置き換える。
+  const [store] = useState(() => createToaster({ placement: "bottom", overlap: true, gap: 8 }));
   const classes = toast();
-  const placement: CSSProperties & {
-    "--animic-toast-offset": string;
-    "--animic-toast-opacity": string;
-  } = {
-    top: undefined,
-    "--animic-toast-offset": "var(--y)",
-    "--animic-toast-opacity": "var(--opacity)",
-  };
   const controller: ToastController = {
-    show: (message) =>
-      store.create({ title: message.title, description: message.description, duration: Infinity }),
+    show: (message) => {
+      store.dismiss();
+      return store.create({
+        title: message.title,
+        description: message.description,
+        type: "info",
+        duration: message.description ? duration.description : duration.title,
+      });
+    },
     dismiss: (id) => store.dismiss(id),
   };
   return (
@@ -87,20 +70,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           className={classes.viewport}
         >
           {(message) => (
-            <ArkToast.Root style={placement} className={classes.root}>
+            <ArkToast.Root className={classes.root}>
               <ArkToast.Title className={classes.title}>{message.title}</ArkToast.Title>
               {message.description && (
                 <ArkToast.Description className={classes.description}>
                   {message.description}
                 </ArkToast.Description>
               )}
-              <ArkToast.CloseTrigger
-                type="button"
-                className={cx(iconButton({ size: "sm" }), classes.close)}
-                aria-label="通知を閉じる"
-              >
-                ×
-              </ArkToast.CloseTrigger>
             </ArkToast.Root>
           )}
         </Toaster>

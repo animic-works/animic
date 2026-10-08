@@ -10,11 +10,11 @@ test("案内の操作は内容を覆わず、利用可能な幅に応じて次�
         const box = node.getBoundingClientRect();
         const content = node.querySelector(".animic-notice__body")!.getBoundingClientRect();
         const action = node.querySelector(".animic-notice__actions")?.getBoundingClientRect();
-        const icon = node.querySelector(".animic-notice__icon")!.getBoundingClientRect();
+        const icon = node.querySelector(".animic-notice__icon")?.getBoundingClientRect();
         return {
           contained: !action || (action.right <= box.right && action.bottom <= box.bottom),
           separate: !action || content.right <= action.left || content.bottom <= action.top,
-          iconNextToContent: icon.right <= content.left,
+          iconNextToContent: !icon || icon.right <= content.left,
           wrapped: !!action && content.bottom <= action.top,
         };
       });

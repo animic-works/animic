@@ -94,7 +94,7 @@ test("PortalのDialog・Toastへfont-synthesisとbox sizingを適用する", asy
     "none",
   );
   expect(await dialog.evaluate((node) => node.closest("[data-animic-root]"))).toBeNull();
-  await dialog.getByRole("button", { name: "通知を表示" }).click();
+  await dialog.getByRole("button", { name: "通知を表示", exact: true }).click();
   const toast = page.locator('[data-scope="toast"][data-part="root"]');
   await expect(toast).toHaveCSS("font-synthesis", "none");
   await expect(toast.locator('[data-part="description"]')).toHaveCSS("font-synthesis", "none");
@@ -105,37 +105,35 @@ test("PortalのDialog・Toastへfont-synthesisとbox sizingを適用する", asy
   }
 });
 
-test("Toastのsafe-areaはmount後のLTR・RTL変更にも追従する", async ({ page }) => {
+test("Toastは下端のsafe-areaを避け、LTR・RTLの変更後も中央に置く", async ({ page }) => {
   const session = await page.context().newCDPSession(page);
   await session.send("Emulation.setSafeAreaInsetsOverride", {
-    insets: { top: 40, left: 60, right: 25, bottom: 0 },
+    insets: { top: 0, left: 60, right: 25, bottom: 40 },
   });
-  await page.goto("/iframe.html?id=overlays--dialog-and-toast&viewMode=story");
-  await page.getByRole("button", { name: "通知を表示" }).click();
+  await page.goto("/iframe.html?id=overlays--toasts&viewMode=story");
+  await page.getByRole("button", { name: "通知を表示", exact: true }).click();
   const viewport = page.locator('[data-scope="toast"][data-part="group"]');
   const notice = page.locator('[data-scope="toast"][data-part="root"]');
   await expect(viewport).toHaveCSS("z-index", "20");
   expect(await viewport.evaluate((node) => node.style.zIndex)).toBe("");
+  const size = page.viewportSize()!;
   for (const direction of ["ltr", "rtl", "ltr"]) {
     await page.evaluate((dir) => {
       document.documentElement.dir = dir;
     }, direction);
-    const inset = direction === "rtl" ? 60 : 25;
-    await expect(viewport).toHaveCSS("inset-block-start", "40px");
-    await expect(viewport).toHaveCSS("inset-inline-end", `${inset}px`);
+    await expect(viewport).toHaveCSS("inset-block-end", "40px");
+    // 登場の動きが終わった位置で確かめる。
+    await expect
+      .poll(async () => {
+        const rect = await notice.boundingBox();
+        return rect && Math.round(size.height - rect.y - rect.height);
+      })
+      .toBe(40);
     const rect = await notice.boundingBox();
-    expect(rect).not.toBeNull();
-    if (rect) {
-      expect(rect.y).toBeCloseTo(40, 0);
-      expect(direction === "rtl" ? rect.x : 1000 - rect.x - rect.width).toBeCloseTo(inset, 0);
-    }
+    expect(rect && rect.x + rect.width / 2).toBeCloseTo(size.width / 2, 0);
   }
   await session.send("Emulation.setSafeAreaInsetsOverride", {
-    insets: { top: 3, left: 5, right: 7, bottom: 0 },
+    insets: { top: 0, left: 5, right: 7, bottom: 3 },
   });
-  await expect(viewport).toHaveCSS("inset-block-start", "16px");
-  await expect(viewport).toHaveCSS("inset-inline-end", "16px");
-  await page.getByRole("button", { name: "通知を閉じる" }).focus();
-  await page.keyboard.press("Enter");
-  await expect(notice).toHaveCount(0);
+  await expect(viewport).toHaveCSS("inset-block-end", "16px");
 });

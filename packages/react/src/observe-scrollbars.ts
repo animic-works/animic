@@ -189,15 +189,33 @@ export function observeScrollbars(
       schedule();
     }
   };
+  const activate = () => {
+    layer.setAttribute("data-active", "");
+    clearTimeout(idle);
+    idle = setTimeout(() => layer.removeAttribute("data-active"), 1000);
+  };
+  const approach = (event: PointerEvent) => {
+    if (event.pointerType === "touch" || !geometry || layer.hasAttribute("data-active")) return;
+    // 非表示のトラックは本文のポインター操作を遮らず、端へ近づいたときに操作可能にする。
+    const entered = tracks.some((track) => {
+      if (!track.hasAttribute("data-visible")) return false;
+      const rect = track.getBoundingClientRect();
+      return (
+        event.clientX >= rect.left &&
+        event.clientX <= rect.right &&
+        event.clientY >= rect.top &&
+        event.clientY <= rect.bottom
+      );
+    });
+    if (entered) activate();
+  };
   const scroll = (event: Event) => {
     if (event.target !== viewport && !(documentScroll && event.target === doc)) {
       if (!documentScroll) schedule();
       return;
     }
     paintPosition();
-    layer.setAttribute("data-active", "");
-    clearTimeout(idle);
-    idle = setTimeout(() => layer.removeAttribute("data-active"), 1000);
+    activate();
   };
   const resize = new ResizeObserver(update);
   resize.observe(viewport);
@@ -231,6 +249,7 @@ export function observeScrollbars(
   if (documentScroll)
     attributes.observe(doc.body, { attributes: true, attributeFilter: ["style"] });
   doc.addEventListener("scroll", scroll, true);
+  doc.addEventListener("pointermove", approach, { passive: true });
   doc.addEventListener("animationstart", motion, true);
   doc.addEventListener("transitionrun", motion, true);
   viewport.addEventListener("input", schedule);
@@ -257,6 +276,7 @@ export function observeScrollbars(
       content.disconnect();
       attributes.disconnect();
       doc.removeEventListener("scroll", scroll, true);
+      doc.removeEventListener("pointermove", approach);
       doc.removeEventListener("animationstart", motion, true);
       doc.removeEventListener("transitionrun", motion, true);
       viewport.removeEventListener("input", schedule);

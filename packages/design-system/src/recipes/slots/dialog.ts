@@ -1,4 +1,16 @@
 import { defineSlotRecipe, defineStyles } from "@pandacss/dev";
+const fadePresence = defineStyles({
+  animationDuration: "1",
+  animationTimingFunction: "standard",
+  animationFillMode: "both",
+  _open: { animationName: "fadeIn" },
+  _closed: { animationName: "fadeOut" },
+  _motionReduce: { animation: "none" },
+});
+const contentPresence = defineStyles({
+  ...fadePresence,
+  _open: { animationName: "dialogEnter", animationDuration: "2" },
+});
 const centered = defineStyles({
   alignSelf: "center",
   width: "calc(100% - 2 * token(spacing.5))",
@@ -8,7 +20,8 @@ const centered = defineStyles({
 });
 const centeredHeading = {
   content: defineStyles({
-    "--animic-dialog-title-start": "var(--animic-dialog-close-space, token(spacing.10))",
+    "--animic-dialog-title-start":
+      "var(--animic-dialog-close-space, calc(token(sizes.control.0) + token(spacing.3)))",
   }),
   title: defineStyles({ textAlign: "center" }),
   description: defineStyles({ textAlign: "center" }),
@@ -25,16 +38,27 @@ export const dialog = defineSlotRecipe({
     "close",
     "header",
     "headerActions",
+    "headerMedia",
     "footer",
   ],
   base: {
+    headerMedia: {
+      display: "grid",
+      placeItems: "center",
+      minWidth: 0,
+      marginBlockEnd: "5",
+      paddingBlockStart:
+        "max(0px, calc(token(sizes.control.0) + token(spacing.5) + token(spacing.3) - var(--animic-dialog-header-inset, var(--animic-dialog-padding, token(spacing.6)))))",
+    },
     header: {
       display: "flex",
       alignItems: "center",
       gap: "4",
       flexWrap: "wrap",
+      paddingInlineEnd:
+        "var(--animic-dialog-close-space, calc(token(sizes.control.0) + token(spacing.3)))",
     },
-    headerActions: { flex: "1 1 15rem", minWidth: 0, paddingInlineEnd: "7" },
+    headerActions: { flex: "1 1 15rem", minWidth: 0 },
     footer: {
       marginTop: "5",
       paddingTop: "4",
@@ -45,6 +69,7 @@ export const dialog = defineSlotRecipe({
       inset: 0,
       zIndex: "overlay",
       layerStyle: "overlay.scrim",
+      ...fadePresence,
       backdropFilter: "blur(3px)",
     },
     positioner: {
@@ -59,6 +84,7 @@ export const dialog = defineSlotRecipe({
       fontSize: "2",
     },
     content: {
+      ...contentPresence,
       // ダイアログ内ではアクションの装飾用の外縁・影を共通で抑える。
       "--animic-button-decoration-shadow": "none",
       boxSizing: "border-box",
@@ -82,7 +108,6 @@ export const dialog = defineSlotRecipe({
       flex: "1 1 auto",
       margin: "0",
       paddingInlineStart: "var(--animic-dialog-title-start, 0px)",
-      paddingInlineEnd: "var(--animic-dialog-close-space, token(spacing.10))",
       overflowWrap: "anywhere",
     },
     description: {
@@ -99,11 +124,27 @@ export const dialog = defineSlotRecipe({
     close: { position: "absolute", insetBlockStart: "5", insetInlineEnd: "5" },
   },
   variants: {
+    headerMedia: {
+      true: {
+        content: { "--animic-dialog-close-space": "0px", "--animic-dialog-title-start": "0px" },
+      },
+      false: {},
+    },
     appearance: {
       surface: {},
       transparent: {
-        scrim: { background: "transparent", backdropFilter: "none" },
-        content: { background: "transparent", boxShadow: "none" },
+        scrim: {
+          background: "transparent",
+          backdropFilter: "none",
+          _open: { animation: "none" },
+          _closed: { animation: "none" },
+        },
+        content: {
+          background: "transparent",
+          boxShadow: "none",
+          _open: { animation: "none" },
+          _closed: { animation: "none" },
+        },
       },
       immersive: {
         scrim: {
@@ -119,7 +160,13 @@ export const dialog = defineSlotRecipe({
         description: { color: "fg.inverse" },
       },
     },
-    closeButton: { true: {}, false: { content: { "--animic-dialog-close-space": "0px" } } },
+    closeButton: {
+      true: {},
+      false: {
+        content: { "--animic-dialog-close-space": "0px" },
+        headerMedia: { paddingBlockStart: "0" },
+      },
+    },
     titleVisibility: {
       hidden: {
         title: {
@@ -147,7 +194,12 @@ export const dialog = defineSlotRecipe({
           height: "min(85dvh, 48rem)",
           alignSelf: "center",
         },
-        header: { padding: "1rem 1.25rem" },
+        header: {
+          paddingBlock: "1rem",
+          paddingInlineStart: "1.25rem",
+          paddingInlineEnd:
+            "calc(1.25rem + var(--animic-dialog-close-space, calc(token(sizes.control.0) + token(spacing.3))))",
+        },
         title: { textStyle: "heading.panel", paddingRight: "0" },
         body: {
           flex: "1 1 auto",
@@ -186,6 +238,7 @@ export const dialog = defineSlotRecipe({
       centered: { content: centered },
       fullscreen: {
         content: {
+          "--animic-dialog-header-inset": "0px",
           alignSelf: "stretch",
           width: "100%",
           maxWidth: "none",
@@ -243,6 +296,7 @@ export const dialog = defineSlotRecipe({
       presentation: "adaptive",
       css: {
         content: {
+          "--animic-dialog-header-inset": "0.75rem",
           padding: "0.75rem 1rem max(1rem, env(safe-area-inset-bottom))",
           _open: {
             animation: "sheetEnter 350ms cubic-bezier(0.2, 0.9, 0.3, 1)",
@@ -250,8 +304,9 @@ export const dialog = defineSlotRecipe({
           },
           _dialogCompactCentered: {
             ...centered,
+            "--animic-dialog-header-inset": "var(--animic-dialog-padding)",
             padding: "var(--animic-dialog-padding)",
-            _open: { animation: "none" },
+            ...contentPresence,
           },
           "&::before": {
             content: '""',

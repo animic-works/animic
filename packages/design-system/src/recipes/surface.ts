@@ -41,7 +41,7 @@ export const surface = defineRecipe({
           },
         },
       },
-      subtle: { layerStyle: "surface.subtle", borderRadius: "0.75rem" },
+      subtle: { layerStyle: "surface.subtle", borderRadius: "2" },
       plain: { layerStyle: "surface.base" },
       adaptive: {
         background: "transparent",

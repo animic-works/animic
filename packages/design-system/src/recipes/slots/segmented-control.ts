@@ -2,8 +2,35 @@ import { defineSlotRecipe } from "@pandacss/dev";
 import { focus } from "../control";
 export const segmentedControl = defineSlotRecipe({
   className: "segmented-control",
-  slots: ["root", "layout", "groupLabel", "group", "item", "label", "control"],
+  slots: [
+    "root",
+    "layout",
+    "groupLabel",
+    "group",
+    "item",
+    "label",
+    "control",
+    "icon",
+    "marker",
+    "detail",
+  ],
   base: {
+    marker: {
+      width: "0.45rem",
+      height: "0.45rem",
+      borderRadius: "full",
+      flexShrink: 0,
+      background: "fg.default",
+    },
+    icon: { display: "inline-flex", alignItems: "center", flexShrink: 0 },
+    detail: {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: "2",
+      marginInlineStart: "auto",
+      textStyle: "caption",
+      color: "fg.muted",
+    },
     root: { minWidth: 0 },
     layout: { display: "grid", gap: "3", minWidth: 0 },
     groupLabel: { textStyle: "label.supporting" },
@@ -82,6 +109,20 @@ export const segmentedControl = defineSlotRecipe({
     },
   ],
   variants: {
+    markerTone: {
+      ink: { marker: { background: "fg.default" } },
+      pink: { marker: { background: "pink.2" } },
+      rose: { marker: { background: "pink.1" } },
+      red: { marker: { background: "red.0" } },
+      orange: { marker: { background: "orange.0" } },
+      amber: { marker: { background: "yellow.1" } },
+      yellow: { marker: { background: "yellow.0" } },
+      green: { marker: { background: "green.0.5" } },
+      forest: { marker: { background: "green.1" } },
+      cyan: { marker: { background: "cyan.0" } },
+      purple: { marker: { background: "violet.0" } },
+      slate: { marker: { background: "neutral.5" } },
+    },
     labelVisibility: {
       hidden: {
         groupLabel: {

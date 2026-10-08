@@ -40,13 +40,7 @@ export function NavigationBar({
   }, [brandHidden]);
   const classes = navigationBar({ compactHidden, brandHidden });
   return (
-    <header
-      ref={root}
-      suppressHydrationWarning
-      className={classes.root}
-      data-animic-navigation=""
-      data-brand-visible={brand && !brandHidden ? "" : undefined}
-    >
+    <header ref={root} suppressHydrationWarning className={classes.root} data-animic-navigation="">
       {brand && (
         <div className={classes.brand} inert={brandHidden} aria-hidden={brandHidden || undefined}>
           {brand}

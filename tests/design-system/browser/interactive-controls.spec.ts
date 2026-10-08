@@ -111,3 +111,18 @@ test("複数ファイルをまとめて通知し、同じ選択をやり直せ�
   await page.locator('input[type="file"]').setInputFiles(files);
   await expect(page.getByRole("status")).toContainText("2回選択");
 });
+
+test("修飾Enterは候補確定せず送信し、明示した場合だけblurで確定する", async ({ page }) => {
+  await page.goto("/iframe.html?id=interactive-controls--editor&viewMode=story");
+  const input = page.getByRole("combobox", { name: "語句" });
+  await input.fill("blue");
+  await input.press("Control+Enter");
+  await expect(page.getByText("0語 / 送信1回", { exact: true })).toBeVisible();
+  await expect(input).toHaveValue("blue");
+  await page.getByRole("checkbox", { name: "フォーカスを外したら確定" }).focus();
+  await page.keyboard.press("Space");
+  await input.focus();
+  await page.getByRole("checkbox", { name: "確認を省略" }).focus();
+  await expect(page.getByRole("button", { name: /「blue」を書き直す/ })).toBeVisible();
+  await expect(input).toHaveValue("");
+});

@@ -25,9 +25,11 @@ export const navigationBar = defineSlotRecipe({
       "&[data-navigation-layout=stacked]": { columnGap: "7" },
       "--animic-navigation-brand-space":
         "calc(clamp(1.25rem, 4vw, 3rem) + clamp(8rem, 12vw, 11rem) + token(spacing.5))",
-      "&:is([data-brand-visible], [data-initial-visible])": {
-        _navigationWide: { maxWidth: "calc(100% - var(--animic-navigation-brand-space))" },
-        _navigationConstrained: { width: "calc(100% - var(--animic-navigation-brand-space))" },
+      _navigationWide: { maxWidth: "calc(100% - var(--animic-navigation-brand-space))" },
+      _navigationConstrained: {
+        width: "calc(100% - var(--animic-navigation-brand-space))",
+        gap: "5",
+        paddingInline: "5",
       },
       paddingBlock: "calc(token(spacing.5) * 1.4)",
       paddingInline: "clamp(1.25rem, 4vw, 4.5rem)",
@@ -35,7 +37,6 @@ export const navigationBar = defineSlotRecipe({
       color: "fg.default",
       borderEndStartRadius: "3",
       boxShadow: "soft.1",
-      _navigationConstrained: { gap: "5", paddingInline: "5" },
       _navigationDense: {
         insetInline: "0",
         justifyContent: "center",
@@ -103,7 +104,7 @@ export const navigationBar = defineSlotRecipe({
       gap: "clamp(1rem, 3.5vw, 3.5rem)",
       minWidth: 0,
       flex: "0 1 auto",
-      _navigationConstrained: { gap: "5", flexGrow: 1 },
+      _navigationConstrained: { gap: "7", flexGrow: 1 },
       _navigationDense: { gap: "4", flexGrow: 0 },
       _navigationCompact: { gap: "2", flex: "0 1 auto", marginInlineStart: "auto" },
       "[data-navigation-layout=inline] &": { flexWrap: "nowrap" },
@@ -115,7 +116,7 @@ export const navigationBar = defineSlotRecipe({
       alignItems: "center",
       flexShrink: 0,
       gap: "clamp(1rem, 3.5vw, 3.5rem)",
-      _navigationConstrained: { gap: "5", flexGrow: 1, justifyContent: "space-between" },
+      _navigationConstrained: { gap: "5", flexGrow: 1, justifyContent: "space-around" },
       _navigationDense: { gap: "4", flexGrow: 0 },
       "& > a": { flexShrink: 0, whiteSpace: "nowrap" },
       "[data-indicator-ready] & > a::after": { display: "none" },

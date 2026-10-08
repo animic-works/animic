@@ -11,7 +11,7 @@ export function observeNavigationLayout(page: HTMLElement, onLayout?: () => void
     childList: true,
     characterData: true,
     attributes: true,
-    attributeFilter: ["class", "dir", "data-brand-visible", "data-initial-visible"],
+    attributeFilter: ["class", "dir", "data-initial-visible"],
   };
 
   function update() {

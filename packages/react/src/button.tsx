@@ -1,3 +1,4 @@
+import { buttonState, blockButtonEvent } from "./button-state";
 import { useEffect, useRef, useState, type MouseEventHandler } from "react";
 import { ActionContent, type ActionProps } from "./action-content";
 import { button } from "@animic/styled-system/recipes";
@@ -14,6 +15,7 @@ export interface ButtonProps extends CommonProps<HTMLButtonElement>, ActionProps
   onClick?: MouseEventHandler<HTMLButtonElement>;
 }
 export function Button({ ref, type = "button", ...props }: ButtonProps) {
+  const state = buttonState(props);
   const [pressing, setPressing] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
@@ -32,12 +34,12 @@ export function Button({ ref, type = "button", ...props }: ButtonProps) {
         responsiveLabel: Boolean(props.compactLabel),
       })}
       type={type === "submit" ? "submit" : type === "reset" ? "reset" : "button"}
-      disabled={props.disabled || props.loading}
-      aria-busy={props.loading || undefined}
       name={props.name}
       value={props.value}
       form={props.form}
+      {...state.attributes}
       onClick={(event) => {
+        if (blockButtonEvent(event, state.blocked)) return;
         if (props.feedback === "press") {
           clearTimeout(timer.current);
           setPressing(true);

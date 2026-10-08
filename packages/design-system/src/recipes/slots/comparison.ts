@@ -67,7 +67,8 @@ export const comparison = defineSlotRecipe({
       minWidth: 0,
       _comparisonNarrow: {
         justifyContent: "center",
-        gridTemplateColumns: "repeat(2, min(calc(50% - 0.75rem), calc(30svh * 13 / 19)))",
+        gridTemplateColumns:
+          "repeat(2, min(calc(50% - 0.75rem), max(12rem, calc(30svh * 13 / 19))))",
       },
       _comparisonCompact: {
         paddingInline: "0",

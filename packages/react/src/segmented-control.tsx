@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from "react";
+import { useSyncExternalStore, type ReactNode } from "react";
 import { SegmentGroup } from "@ark-ui/react/segment-group";
 import { segmentedControl } from "@animic/styled-system/recipes";
 import type { CommonProps } from "./dom";
@@ -14,6 +14,21 @@ export interface SegmentedControlProps extends Omit<CommonProps, "children"> {
   options: readonly {
     value: string;
     label: string;
+    leadingIcon?: ReactNode;
+    detail?: ReactNode;
+    markerTone?:
+      | "ink"
+      | "pink"
+      | "rose"
+      | "red"
+      | "orange"
+      | "amber"
+      | "yellow"
+      | "green"
+      | "forest"
+      | "cyan"
+      | "purple"
+      | "slate";
     disabled?: boolean;
     tone?: "green" | "yellow" | "cyan";
   }[];
@@ -74,9 +89,21 @@ export function SegmentedControl({ ref, ...props }: SegmentedControlProps) {
               }
             >
               <SegmentGroup.ItemControl className={classes.control} />
+              {option.markerTone && (
+                <span
+                  aria-hidden="true"
+                  className={segmentedControl({ markerTone: option.markerTone }).marker}
+                />
+              )}
+              {option.leadingIcon && (
+                <span aria-hidden="true" className={classes.icon}>
+                  {option.leadingIcon}
+                </span>
+              )}
               <SegmentGroup.ItemText className={classes.label}>
                 {option.label}
               </SegmentGroup.ItemText>
+              {option.detail != null && <span className={classes.detail}>{option.detail}</span>}
               <SegmentGroup.ItemHiddenInput />
             </SegmentGroup.Item>
           ))}

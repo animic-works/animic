@@ -1,3 +1,4 @@
+import { ProviderButton } from "@animic/react/provider-button";
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Button } from "@animic/react/button";
@@ -233,3 +234,47 @@ export const FieldAssociations: Story = {
     </Container>
   ),
 };
+
+function PendingActions() {
+  const [busy, setBusy] = useState(false);
+  const [count, setCount] = useState(0);
+  function activate() {
+    setCount((value) => value + 1);
+    setBusy(true);
+  }
+  return (
+    <Stack>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          activate();
+        }}
+      >
+        <Cluster>
+          <Button type="submit" loading={busy} prominence="raised">
+            保存
+          </Button>
+          <IconButton label="追加" loading={busy} onClick={activate}>
+            ＋
+          </IconButton>
+          <ProviderButton
+            provider="discord"
+            icon={<span aria-hidden="true">D</span>}
+            loading={busy}
+            onClick={activate}
+          >
+            認証
+          </ProviderButton>
+          <Button disabled loading={busy}>
+            条件不足
+          </Button>
+        </Cluster>
+      </form>
+      <Text>実行回数: {count}</Text>
+      <Button appearance="secondary" onClick={() => setBusy(false)}>
+        待機を解除
+      </Button>
+    </Stack>
+  );
+}
+export const PendingButtons: Story = { render: () => <PendingActions /> };

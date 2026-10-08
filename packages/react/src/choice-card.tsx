@@ -1,20 +1,21 @@
 import type { ReactNode } from "react";
 import { choiceCard } from "@animic/styled-system/recipes";
-export function ChoiceCard({
-  src,
-  label,
-  children,
-  selected,
-  disabled,
-  onSelect,
-}: {
-  src?: string;
+type ChoiceCardProps = {
   label: string;
   children: ReactNode;
   selected: boolean;
   disabled?: boolean;
   onSelect: () => void;
-}) {
+} & ({ src?: string; media?: never } | { media: ReactNode; src?: never });
+export function ChoiceCard({
+  src,
+  media,
+  label,
+  children,
+  selected,
+  disabled,
+  onSelect,
+}: ChoiceCardProps) {
   const c = choiceCard();
   return (
     <button
@@ -25,7 +26,16 @@ export function ChoiceCard({
       disabled={disabled}
       onClick={onSelect}
     >
-      {src && <img src={src} alt="" className={c.media} />}
+      {media ? (
+        <span className={c.media}>{media}</span>
+      ) : src ? (
+        <img src={src} alt="" className={c.media} />
+      ) : null}
+      {selected && (
+        <span className={c.indicator} aria-hidden="true">
+          ✓
+        </span>
+      )}
       <span className={c.body}>{children}</span>
     </button>
   );

@@ -1,9 +1,16 @@
 import { defineRecipe } from "@pandacss/dev";
-import { buttonFocus, control, textFocus, disabled, enabled } from "./control";
+import {
+  buttonFocus,
+  buttonControl,
+  textFocus,
+  disabled,
+  buttonAvailable,
+  buttonUnavailable,
+} from "./control";
 export const iconButton = defineRecipe({
   className: "icon-button",
   base: {
-    ...control,
+    ...buttonControl,
     _focusVisible: {
       ...buttonFocus,
       "[data-animic-dialog] &": { ...textFocus, background: "bg.subtle" },
@@ -17,7 +24,7 @@ export const iconButton = defineRecipe({
     borderColor: "border.default",
     padding: "3",
     "& > svg": { width: "icon.1", height: "icon.1" },
-    [enabled]: {
+    [buttonAvailable]: {
       _hover: { boxShadow: "soft.1" },
       _active: {
         transform: "translateY(2px)",
@@ -25,7 +32,7 @@ export const iconButton = defineRecipe({
         _motionReduce: { transform: "none" },
       },
     },
-    _disabled: disabled,
+    [buttonUnavailable]: disabled,
   },
   variants: {
     appearance: {
@@ -34,8 +41,8 @@ export const iconButton = defineRecipe({
         border: "0",
         background: "transparent",
         color: "fg.muted",
-        _disabled: { background: "transparent", color: "disabled.fg" },
-        [enabled]: {
+        [buttonUnavailable]: { background: "transparent", color: "disabled.fg" },
+        [buttonAvailable]: {
           background: "transparent",
           _hover: { background: "bg.subtle", boxShadow: "none" },
         },
@@ -46,7 +53,7 @@ export const iconButton = defineRecipe({
       circle: {
         borderRadius: "full",
         borderWidth: "2",
-        [enabled]: {
+        [buttonAvailable]: {
           borderColor: "border.default",
           boxShadow: "soft.1",
           transition: "background-color 200ms ease, color 200ms ease, transform 150ms ease",

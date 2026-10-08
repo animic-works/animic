@@ -5,6 +5,7 @@ import { Portal } from "@ark-ui/react/portal";
 import { cx } from "@animic/styled-system/css";
 import { dialog, iconButton } from "@animic/styled-system/recipes";
 interface DialogContentProps {
+  headerMedia?: ReactNode;
   headerActions?: ReactNode;
   footer?: ReactNode;
   closeButton?: boolean;
@@ -28,6 +29,7 @@ export function Dialog(props: DialogProps) {
     props.title,
   );
   const classes = dialog({
+    headerMedia: Boolean(props.headerMedia),
     appearance: props.appearance,
     presentation: props.presentation,
     size: props.size,
@@ -54,6 +56,7 @@ export function Dialog(props: DialogProps) {
             ref={scrollingRef}
             data-animic-dialog=""
           >
+            {props.headerMedia && <div className={classes.headerMedia}>{props.headerMedia}</div>}
             {props.titleVisibility === "hidden" && (
               <ArkDialog.Title className={classes.title}>{props.title}</ArkDialog.Title>
             )}
@@ -77,7 +80,7 @@ export function Dialog(props: DialogProps) {
             {props.closeButton !== false && (
               <ArkDialog.CloseTrigger
                 type="button"
-                className={cx(iconButton({ size: "sm" }), classes.close)}
+                className={cx(iconButton({ size: "sm", shape: "circle" }), classes.close)}
                 aria-label="閉じる"
               >
                 ×

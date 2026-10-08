@@ -1,12 +1,12 @@
 import { defineRecipe } from "@pandacss/dev";
-import { buttonFocus, control, enabled } from "./control";
+import { buttonFocus, buttonControl, buttonAvailable, buttonUnavailable } from "./control";
 
 const raised =
   "0 0 0 5px color-mix(in srgb, var(--animic-button-color) 18%, transparent), 0 14px 30px -10px color-mix(in srgb, var(--animic-button-color) 60%, transparent)";
 export const button = defineRecipe({
   className: "button",
   base: {
-    ...control,
+    ...buttonControl,
     _focusVisible: buttonFocus,
     display: "inline-flex",
     flexShrink: 0,
@@ -19,7 +19,7 @@ export const button = defineRecipe({
     textDecorationLine: "none",
     overflowWrap: "anywhere",
     "--animic-button-color": "token(colors.action.primary.bg)",
-    [enabled]: {
+    [buttonAvailable]: {
       _hover: { transform: "translateY(-2px)" },
       _active: { transform: "translateY(1px)" },
       _motionReduce: {
@@ -31,12 +31,12 @@ export const button = defineRecipe({
   variants: {
     appearance: {
       primary: {
-        _disabled: {
+        [buttonUnavailable]: {
           background: "action.primary.disabled",
           color: "action.primary.fg",
           borderColor: "transparent",
         },
-        [enabled]: {
+        [buttonAvailable]: {
           background: "action.primary.bg",
           color: "action.primary.fg",
           borderColor: "transparent",
@@ -44,7 +44,7 @@ export const button = defineRecipe({
       },
       secondary: {
         "--animic-button-color": "token(colors.fg.default)",
-        [enabled]: {
+        [buttonAvailable]: {
           background: "bg.surface",
           color: "fg.default",
           borderColor: "border.strong",
@@ -52,7 +52,7 @@ export const button = defineRecipe({
       },
       inverse: {
         "--animic-button-color": "token(colors.bg.inverse)",
-        [enabled]: {
+        [buttonAvailable]: {
           background: "bg.inverse",
           color: "fg.inverse",
           borderColor: "border.strong",
@@ -60,7 +60,7 @@ export const button = defineRecipe({
       },
       soft: {
         "--animic-button-color": "token(colors.fg.supporting)",
-        [enabled]: {
+        [buttonAvailable]: {
           background: "bg.subtle",
           color: "fg.supporting",
           borderColor: "transparent",
@@ -71,7 +71,7 @@ export const button = defineRecipe({
         color: "fg.inverse",
         transitionProperty: "background, scale",
         transitionDuration: "2",
-        [enabled]: {
+        [buttonAvailable]: {
           background: "color-mix(in srgb, token(colors.bg.inverse) 55%, transparent)",
           _hover: {
             background: "color-mix(in srgb, token(colors.bg.inverse) 80%, transparent)",
@@ -112,7 +112,7 @@ export const button = defineRecipe({
         },
       },
       outlined: {
-        [enabled]: {
+        [buttonAvailable]: {
           background: "bg.surface",
           color: "fg.default",
           borderColor: "border.default",
@@ -131,7 +131,7 @@ export const button = defineRecipe({
         borderWidth: "0",
         textDecorationLine: "underline",
         textUnderlineOffset: "3px",
-        [enabled]: {
+        [buttonAvailable]: {
           background: "transparent",
           color: "fg.muted",
           _hover: { color: "accent.primary", transform: "none" },
@@ -200,12 +200,12 @@ export const button = defineRecipe({
     prominence: {
       standard: {},
       raised: {
-        [enabled]: {
+        [buttonAvailable]: {
           boxShadow: `var(--animic-button-decoration-shadow, ${raised})`,
         },
       },
       lifted: {
-        [enabled]: {
+        [buttonAvailable]: {
           boxShadow:
             "var(--animic-button-decoration-shadow, 0 8px 18px -8px color-mix(in srgb, var(--animic-button-color) 70%, transparent))",
         },
@@ -252,7 +252,7 @@ export const button = defineRecipe({
       tone: "green",
       css: {
         "--animic-button-color": "token(colors.green.1)",
-        [enabled]: { background: "green.0", color: "green.1" },
+        [buttonAvailable]: { background: "green.0", color: "green.1" },
       },
     },
     {
@@ -260,7 +260,7 @@ export const button = defineRecipe({
       tone: "yellow",
       css: {
         "--animic-button-color": "token(colors.fg.accent.highlight)",
-        [enabled]: {
+        [buttonAvailable]: {
           background: "bg.accent.highlight",
           color: "fg.accent.highlight",
         },
@@ -271,7 +271,7 @@ export const button = defineRecipe({
       tone: "cyan",
       css: {
         "--animic-button-color": "token(colors.fg.accent.secondary)",
-        [enabled]: {
+        [buttonAvailable]: {
           background: "bg.accent.secondary",
           color: "fg.accent.secondary",
         },
@@ -282,7 +282,7 @@ export const button = defineRecipe({
       prominence: "raised",
       css: {
         _actionCompact: {
-          [enabled]: {
+          [buttonAvailable]: {
             boxShadow:
               "var(--animic-button-decoration-shadow, 0 0 0 4px color-mix(in srgb, var(--animic-button-color) 16%, transparent), 0 10px 22px -10px color-mix(in srgb, var(--animic-button-color) 70%, transparent))",
           },
