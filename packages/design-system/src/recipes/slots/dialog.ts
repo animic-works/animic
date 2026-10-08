@@ -3,13 +3,14 @@ const fadePresence = defineStyles({
   animationDuration: "1",
   animationTimingFunction: "standard",
   animationFillMode: "both",
-  _open: { animationName: "fadeIn" },
+  // 開いた後は演出の終点を残さず、通常の描画に戻す。閉じるときは消えた状態を保つ。
+  _open: { animationName: "fadeIn", animationFillMode: "backwards" },
   _closed: { animationName: "fadeOut" },
   _motionReduce: { animation: "none" },
 });
 const contentPresence = defineStyles({
   ...fadePresence,
-  _open: { animationName: "dialogEnter", animationDuration: "2" },
+  _open: { animationName: "dialogEnter", animationDuration: "2", animationFillMode: "backwards" },
 });
 const centered = defineStyles({
   alignSelf: "center",

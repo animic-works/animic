@@ -219,6 +219,10 @@ for (const fontSize of [16, 32]) {
       await page.goto(`/iframe.html?id=overlays--${story}&viewMode=story`);
       const dialog = page.getByRole("dialog");
       await dialog.waitFor();
+      // 登場の演出が終わった位置で確かめる。
+      await dialog.evaluate((node) =>
+        Promise.all(node.getAnimations().map((item) => item.finished)),
+      );
       await page.evaluate((size) => {
         document.documentElement.style.fontSize = `${size}px`;
       }, fontSize);

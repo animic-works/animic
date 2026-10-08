@@ -38,6 +38,8 @@ test("入れ子の横スクロールはRTLへの変更後も方向キーで動�
   const dialog = page.getByRole("dialog");
   const bar = dialog.getByRole("scrollbar", { name: "絞り込み（横スクロール）" });
   await expect(bar).toBeVisible();
+  // 登場の演出が終わった位置で確かめる。
+  await dialog.evaluate((node) => Promise.all(node.getAnimations().map((item) => item.finished)));
   const track = (await bar.boundingBox())!;
   const thumb = (await bar.locator("div").boundingBox())!;
   expect(thumb.y + thumb.height / 2).toBe(track.y + track.height / 2);

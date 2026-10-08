@@ -4,7 +4,7 @@ export const keyframes = defineKeyframes({
   fadeOut: { from: { opacity: 1 }, to: { opacity: 0 } },
   dialogEnter: {
     from: { opacity: 0, transform: "scale(0.96)" },
-    to: { opacity: 1, transform: "scale(1)" },
+    to: { opacity: 1, transform: "none" },
   },
   mediaEnter: { from: { transform: "scale(1.12)" }, to: { transform: "none" } },
   thumbnailEnter: {
