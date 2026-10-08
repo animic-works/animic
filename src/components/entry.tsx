@@ -1,8 +1,12 @@
 import type { ReactNode } from "react";
 
+import { Button } from "./button";
+import type { ButtonProps } from "./button";
 import { variant } from "./cx";
+import { Icon } from "./icon";
 import { MobileBar } from "./page";
 import entryCardStyles from "./entry-card.module.css";
+import providerButtonStyles from "./provider-button.module.css";
 
 export type EntryPageProps = {
   /** スマホだけ: 上のバーの戻る先とロゴ、上に置くキャラクターの絵。省くと方眼の背景だけ */
@@ -99,7 +103,95 @@ export function EntryCard({
   );
 }
 
+// カードの上のロゴ（ダイアログなど、EntryCard の外で同じロゴを置くとき）
+export function EntryLogo({ src }: { src: string }) {
+  return <img className={entryCardStyles.logo} src={src} alt="Animic" width="2078" height="607" />;
+}
+
 // 参加するルームなど、この画面の前提を示す帯
 export function EntryContext({ children }: { children: ReactNode }) {
   return <p className={entryCardStyles.context}>{children}</p>;
+}
+
+// ログインのボタンを並べる欄
+export function EntryProviders({ children }: { children: ReactNode }) {
+  return <div className={entryCardStyles.providers}>{children}</div>;
+}
+
+// 「または」の区切り線
+export function EntryDivider({ children }: { children: ReactNode }) {
+  return <p className={entryCardStyles.divider}>{children}</p>;
+}
+
+// カードの下の、利用規約などへの同意の文
+export function EntryTerms({ children }: { children: ReactNode }) {
+  return <p className={entryCardStyles.terms}>{children}</p>;
+}
+
+// ログインできなかった理由など、操作の結果を知らせる帯（読み上げでもすぐに伝える）
+export function EntryAlert({ children }: { children: ReactNode }) {
+  return (
+    <p className={entryCardStyles.alert} role="alert">
+      {children}
+    </p>
+  );
+}
+
+export type EntryWelcomeProps = {
+  /** ログインに使ったサービス。分からなければ印を出さない */
+  provider: "google" | "discord" | null;
+  /** 1行目（例: Googleでログインしました） */
+  title: string;
+  /** 右端に置く操作（ログアウトなど） */
+  action?: ReactNode;
+  children: ReactNode;
+};
+
+// ログイン中のアカウント。左にログインに使ったサービスの印
+export function EntryWelcome({ provider, title, action, children }: EntryWelcomeProps) {
+  return (
+    <div className={entryCardStyles.welcome}>
+      {provider ? (
+        <span className={entryCardStyles.welcomeIcon}>
+          <Icon name={provider} size="2xl" />
+        </span>
+      ) : null}
+      <p>
+        <b>{title}</b>
+        {children}
+      </p>
+      {action}
+    </div>
+  );
+}
+
+export type ProviderButtonProps = Omit<
+  ButtonProps,
+  "children" | "variant" | "leadingIcon" | "trailingIcon"
+> & {
+  provider: "google" | "discord";
+  children: ReactNode;
+};
+
+const PROVIDER_VARIANT = { google: "secondary", discord: "discord" } as const;
+
+// ログインに使うサービスを選ぶボタン: 左にロゴ、中央に文言
+export function ProviderButton({ provider, children, ...rest }: ProviderButtonProps) {
+  return (
+    <Button
+      {...rest}
+      variant={PROVIDER_VARIANT[provider]}
+      size="provider"
+      fullWidth
+      spread
+      leadingIcon={
+        <span className={providerButtonStyles.icon}>
+          <Icon name={provider} size="2xl" />
+        </span>
+      }
+      trailingIcon={<span className={providerButtonStyles.spacer} />}
+    >
+      {children}
+    </Button>
+  );
 }

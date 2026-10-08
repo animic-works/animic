@@ -5,6 +5,8 @@ import type { MouseEvent } from "react";
 import { Icon } from "../components/icon";
 import { useWipe } from "../components/transition";
 import { JoinRoomDialog } from "../features/room/join-room-dialog";
+import { LoginDialog } from "../features/room/login-dialog";
+import { getCurrentParticipant } from "../lib/auth.functions";
 import { GalleryCarousel, GallerySection, SiteFooter } from "./-home/gallery";
 import type { GalleryHandle, GalleryMatch } from "./-home/gallery";
 import { Hero } from "./-home/hero";
@@ -138,6 +140,7 @@ function Home() {
   const [current, setCurrent] = useState(0);
   const [revealed, setRevealed] = useState<ReadonlySet<number>>(new Set([0]));
   const [joinOpen, setJoinOpen] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
   const [pressed, setPressed] = useState<"start" | null>(null);
   const screens = useRef<(HTMLElement | null)[]>([]);
   const carousel = useRef<StepCarouselHandle>(null);
@@ -147,7 +150,7 @@ function Home() {
   // 入力の処理は最新の状態を参照する（リスナーを張り直さない）
   const latest = useRef({ current, busy: false });
   useEffect(() => {
-    latest.current = { current, busy: joinOpen || wipe.active };
+    latest.current = { current, busy: joinOpen || loginOpen || wipe.active };
   });
 
   const render = useCallback((index: number) => {
@@ -242,9 +245,18 @@ function Home() {
     jumpTo("top");
   };
 
-  function start() {
+  // ルームを作るにはログインが必要。ログインしていなければ、移動せずにその場でログインの方法を選んでもらう。
+  // トップのHTMLに参加者の情報を含めないよう、ログインの状態は押したときに確かめる。
+  async function start() {
     setPressed("start");
-    void wipe.wipeTo(() => navigate({ href: "/start" })).finally(() => setPressed(null));
+    // 確かめられなかったときは、移動先のルームを作る画面でログインの方法を選んでもらう。
+    const participant = await getCurrentParticipant().catch(() => undefined);
+    if (participant !== undefined && !participant?.account) {
+      setPressed(null);
+      setLoginOpen(true);
+      return;
+    }
+    await wipe.wipeTo(() => navigate({ href: "/start" })).finally(() => setPressed(null));
   }
   function openJoin() {
     setJoinOpen(true);
@@ -264,7 +276,7 @@ function Home() {
               icon={<Icon name="play" size="xs" />}
               onClick={(event) => {
                 event.preventDefault();
-                start();
+                void start();
               }}
             >
               スタート
@@ -294,7 +306,7 @@ function Home() {
         logoSrc="/animic-logo.svg"
         shown={currentScreen.id !== "top"}
         onHome={home}
-        onStart={start}
+        onStart={() => void start()}
         onJoin={openJoin}
       />
 
@@ -331,7 +343,7 @@ function Home() {
                 <span>作ったほうが勝ち！</span>
               </>
             }
-            onStart={start}
+            onStart={() => void start()}
             onJoin={openJoin}
             onNext={() => go(current + 1)}
             pressed={pressed}
@@ -434,6 +446,7 @@ function Home() {
       </main>
 
       <JoinRoomDialog open={joinOpen} onOpenChange={setJoinOpen} />
+      <LoginDialog open={loginOpen} onOpenChange={setLoginOpen} />
     </>
   );
 }

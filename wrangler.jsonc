@@ -22,7 +22,16 @@
     },
   ],
   "secrets": {
-    "required": ["BETTER_AUTH_SECRET", "BETTER_AUTH_URL", "NOVELAI_API_TOKEN", "ADMIN_PASSWORD"],
+    "required": [
+      "BETTER_AUTH_SECRET",
+      "BETTER_AUTH_URL",
+      "NOVELAI_API_TOKEN",
+      "ADMIN_PASSWORD",
+      "GOOGLE_CLIENT_ID",
+      "GOOGLE_CLIENT_SECRET",
+      "DISCORD_CLIENT_ID",
+      "DISCORD_CLIENT_SECRET",
+    ],
   },
   "durable_objects": {
     "bindings": [

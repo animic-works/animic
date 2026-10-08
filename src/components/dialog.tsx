@@ -3,6 +3,7 @@ import { Portal } from "@ark-ui/react/portal";
 import type { ReactElement, ReactNode } from "react";
 
 import { variant } from "./cx";
+import { IconButton } from "./icon";
 import dialogStyles from "./dialog.module.css";
 
 export type DialogProps = {
@@ -10,6 +11,10 @@ export type DialogProps = {
   onOpenChange: (open: boolean) => void;
   /** 見出し。読み上げではダイアログの名前になる */
   title: ReactNode;
+  /** 見出しの上に置く絵（ロゴなど） */
+  media?: ReactNode;
+  /** 右上に閉じるボタン（×）を置くときの、読み上げ用の名前 */
+  closeLabel?: string;
   description?: ReactNode;
   children?: ReactNode;
   /** 下のボタンの並び。左に「やめる」（DialogClose）、右に主な操作を置く */
@@ -32,6 +37,8 @@ export function Dialog({
   open,
   onOpenChange,
   title,
+  media,
+  closeLabel,
   description,
   children,
   footer,
@@ -59,11 +66,20 @@ export function Dialog({
         <ArkDialog.Backdrop className={cls("backdrop")} />
         <ArkDialog.Positioner className={cls("positioner")}>
           <ArkDialog.Content className={cls("content")}>
+            {media}
             <ArkDialog.Title className={cls("title")}>{title}</ArkDialog.Title>
             {descriptionPlacement === "top" ? descriptionNode : null}
             {children ? <div className={cls("body")}>{children}</div> : null}
             {descriptionPlacement === "bottom" ? descriptionNode : null}
             {footer ? <div className={cls("footer")}>{footer}</div> : null}
+            {/* 最初のフォーカスが中身の操作に当たるよう、閉じるボタンは最後に置く（表示は右上） */}
+            {closeLabel ? (
+              <div className={cls("closeTrigger")}>
+                <ArkDialog.CloseTrigger asChild>
+                  <IconButton label={closeLabel} icon="close" variant="row" />
+                </ArkDialog.CloseTrigger>
+              </div>
+            ) : null}
           </ArkDialog.Content>
         </ArkDialog.Positioner>
       </Portal>

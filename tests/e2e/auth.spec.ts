@@ -49,7 +49,7 @@ test("匿名セッションを同じブラウザで復元し、別のブラウ�
   expect(html).not.toContain(signedIn.token);
   await loadApi(page);
   const participant = await page.evaluate(() => window.animicTest.getCurrentParticipant());
-  expect(participant).toEqual({ id: signedIn.user.id, isAnonymous: true });
+  expect(participant).toEqual({ id: signedIn.user.id, isAnonymous: true, account: null });
   await page.reload();
   await expect(page.getByRole("heading", { name: "Animic", exact: true })).toBeVisible();
 

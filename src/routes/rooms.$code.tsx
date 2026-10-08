@@ -4,6 +4,7 @@ import * as v from "valibot";
 
 import { useWipe } from "../components/transition";
 import { EntryFlow } from "../features/room/entry-flow";
+import { parseLoginSearch } from "../features/room/entry-login";
 import { RoomScreen } from "../features/room/room-screen";
 import { getBattleOptions } from "../features/room/battle-options.functions";
 import { getRoomEntry, joinRoom } from "../features/room/room.functions";
@@ -15,6 +16,7 @@ import { getCurrentParticipant } from "../lib/auth.functions";
 const ensureParticipantOnClient = createClientOnlyFn(ensureParticipant);
 
 export const Route = createFileRoute("/rooms/$code")({
+  validateSearch: parseLoginSearch,
   loader: async ({ params }) => {
     const code = v.safeParse(roomCodeSchema, params.code);
     if (!code.success) throw notFound();
@@ -37,6 +39,7 @@ export const Route = createFileRoute("/rooms/$code")({
 function RoomPage() {
   const { code } = Route.useParams();
   const { room, inviteUrl, participant, battleOptions } = Route.useLoaderData();
+  const { error } = Route.useSearch();
   const router = useRouter();
   const wipe = useWipe();
 
@@ -61,7 +64,11 @@ function RoomPage() {
       <EntryFlow
         mode="join"
         code={code}
+        account={participant?.account ?? null}
+        loginError={error}
+        returnTo={`/rooms/${code}`}
         onSubmit={join}
+        onSignedOut={() => router.invalidate()}
         back={{ href: "/", label: "トップへ戻る" }}
       />
     );
