@@ -91,6 +91,8 @@
     letter-spacing: 0.02em;
     line-height: var(--line-heights-normal);
     text-align: center;
+    text-wrap: balance;
+    word-break: auto-phrase;
   }
 }
 
