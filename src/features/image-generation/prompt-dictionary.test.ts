@@ -5,7 +5,6 @@ import {
   matchRange,
   normalizeQuery,
   promptDictionary,
-  quickPhraseGroups,
   searchDictionary,
 } from "./prompt-dictionary";
 
@@ -16,25 +15,6 @@ describe("promptDictionary", () => {
       group.entries.map((entry) => entry.tag.toLowerCase()),
     );
     expect(new Set(tags).size).toBe(tags.length);
-  });
-
-  it("髪の色の先頭はよく使う表現の髪の色と同じ", () => {
-    const hair = promptDictionary.find((group) => group.key === "hair");
-    expect(hair?.entries.slice(0, 5)).toEqual(quickPhraseGroups[0]?.entries);
-  });
-});
-
-describe("quickPhraseGroups", () => {
-  it("6つのグループに5・3・3・3・3・3件ずつ並べる", () => {
-    expect(quickPhraseGroups.map((group) => group.entries.length)).toEqual([5, 3, 3, 3, 3, 3]);
-    expect(quickPhraseGroups.map((group) => group.label)).toEqual([
-      "髪の色",
-      "髪型",
-      "目",
-      "服",
-      "表情",
-      "背景",
-    ]);
   });
 });
 

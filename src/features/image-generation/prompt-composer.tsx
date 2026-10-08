@@ -29,7 +29,6 @@ import {
   matchRange,
   normalizeQuery,
   promptDictionary,
-  quickPhraseGroups,
   searchDictionary,
   wordOf,
 } from "./prompt-dictionary";
@@ -45,7 +44,7 @@ export type PromptComposerProps = {
   successCount: number;
   /** 自分の生成が未完了（「生成する」だけ押せない。入力はできる） */
   pending: boolean;
-  /** 受付終了・提出済み（入力・切り替え・検索・よく使う表現も止める） */
+  /** 受付終了・提出済み（入力・切り替え・検索も止める） */
   locked: boolean;
   /** パネルを覆う案内（生成終了の黄色いカード） */
   cover?: ReactNode;
@@ -115,7 +114,7 @@ function withTokens(state: ComposerState, tokens: PromptBlocks[number]): Compose
 
 const isMode = (value: string): value is PromptMode => value === "text" || value === "tag";
 
-// 左のパネル: 入力方法の切り替え、ベース／キャラのタブ、プロンプト欄、検索、よく使う表現、生成の回数とボタン
+// 左のパネル: 入力方法の切り替え、ベース／キャラのタブ、プロンプト欄、検索、生成の回数とボタン
 export function PromptComposer({
   maxCharacters,
   successCount,
@@ -445,45 +444,6 @@ export function PromptComposer({
               <span className={composerStyles.searchMid}>プロンプト</span>を検索
             </span>
           </button>
-        </div>
-
-        <div className={composerStyles.chips} role="group" aria-label="よく使う表現">
-          {quickPhraseGroups.map((group) => {
-            const tone = promptDictionary.find((item) => item.key === group.key)?.tone;
-            return (
-              <div key={group.key} className={composerStyles.chipRow} data-tone={tone}>
-                <span className={composerStyles.chipLabel}>{group.label}</span>
-                <div className={composerStyles.chipOptions}>
-                  {group.entries.map((entry) => {
-                    const word = wordOf(entry, mode);
-                    return (
-                      <button
-                        key={entry.tag}
-                        type="button"
-                        className={composerStyles.chip}
-                        aria-pressed={hasToken(tokens, word)}
-                        disabled={locked}
-                        onClick={() => {
-                          toggleEntry(entry);
-                          // スマホでは押すたびにキーボードが出ないよう、入力欄へ移らない
-                          if (matchMedia("(hover: hover)").matches) focusInput();
-                        }}
-                      >
-                        {word}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-          <p className={composerStyles.tip}>
-            <Icon name="bulb" size="md" />
-            <span>
-              <b>コツ</b>　お題を<b>髪・目・服・表情・背景</b>
-              に分けて、ひとつずつ言葉にしてみよう。
-            </span>
-          </p>
         </div>
 
         <div className={composerStyles.foot}>

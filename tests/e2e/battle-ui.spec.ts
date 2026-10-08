@@ -14,7 +14,7 @@ test.beforeAll(async () => {
   );
 });
 
-test("対戦画面でプロンプトを入力し、候補・重み・よく使う表現・検索・お題の拡大・確認なしの設定を操作できる", async ({
+test("対戦画面でプロンプトを入力し、候補・重み・検索・お題の拡大・確認なしの設定を操作できる", async ({
   page,
   browser,
 }) => {
@@ -82,23 +82,9 @@ test("対戦画面でプロンプトを入力し、候補・重み・よく使�
     await input.press("Enter");
     await expect(page.getByRole("button", { name: "「ツインテール」を書き直す" })).toBeVisible();
 
-    // よく使う表現は押すと入り、もう一度押すと外れる。
-    const phrases = page.getByRole("group", { name: "よく使う表現" });
-    await phrases.getByRole("button", { name: "笑顔" }).click();
-    await expect(phrases.getByRole("button", { name: "笑顔" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
-    await phrases.getByRole("button", { name: "笑顔" }).click();
-    await expect(phrases.getByRole("button", { name: "笑顔" })).toHaveAttribute(
-      "aria-pressed",
-      "false",
-    );
-
-    // タグの入力に切り替えると、よく使う表現と区切りの案内が英語のタグになる。
+    // タグの入力に切り替えると、区切りの案内が英語のタグの例になる。
     await page.getByRole("radiogroup", { name: "入力方法" }).getByText("タグ").click();
     await expect(page.getByRole("radio", { name: "タグ" })).toBeChecked();
-    await expect(phrases.getByRole("button", { name: "smile" })).toBeVisible();
     await expect(input).toHaveAttribute("placeholder", /「,」/);
 
     // ベースの欄に切り替える。

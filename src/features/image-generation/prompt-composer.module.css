@@ -3,127 +3,12 @@
     gap: 0.7rem;
     align-content: stretch;
     display: grid;
-    grid-template-rows: auto auto minmax(11rem, 1fr) auto minmax(0, 15rem) auto;
+    grid-template-rows: auto auto minmax(11rem, 1fr) auto auto;
     min-height: var(--sizes-0);
   }
 
   .body > * {
     min-width: var(--sizes-0);
-  }
-
-  .chip {
-    background: var(--colors-bg-surface);
-    padding-inline: 0.7rem;
-    padding-block: 0.32rem;
-    border-color: var(--colors-border-default);
-    border-radius: var(--radii-control);
-    border-style: solid;
-    border-width: 1.5px;
-    transition:
-      border-color 0.15s,
-      background-color 0.15s,
-      color 0.15s,
-      transform 0.15s;
-    gap: 0.3rem;
-    align-items: center;
-    color: var(--colors-fg-default);
-    cursor: pointer;
-    display: inline-flex;
-    font: inherit;
-    font-size: 0.78rem;
-    white-space: nowrap;
-  }
-
-  .chip:hover:not(:disabled) {
-    border-color: var(--dot);
-    transform: translateY(-1px);
-  }
-
-  .chip:disabled {
-    cursor: default;
-    opacity: 0.45;
-  }
-
-  .chip[aria-pressed="true"] {
-    background: var(--colors-bg-inverse);
-    border-color: var(--colors-border-strong);
-    animation: chip-pop 0.35s var(--easings-pop);
-    color: var(--colors-fg-inverse);
-  }
-
-  .chip[aria-pressed="true"]::before {
-    background: var(--dot);
-    border-radius: var(--radii-full);
-    content: "";
-    height: 0.45rem;
-    width: 0.45rem;
-  }
-
-  .chipLabel {
-    gap: 0.35rem;
-    align-items: center;
-    color: var(--colors-fg-muted);
-    display: flex;
-    font-size: 0.7rem;
-    font-weight: var(--font-weights-bold);
-    padding-top: 0.42rem;
-    white-space: nowrap;
-  }
-
-  .chipLabel::before {
-    background: var(--dot);
-    border-radius: 2px;
-    content: "";
-    height: 0.45rem;
-    transform: rotate(45deg);
-    width: 0.45rem;
-  }
-
-  .chipOptions {
-    gap: 0.35rem;
-    display: flex;
-    flex-wrap: wrap;
-  }
-
-  .chipRow {
-    --dot: var(--colors-accent-brand);
-    gap: 0.5rem;
-    align-items: start;
-    display: grid;
-    grid-template-columns: 3.4rem minmax(0, 1fr);
-  }
-
-  .chipRow[data-tone="amber"] {
-    --dot: var(--colors-amber-500);
-  }
-
-  .chipRow[data-tone="cyan"] {
-    --dot: var(--colors-info-default);
-  }
-
-  .chipRow[data-tone="green"] {
-    --dot: var(--colors-green-500);
-  }
-
-  .chipRow[data-tone="orange"] {
-    --dot: var(--colors-orange-500);
-  }
-
-  .chipRow[data-tone="purple"] {
-    --dot: var(--colors-purple-500);
-  }
-
-  .chips {
-    padding: 0.1rem 0.4rem 0.4rem 0;
-    overflow-y: auto;
-    gap: 0.7rem;
-    align-content: start;
-    display: grid;
-    margin-right: -0.4rem;
-    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 1.5rem), transparent);
-    mask-image: linear-gradient(to bottom, #000 calc(100% - 1.5rem), transparent);
-    min-height: var(--sizes-0);
-    scrollbar-width: thin;
   }
 
   .count {
@@ -441,34 +326,10 @@
     scrollbar-width: none;
   }
 
-  .tip {
-    margin: 0.4rem 0 0;
-    padding-inline: 0.9rem;
-    padding-block: 0.75rem;
-    border-color: var(--colors-border-default);
-    border-radius: var(--radii-md);
-    border-style: dashed;
-    border-width: var(--border-widths-thick);
-    gap: 0.6rem;
-    color: var(--colors-fg-muted);
-    display: flex;
-    font-size: 0.74rem;
-    line-height: 1.65;
-  }
-
-  .tip svg {
-    color: var(--colors-amber-500);
-    margin-top: 0.1rem;
-  }
-
-  .tip b {
-    color: var(--colors-fg-default);
-  }
-
   /* 860px以下はモバイル（Issue #10）で作り直す。ここでは1列に積んで操作できる状態だけを保つ */
   @media (width < 53.8125rem) {
     .body {
-      grid-template-rows: auto auto minmax(9rem, auto) auto minmax(0, 15rem) auto;
+      grid-template-rows: auto auto minmax(9rem, auto) auto auto;
     }
   }
 }
@@ -494,11 +355,5 @@
   from {
     opacity: 0;
     transform: translateY(3rem) rotate(-3deg) scale(0.94);
-  }
-}
-
-@keyframes chip-pop {
-  40% {
-    transform: scale(1.12);
   }
 }

@@ -236,16 +236,6 @@ const ICONS = {
       </g>
     ),
   },
-  // 電球（コツ）
-  bulb: {
-    viewBox: "0 0 24 24",
-    body: (
-      <path
-        d="M9 18h6v1.5a2.5 2.5 0 0 1-2.5 2.5h-1A2.5 2.5 0 0 1 9 19.5zM12 2a7 7 0 0 0-4 12.7V16h8v-1.3A7 7 0 0 0 12 2"
-        fill="currentColor"
-      />
-    ),
-  },
   // 注意（生成の失敗）
   warning: {
     viewBox: "0 0 24 24",

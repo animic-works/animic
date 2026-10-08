@@ -1,8 +1,8 @@
 import type { PromptMode } from "./prompt-blocks";
 
-// 対戦画面の入力候補・よく使う表現・検索に使う表現の辞書（コード内の初期データ）。
+// 対戦画面の入力候補と検索に使う表現の辞書（コード内の初期データ）。
 // Danbooruのtag groups（https://danbooru.donmai.us/wiki_pages/tag_groups）から、キャラクターの絵作りによく使うタグを選んでいる。
-// どの表現もベース・キャラのどちらの欄にも入れられる。各ジャンルの先頭は「よく使う表現」と同じ並びにし、
+// どの表現もベース・キャラのどちらの欄にも入れられる。各ジャンルの先頭にはよく使う表現を置き、
 // タグが重なる表現（ニーハイ・ブーツ・メイドなど）は先に出たほうだけを残す。管理画面での登録はIssue #28で扱う
 
 /** ジャンルの目印の色 */
@@ -454,24 +454,6 @@ export const promptDictionary: DictionaryGroup[] = [
     ]),
   },
 ];
-
-export type QuickPhraseGroup = { key: string; label: string; entries: DictionaryEntry[] };
-
-// よく使う表現: ジャンルと、辞書のそのジャンルの先頭から並べる件数
-const QUICK_PHRASES = [
-  ["hair", 5],
-  ["style", 3],
-  ["eyes", 3],
-  ["outfit", 3],
-  ["face", 3],
-  ["bg", 3],
-] as const;
-
-/** よく使う表現: 髪の色(5)・髪型(3)・目(3)・服(3)・表情(3)・背景(3)。辞書の該当ジャンルの先頭n件 */
-export const quickPhraseGroups: QuickPhraseGroup[] = QUICK_PHRASES.flatMap(([key, count]) => {
-  const group = promptDictionary.find((item) => item.key === key);
-  return group ? [{ key, label: group.label, entries: group.entries.slice(0, count) }] : [];
-});
 
 /** 入力方法に合わせた、欄に入れる言葉 */
 export const wordOf = (entry: DictionaryEntry, mode: PromptMode) =>
