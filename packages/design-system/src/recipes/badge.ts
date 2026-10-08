@@ -65,8 +65,25 @@ export const badge = defineRecipe({
       },
     },
     shape: { pill: {}, rounded: { borderRadius: "0.4rem" } },
-    size: { sm: {}, md: { textStyle: "label", paddingInline: "4", paddingBlock: "2" } },
+    size: {
+      // 一覧の項目の縁に重ねる、名札のような小さい表示。
+      xs: {
+        paddingInline: "0.55rem",
+        paddingBlock: "0.12rem",
+        borderWidth: "0",
+        textStyle: "label.supporting",
+        fontSize: "0.66rem",
+        whiteSpace: "nowrap",
+      },
+      sm: {},
+      md: { textStyle: "label", paddingInline: "4", paddingBlock: "2" },
+    },
     tone: {
+      primary: {
+        "--animic-badge-bg": "token(colors.accent.primary)",
+        "--animic-badge-fg": "token(colors.fg.inverse)",
+        "--animic-badge-border": "transparent",
+      },
       highlight: {
         "--animic-badge-bg": "token(colors.accent.highlight)",
         "--animic-badge-fg": "token(colors.fg.default)",

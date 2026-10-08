@@ -35,7 +35,11 @@ function TilesExample() {
               selected={selected === i}
               onClick={() => setSelected(i)}
               media={<Avatar name={name} />}
-              badge={<Badge>{i + 1}</Badge>}
+              badge={
+                <Badge size="xs" tone={i ? "highlight" : "primary"}>
+                  {i + 1}
+                </Badge>
+              }
               footer={
                 <StatusLabel tone={i ? "neutral" : "success"} appearance="badge">
                   {i ? "待機中" : "準備OK"}

@@ -3,11 +3,11 @@ import type { CommonProps } from "./dom";
 import { domProps } from "./dom";
 export type BadgeProps = CommonProps<HTMLSpanElement> & {
   shape?: "pill" | "rounded";
-  size?: "sm" | "md";
+  size?: "xs" | "sm" | "md";
 } & (
     | {
         appearance?: "standard";
-        tone?: "neutral" | "success" | "danger" | "surface" | "inverse" | "highlight";
+        tone?: "neutral" | "success" | "danger" | "surface" | "inverse" | "highlight" | "primary";
       }
     | { appearance: "glass" | "sticker" | "stamp" | "translucent" | "annotation"; tone?: never }
   );

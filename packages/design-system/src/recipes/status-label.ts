@@ -4,12 +4,13 @@ export const statusLabel = defineRecipe({
   className: "status-label",
   base: {
     display: "inline-flex",
-    alignItems: "baseline",
+    // 文字のない丸もベースラインに合わせると下へずれるため、上下中央に揃える。
+    alignItems: "center",
     gap: "0.3rem",
     width: "fit-content",
-    textStyle: "caption",
+    // 太字のフォントを読み込むText Styleを使い、大きさだけを変える。
+    textStyle: "label.supporting",
     fontSize: "0.72rem",
-    fontWeight: "bold",
     color: "fg.subtle",
     "&::before": {
       content: '""',
