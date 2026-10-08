@@ -205,6 +205,11 @@ const ICONS = {
     viewBox: "0 0 24 24",
     body: <path d="M12 5v14M5 12h14" {...STROKE} strokeWidth="3" />,
   },
+  // 閉じる
+  close: {
+    viewBox: "0 0 24 24",
+    body: <path d="M6 6l12 12M18 6L6 18" {...STROKE} strokeWidth="3" />,
+  },
   // 削除する（ごみ箱）
   trash: {
     viewBox: "0 0 24 24",

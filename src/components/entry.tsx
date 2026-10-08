@@ -103,6 +103,11 @@ export function EntryCard({
   );
 }
 
+// カードの上のロゴ（ダイアログなど、EntryCard の外で同じロゴを置くとき）
+export function EntryLogo({ src }: { src: string }) {
+  return <img className={entryCardStyles.logo} src={src} alt="Animic" width="2078" height="607" />;
+}
+
 // 参加するルームなど、この画面の前提を示す帯
 export function EntryContext({ children }: { children: ReactNode }) {
   return <p className={entryCardStyles.context}>{children}</p>;

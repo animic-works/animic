@@ -11,24 +11,22 @@ import {
   EntryContext,
   EntryDivider,
   EntryPage,
-  EntryProviders,
   EntryTerms,
   EntryWelcome,
-  ProviderButton,
 } from "../../components/entry";
 import { TextField } from "../../components/field";
 import { Icon } from "../../components/icon";
 import { Stack } from "../../components/layout";
 import { BackLink, PageDeco } from "../../components/page";
 import { toast } from "../../components/toast";
-import { signInWith, signOut } from "../../lib/auth.client";
-import { loginProviderNames, loginProviderSchema } from "../../lib/login-providers";
+import { signOut } from "../../lib/auth.client";
+import { loginProviderNames } from "../../lib/login-providers";
 import type { LoginProvider } from "../../lib/login-providers";
 import { initialDisplayName, loginErrorMessage } from "./entry-login";
+import { LoginButtons, useLogin } from "./login-buttons";
 import { participantNameSchema } from "./room-state";
 
-// ログインとログアウトはブラウザ専用のため、サーバーのバンドルから外す。
-const signInOnClient = createClientOnlyFn(signInWith);
+// ログアウトはブラウザ専用のため、サーバーのバンドルから外す。
 const signOutOnClient = createClientOnlyFn(signOut);
 
 const errorMessage = (error: unknown) =>
@@ -82,8 +80,7 @@ export function EntryFlow({
   const [name, setName] = useState(() => (account ? initialDisplayName(account.name) : ""));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // 認証画面へ移動中のサービス
-  const [connecting, setConnecting] = useState<LoginProvider | null>(null);
+  const { connecting, error: loginStartError, login } = useLogin(returnTo);
   const [signingOut, setSigningOut] = useState(false);
   const [alert, setAlert] = useState(() => (loginError ? loginErrorMessage(loginError) : null));
   const valid = v.safeParse(participantNameSchema, name);
@@ -125,18 +122,6 @@ export function EntryFlow({
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (valid.success) void submit(valid.output);
-  }
-
-  async function login(provider: LoginProvider) {
-    setConnecting(provider);
-    setAlert(null);
-    try {
-      // 成功するとサービスの認証画面へ移動するため、接続中の表示のまま待つ。
-      await signInOnClient(provider, { callbackURL: returnTo, errorCallbackURL: returnTo });
-    } catch (caught) {
-      setConnecting(null);
-      setAlert(errorMessage(caught));
-    }
   }
 
   async function logout() {
@@ -182,21 +167,14 @@ export function EntryFlow({
         {...stepProps("method")}
       >
         {context}
-        {alert ? <EntryAlert>{alert}</EntryAlert> : null}
-        <EntryProviders>
-          {loginProviderSchema.options.map((provider) => (
-            <ProviderButton
-              key={provider}
-              provider={provider}
-              loading={connecting === provider}
-              loadingText={`${loginProviderNames[provider]}に接続中…`}
-              disabled={connecting !== null && connecting !== provider}
-              onClick={() => void login(provider)}
-            >
-              {loginProviderNames[provider]}でログイン
-            </ProviderButton>
-          ))}
-        </EntryProviders>
+        {(alert ?? loginStartError) ? <EntryAlert>{alert ?? loginStartError}</EntryAlert> : null}
+        <LoginButtons
+          connecting={connecting}
+          onLogin={(provider) => {
+            setAlert(null);
+            void login(provider);
+          }}
+        />
         {mode === "join" ? (
           <>
             <EntryDivider>または</EntryDivider>
