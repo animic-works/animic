@@ -1,6 +1,8 @@
 import { DurableObject, env } from "cloudflare:workers";
+import webpEncoderWasm from "@jsquash/webp/codec/enc/webp_enc_simd.wasm";
 import * as v from "valibot";
 
+import { toPlainWebp } from "./generated-image";
 import { defaultImageModel, imageModelSchema } from "./image-models";
 import type { ImageModel } from "./image-models";
 import { minimumTimeMs, requestImage } from "./novelai";
@@ -35,6 +37,7 @@ export class NovelAiQueue extends DurableObject<Env> {
     this.ctx.storage.kv.put(modelKey, model);
   }
 
+  /** 成功すると、メタデータと透過のないWebPを返す。 */
   generate(prompt: string, deadline: number) {
     const queuedAt = Date.now();
     this.#waiting += 1;
@@ -44,7 +47,17 @@ export class NovelAiQueue extends DurableObject<Env> {
       return this.#request(prompt, deadline, queuedAt);
     });
     this.#tail = run.catch(() => {});
-    return run;
+    // 変換は順番の外で行い、次の生成のNovelAIとの通信と重ねる。
+    return run.then(async (result) => (result.ok ? await this.#toWebp(result.image) : result));
+  }
+
+  async #toWebp(png: Uint8Array) {
+    try {
+      return { ok: true, image: await toPlainWebp(png, webpEncoderWasm) } as const;
+    } catch (error) {
+      console.error("生成した画像をWebPに変換できませんでした。", error);
+      return { ok: false, reason: "invalid-response" } as const;
+    }
   }
 
   async #request(prompt: string, deadline: number, queuedAt: number) {
