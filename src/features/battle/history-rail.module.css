@@ -209,8 +209,8 @@
     font-weight: var(--font-weights-heavy);
   }
 
-  /* 860px以下は比較の下に横並びにする（モバイルの配置はIssue #10で作る） */
-  @media (width < 53.8125rem) {
+  /* 1100px以下は比較の下に置き、履歴を横に並べる（モバイルの配置はIssue #10で作る） */
+  @media (width < 68.8125rem) {
     .rail {
       padding-left: var(--spacing-0);
       padding-top: 0.9rem;
@@ -235,6 +235,20 @@
     .empty {
       aspect-ratio: auto;
       min-height: 4.6rem;
+    }
+  }
+
+  /* 861〜1100pxは、履歴の右に提出を置く */
+  @media (53.8125rem <= width < 68.8125rem) {
+    .rail {
+      column-gap: 1.25rem;
+      align-items: end;
+      grid-template-columns: minmax(0, 1fr) 15rem;
+      grid-template-rows: auto;
+    }
+
+    .shots > li {
+      width: 3.4rem;
     }
   }
 }

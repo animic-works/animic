@@ -52,6 +52,18 @@
     z-index: var(--z-index-raised);
   }
 
+  /* 1100px以下は右の列（履歴と提出）を比較の下へ回し、比較の2枚に幅を回す */
+  @media (width < 68.8125rem) {
+    .panel[data-area="stage"] {
+      grid-template-areas:
+        "head"
+        "compare"
+        "rail";
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: auto minmax(0, 1fr) auto;
+    }
+  }
+
   /* 860px以下はモバイル（Issue #10）で作り直す。ここでは1列に積み、横にはみ出さない状態だけを保つ */
   @media (width < 53.8125rem) {
     .root {
