@@ -269,7 +269,7 @@ export function PromptField({
           disabled={disabled || (tokens.length === 0 && !draft)}
           onClick={onClear}
         >
-          <Icon name="cross" size="xs" />
+          <Icon name="close" size="xs" />
         </button>
       </div>
       {open ? (

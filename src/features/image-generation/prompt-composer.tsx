@@ -329,7 +329,7 @@ export function PromptComposer({
               aria-label={`${labelOf(2)}を消す`}
               onClick={removeCharacter}
             >
-              <Icon name="cross" size="2xs" />
+              <Icon name="close" size="2xs" />
             </button>
           ) : null}
           {blocks.length - 1 < maxCharacters ? (

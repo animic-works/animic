@@ -94,7 +94,7 @@ export function PromptSearchDialog({
                 />
               </label>
               <Dialog.CloseTrigger className={searchStyles.close} aria-label="閉じる">
-                <Icon name="cross" size="sm" />
+                <Icon name="close" size="sm" />
               </Dialog.CloseTrigger>
             </header>
             <nav className={searchStyles.nav} aria-label="ジャンル">

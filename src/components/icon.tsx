@@ -210,11 +210,6 @@ const ICONS = {
     viewBox: "0 0 24 24",
     body: <path d="M5 12h14" {...STROKE} strokeWidth="3" />,
   },
-  // 閉じる・空にする（×。xはXのロゴ）
-  cross: {
-    viewBox: "0 0 24 24",
-    body: <path d="M6 6l12 12M18 6 6 18" {...STROKE} strokeWidth="3.5" />,
-  },
   // 文章で書く（横線）
   textLines: {
     viewBox: "0 0 24 24",
