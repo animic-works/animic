@@ -141,7 +141,7 @@ Motionの配置を維持する判断は、この集計結果より先に決ま�
 - [Visualのストーリー](../../../stories/visuals.stories.tsx)
 - [ブラウザ検証](../../../tests/design-system/browser/components.spec.ts)
 - [生成・検証の手順](../../../CONTRIBUTING.md#design-systemの生成と検証)
-- [デザイン定義とUIを分離する決定](../../decisions/0008-design-system.md)
+- [デザイン定義とUIを分離する決定](../../decisions/0009-design-system.md)
 
 現在どう実装するかはこれらの現行資料を確認する。この事例のコードや観測値を現在の仕様へ同期するものではない。
 

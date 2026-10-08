@@ -1,7 +1,21 @@
-// V5 Fullのテキストからの生成だけを扱う。値はNovelAI公式アプリの既定値に合わせる。
-const qualityTags = "very aesthetic, masterpiece, no text";
-const undesiredContent =
-  ", lowres, bad hands, bad anatomy, artistic error, sepia, white haze, worst quality, very displeasing, jpeg artifacts, 0::ai-generated::, ";
+import type { ImageModel } from "./image-models";
+
+// テキストからの生成だけを扱う。値はNovelAI公式アプリの既定値に合わせる。
+// 品質タグ・ネガティブプロンプト（lightのUC）・params_version・noise_scheduleはモデルごとに違う。
+const modelSettings = {
+  "nai-diffusion-5-curated": {
+    qualityTags: "very aesthetic, masterpiece, no text",
+    undesiredContent:
+      ", lowres, bad hands, bad anatomy, artistic error, sepia, white haze, worst quality, very displeasing, jpeg artifacts, 0::ai-generated::, ",
+    parameters: { params_version: 4 },
+  },
+  "nai-diffusion-4-5-curated": {
+    qualityTags: "location, masterpiece, no text, -0.8::feet::, rating:general",
+    undesiredContent:
+      ", lowres, artistic error, scan artifacts, worst quality, bad quality, jpeg artifacts, multiple views, very displeasing, too many watermarks, negative space, blank page, ",
+    parameters: { params_version: 3, noise_schedule: "karras" },
+  },
+} satisfies Record<ImageModel, unknown>;
 
 export const minimumTimeMs = 20_000;
 const abortMarginMs = 5000;
@@ -21,25 +35,38 @@ export type ImageResult =
     };
 
 function joinTags(head: string, tail: string) {
-  return head ? `${head}, ${tail}` : tail;
+  if (!head) return tail;
+  if (!tail) return head;
+  return `${head}, ${tail}`;
 }
 
-// Text:の段落の後ろに付けると、品質タグが画像内の文字として描かれる。
-function withQualityTags(prompt: string) {
+// Text:の段落の後ろに付けると、加えたタグが画像内の文字として描かれる。
+function withTags(prompt: string, tags: string) {
   const match = /(?:^|\n)Text:/.exec(prompt);
-  if (!match) return joinTags(prompt, qualityTags);
+  if (!match) return joinTags(prompt, tags);
   const start = match.index + (match[0].startsWith("\n") ? 1 : 0);
-  return `${joinTags(prompt.slice(0, start).trimEnd(), qualityTags)}\n${prompt.slice(start)}`;
+  return `${joinTags(prompt.slice(0, start).trimEnd(), tags)}\n${prompt.slice(start)}`;
 }
 
-export function buildGeneratePayload(prompt: string, seed: number) {
+/**
+ * NovelAIの`/ai/generate-image`へ送る内容。
+ * 規定の絵柄は参加者のプロンプトと品質タグの間に入れる。どちらも`v4_prompt`にだけ加え、
+ * `input`には参加者のプロンプトをそのまま送る。
+ */
+export function buildGeneratePayload(request: {
+  prompt: string;
+  stylePrompt: string;
+  model: ImageModel;
+  seed: number;
+}) {
+  const settings = modelSettings[request.model];
   return {
     action: "generate",
-    input: prompt,
-    model: "nai-diffusion-5-full",
+    input: request.prompt,
+    model: request.model,
     use_new_shared_trial: true,
     parameters: {
-      params_version: 4,
+      ...settings.parameters,
       legacy: false,
       legacy_v3_extend: false,
       deliberate_euler_ancestral_bug: false,
@@ -57,21 +84,27 @@ export function buildGeneratePayload(prompt: string, seed: number) {
       steps: 28,
       scale: 5,
       sampler: "k_euler_ancestral",
-      seed,
+      seed: request.seed,
       n_samples: 1,
-      negative_prompt: undesiredContent,
+      negative_prompt: settings.undesiredContent,
       qualityToggle: true,
       ucPreset: 1,
       cfg_rescale: 0,
       controlnet_strength: 1,
       characterPrompts: [],
       v4_prompt: {
-        caption: { base_caption: withQualityTags(prompt), char_captions: [] },
+        caption: {
+          base_caption: withTags(
+            request.prompt,
+            joinTags(request.stylePrompt, settings.qualityTags),
+          ),
+          char_captions: [],
+        },
         use_coords: false,
         use_order: true,
       },
       v4_negative_prompt: {
-        caption: { base_caption: undesiredContent, char_captions: [] },
+        caption: { base_caption: settings.undesiredContent, char_captions: [] },
         legacy_uc: false,
       },
     },
@@ -128,6 +161,8 @@ export async function requestImage(request: {
   apiUrl: string;
   token: string;
   prompt: string;
+  stylePrompt: string;
+  model: ImageModel;
   deadline: number;
 }): Promise<ImageResult> {
   if (request.deadline - Date.now() < minimumTimeMs) return { ok: false, reason: "deadline" };
@@ -138,7 +173,12 @@ export async function requestImage(request: {
       method: "POST",
       headers: { Authorization: `Bearer ${request.token}`, "Content-Type": "application/json" },
       body: JSON.stringify(
-        buildGeneratePayload(request.prompt, Math.floor(Math.random() * 1_000_000_000)),
+        buildGeneratePayload({
+          prompt: request.prompt,
+          stylePrompt: request.stylePrompt,
+          model: request.model,
+          seed: Math.floor(Math.random() * 1_000_000_000),
+        }),
       ),
       signal: AbortSignal.timeout(request.deadline - abortMarginMs - Date.now()),
     });

@@ -27,6 +27,8 @@ async function adminCalls(page: Page) {
         }),
       () => window.animicTest.listPromptGroups(),
       () => window.animicTest.savePromptGroup({ data: { id: crypto.randomUUID(), label: "e2e" } }),
+      () => window.animicTest.getImageModel(),
+      () => window.animicTest.saveImageModel({ data: { model: "nai-diffusion-4-5-curated" } }),
       () => window.animicTest.getBackup(),
       () => window.animicTest.applyBackupChunk({ data: {} }),
     ];
@@ -106,7 +108,7 @@ test("ログインしてリンクコードを発行し、リンクした採点�
   expect((await heartbeat()).status()).toBe(200);
   const jobId = crypto.randomUUID();
   await executeLocalD1(
-    `INSERT INTO scoring_job (id, battle_id, room_code, workflow_version, inputs, state, created_at) VALUES ('${jobId}', 'battle-${jobId}', 'E2EROOM2', 'illust-similarity-v1', '[]', 'queued', ${Date.now()})`,
+    `INSERT INTO scoring_job (id, battle_id, room_code, workflow_version, inputs, state, created_at) VALUES ('${jobId}', 'battle-${jobId}', 'E2EROOM2', 'illust-similarity-v2', '[]', 'queued', ${Date.now()})`,
   );
 
   await page.getByRole("button", { name: "最新の状態にする" }).click();
@@ -132,4 +134,45 @@ test("ログインしてリンクコードを発行し、リンクした採点�
   await expect(page.getByLabel("パスワード")).toBeVisible();
   for (const result of await adminCalls(page))
     expect(result).toContain("管理画面のパスワードでログインしてください。");
+});
+
+test("画像生成のモデルを切り替えると表示と保存先が変わり、対応していないモデルは保存しない", async ({
+  page,
+}) => {
+  await loginAdmin(page);
+  await openAdminMenu(page, "画像生成");
+  const current = page.locator("dl").filter({ hasText: "使用中のモデル" });
+  const models = page.getByRole("radiogroup", { name: "切り替えるモデル" });
+  await expect(current).toContainText("V5 Curated");
+  await expect(current).toContainText("nai-diffusion-5-curated");
+  await expect(models.getByRole("radio", { name: "V5 Curated" })).toBeChecked();
+
+  await models.getByText("V4.5 Curated").click();
+  await page.getByRole("button", { name: "保存する" }).click();
+  await expect(page.getByText("保存しました")).toBeVisible();
+  await expect(current).toContainText("V4.5 Curated");
+  // 生成キューのDOに保存したモデルを、開き直しても表示する。
+  await page.reload();
+  await expect(current).toContainText("nai-diffusion-4-5-curated");
+  await expect(models.getByRole("radio", { name: "V4.5 Curated" })).toBeChecked();
+
+  await loadApi(page);
+  const result = await page.evaluate(async () => {
+    try {
+      // @ts-expect-error 選択肢にないモデルをServer Functionへ直接送る。
+      await window.animicTest.saveImageModel({ data: { model: "nai-diffusion-5-full" } });
+      return "成功";
+    } catch (error) {
+      return error instanceof Error ? error.message : "失敗";
+    }
+  });
+  expect(result).toContain("対応していないモデルです。");
+  expect(await page.evaluate(() => window.animicTest.getImageModel())).toBe(
+    "nai-diffusion-4-5-curated",
+  );
+
+  await page.goto("/admin/image-generation");
+  await models.getByText("V5 Curated").click();
+  await page.getByRole("button", { name: "保存する" }).click();
+  await expect(current).toContainText("nai-diffusion-5-curated");
 });

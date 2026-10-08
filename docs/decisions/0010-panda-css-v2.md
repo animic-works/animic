@@ -1,8 +1,8 @@
-# 0009: Panda CSS v2を採用する
+# 0010: Panda CSS v2を採用する
 
 - 状態: 承認済み
 - 決定日: 2026-10-04
-- 関連: [デザイン定義とUIの分離](0008-design-system.md)、[アーキテクチャ](../architecture.md#design-system)
+- 関連: [デザイン定義とUIの分離](0009-design-system.md)、[アーキテクチャ](../architecture.md#design-system)
 
 ## 背景
 

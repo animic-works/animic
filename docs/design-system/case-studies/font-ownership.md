@@ -82,7 +82,7 @@ Fontsource依存とCSS配信を担当するパッケージをReactからstyled-s
 - [アセット対応](../../../packages/design-system/src/font-assets.ts)・[生成処理](../../../scripts/generate-fonts.mjs): 解決と出力の実装
 - [フォント生成のテスト](../../../tests/design-system/fonts.test.ts)・[ブラウザのテスト](../../../tests/design-system/browser/foundation.spec.ts): 現在の自動検査
 - [生成・検証の手順](../../../CONTRIBUTING.md#design-systemの生成と検証)
-- [ADR 0008](../../decisions/0008-design-system.md): デザイン定義とUI実装を分離する決定
+- [ADR 0009](../../decisions/0009-design-system.md): デザイン定義とUI実装を分離する決定
 
 具体的なフォント一覧・全Text Style・依存バージョン・公開API・生成CSSはこれらの資料で確認する。この事例を現在の一覧へ同期するものではない。
 
