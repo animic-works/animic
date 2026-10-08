@@ -47,10 +47,14 @@
   /* 2枚を並べる。枠の幅と高さの小さいほうに合わせて縦長の枠の大きさを決める */
   .compare {
     container-type: size;
-    gap: 1.5rem;
+    column-gap: 1.5rem;
+    row-gap: 0.6rem;
     display: grid;
     grid-area: compare;
+    align-content: center;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    /* 画像の行とラベルの行を2枚でそろえる（ラベルが折り返しても画像の高さがずれないように） */
+    grid-template-rows: auto auto;
     min-height: var(--sizes-0);
     position: relative;
   }
@@ -207,13 +211,14 @@
   .item {
     margin: var(--spacing-0);
     gap: 0.6rem;
-    align-content: center;
+    align-items: start;
     display: grid;
-    grid-template-rows: auto auto;
+    grid-row: span 2;
+    grid-template-rows: subgrid;
     min-height: var(--sizes-0);
     min-width: var(--sizes-0);
-    /* 縦長の枠。下のラベルのぶんを引く */
-    width: min(100%, calc((100cqh - 2rem) * 832 / 1216));
+    /* 縦長の枠。下のラベル（折り返して2行になる場合も）のぶんを引く */
+    width: min(100%, calc((100cqh - 3.6rem) * 832 / 1216));
   }
 
   .item[data-kind="mine"] {
