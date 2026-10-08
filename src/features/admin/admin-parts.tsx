@@ -231,9 +231,9 @@ export type TopicTileProps = {
   difficulty: ReactNode;
   /** 題名の下の短い説明（「非公開・かんたん」など） */
   meta: string;
-  /** 更新日（「10/04」など）と、その機械向けの日時 */
+  /** 更新日（「10/04」など）と、その機械向けの日時。日時が不明なら dateTime を省き、date に「—」を渡す */
   date: string;
-  dateTime: string;
+  dateTime?: string;
 };
 
 // お題の1枚。タイル全体が詳細へのリンク
@@ -273,7 +273,7 @@ export function TopicTile({
         </span>
         <span className={topicTileStyles.meta}>
           <span>{meta}</span>
-          <time dateTime={dateTime}>{date}</time>
+          {dateTime ? <time dateTime={dateTime}>{date}</time> : <span>{date}</span>}
         </span>
       </div>
     </li>

@@ -153,8 +153,9 @@ export function TopicListScreen({
               status={<StatusBadge status={topic.status} />}
               difficulty={<DifficultyBadge difficulty={topic.difficulty} />}
               meta={metaText(topic.note)}
-              date={formatDate(topic.updatedAt)}
-              dateTime={new Date(topic.updatedAt).toISOString()}
+              // 移行前から登録されていたお題は更新日時が0（不明）のため、詳細画面と同じく「—」にする
+              date={topic.updatedAt ? formatDate(topic.updatedAt) : "—"}
+              dateTime={topic.updatedAt ? new Date(topic.updatedAt).toISOString() : undefined}
             />
           ))}
         </TopicGrid>
