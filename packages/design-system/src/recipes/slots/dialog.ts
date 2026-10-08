@@ -1,16 +1,25 @@
 import { defineSlotRecipe, defineStyles } from "@pandacss/dev";
+// 開いた後は演出の終点を残さず、通常の描画に戻す。閉じるときは消えた状態を保つ。
+// 状態ごとの演出名は状態のセレクターで指定するため、reduced motionも同じセレクターの中で止める。
 const fadePresence = defineStyles({
   animationDuration: "1",
   animationTimingFunction: "standard",
   animationFillMode: "both",
-  // 開いた後は演出の終点を残さず、通常の描画に戻す。閉じるときは消えた状態を保つ。
-  _open: { animationName: "fadeIn", animationFillMode: "backwards" },
-  _closed: { animationName: "fadeOut" },
-  _motionReduce: { animation: "none" },
+  _open: {
+    animationName: "fadeIn",
+    animationFillMode: "backwards",
+    _motionReduce: { animation: "none" },
+  },
+  _closed: { animationName: "fadeOut", _motionReduce: { animation: "none" } },
 });
 const contentPresence = defineStyles({
   ...fadePresence,
-  _open: { animationName: "dialogEnter", animationDuration: "2", animationFillMode: "backwards" },
+  _open: {
+    animationName: "dialogEnter",
+    animationDuration: "2",
+    animationFillMode: "backwards",
+    _motionReduce: { animation: "none" },
+  },
 });
 const centered = defineStyles({
   alignSelf: "center",
