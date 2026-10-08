@@ -1,5 +1,5 @@
 {
-  "source_commit": "e30dd52281a444737c5c4780f9153c13511e1e2b",
+  "source_commit": "7ce51627636ab9ddbdaaef94feb2ff0346ce4368",
   "pull_request": "https://github.com/animic-works/animic/pull/33",
   "shots": [
     {
@@ -344,7 +344,7 @@
       "label": "desktop",
       "path": "15-battle-desktop.png",
       "width": 1440,
-      "height": 953
+      "height": 900
     },
     {
       "id": "15-battle",
@@ -352,7 +352,7 @@
       "label": "mobile",
       "path": "15-battle-mobile.png",
       "width": 390,
-      "height": 844
+      "height": 862
     },
     {
       "id": "15-battle",
@@ -368,7 +368,7 @@
       "label": "desktop",
       "path": "16-selection-desktop.png",
       "width": 1440,
-      "height": 996
+      "height": 900
     },
     {
       "id": "16-selection",
@@ -496,7 +496,7 @@
       "label": "mobile",
       "path": "21-admin-topics-mobile.png",
       "width": 390,
-      "height": 3318
+      "height": 3378
     },
     {
       "id": "21-admin-topics",
@@ -520,7 +520,7 @@
       "label": "mobile",
       "path": "22-admin-topic-new-mobile.png",
       "width": 390,
-      "height": 1487
+      "height": 1547
     },
     {
       "id": "22-admin-topic-new",
@@ -536,7 +536,7 @@
       "label": "desktop",
       "path": "23-admin-battle-options-desktop.png",
       "width": 1440,
-      "height": 1712
+      "height": 1774
     },
     {
       "id": "23-admin-battle-options",
@@ -544,7 +544,7 @@
       "label": "mobile",
       "path": "23-admin-battle-options-mobile.png",
       "width": 390,
-      "height": 2197
+      "height": 2319
     },
     {
       "id": "23-admin-battle-options",
@@ -568,7 +568,7 @@
       "label": "mobile",
       "path": "24-admin-prompts-mobile.png",
       "width": 390,
-      "height": 844
+      "height": 870
     },
     {
       "id": "24-admin-prompts",
@@ -584,7 +584,7 @@
       "label": "desktop",
       "path": "25-admin-workers-desktop.png",
       "width": 1440,
-      "height": 937
+      "height": 1354
     },
     {
       "id": "25-admin-workers",
@@ -592,7 +592,7 @@
       "label": "mobile",
       "path": "25-admin-workers-mobile.png",
       "width": 390,
-      "height": 1395
+      "height": 1872
     },
     {
       "id": "25-admin-workers",
@@ -616,7 +616,7 @@
       "label": "mobile",
       "path": "26-admin-jobs-mobile.png",
       "width": 390,
-      "height": 844
+      "height": 1175
     },
     {
       "id": "26-admin-jobs",
@@ -640,7 +640,7 @@
       "label": "mobile",
       "path": "27-admin-backup-mobile.png",
       "width": 390,
-      "height": 1402
+      "height": 1489
     },
     {
       "id": "27-admin-backup",
@@ -656,7 +656,7 @@
       "label": "desktop",
       "path": "28-battle-images-desktop.png",
       "width": 1440,
-      "height": 953
+      "height": 900
     },
     {
       "id": "28-battle-images",
@@ -664,7 +664,7 @@
       "label": "mobile",
       "path": "28-battle-images-mobile.png",
       "width": 390,
-      "height": 844
+      "height": 862
     },
     {
       "id": "28-battle-images",
@@ -680,7 +680,7 @@
       "label": "desktop",
       "path": "29-submit-confirm-desktop.png",
       "width": 1440,
-      "height": 953
+      "height": 900
     },
     {
       "id": "29-submit-confirm",
@@ -688,7 +688,7 @@
       "label": "mobile",
       "path": "29-submit-confirm-mobile.png",
       "width": 390,
-      "height": 844
+      "height": 862
     },
     {
       "id": "29-submit-confirm",
@@ -704,7 +704,7 @@
       "label": "desktop",
       "path": "30-submitted-desktop.png",
       "width": 1440,
-      "height": 927
+      "height": 900
     },
     {
       "id": "30-submitted",
@@ -724,15 +724,15 @@
     },
     {
       "id": "31-scoring",
-      "title": "採点中",
+      "title": "採点中（両者の提出後）",
       "label": "desktop",
       "path": "31-scoring-desktop.png",
       "width": 1440,
-      "height": 927
+      "height": 900
     },
     {
       "id": "31-scoring",
-      "title": "採点中",
+      "title": "採点中（両者の提出後）",
       "label": "mobile",
       "path": "31-scoring-mobile.png",
       "width": 390,
@@ -740,7 +740,7 @@
     },
     {
       "id": "31-scoring",
-      "title": "採点中",
+      "title": "採点中（両者の提出後）",
       "label": "mobile-viewport",
       "path": "31-scoring-mobile-viewport.png",
       "width": 390,
@@ -800,7 +800,7 @@
       "label": "desktop",
       "path": "34-admin-workers-populated-desktop.png",
       "width": 1440,
-      "height": 937
+      "height": 1415
     },
     {
       "id": "34-admin-workers-populated",
@@ -808,7 +808,7 @@
       "label": "mobile",
       "path": "34-admin-workers-populated-mobile.png",
       "width": 390,
-      "height": 1395
+      "height": 1933
     },
     {
       "id": "34-admin-workers-populated",
@@ -832,13 +832,109 @@
       "label": "mobile",
       "path": "35-admin-jobs-completed-mobile.png",
       "width": 390,
-      "height": 844
+      "height": 1257
     },
     {
       "id": "35-admin-jobs-completed",
       "title": "管理・採点完了ジョブ",
       "label": "mobile-viewport",
       "path": "35-admin-jobs-completed-mobile-viewport.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "36-admin-image-generation",
+      "title": "管理・画像生成",
+      "label": "desktop",
+      "path": "36-admin-image-generation-desktop.png",
+      "width": 1440,
+      "height": 997
+    },
+    {
+      "id": "36-admin-image-generation",
+      "title": "管理・画像生成",
+      "label": "mobile",
+      "path": "36-admin-image-generation-mobile.png",
+      "width": 390,
+      "height": 1570
+    },
+    {
+      "id": "36-admin-image-generation",
+      "title": "管理・画像生成",
+      "label": "mobile-viewport",
+      "path": "36-admin-image-generation-mobile-viewport.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "37-lobby-trio",
+      "title": "ロビー（3人）",
+      "label": "desktop",
+      "path": "37-lobby-trio-desktop.png",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "id": "37-lobby-trio",
+      "title": "ロビー（3人）",
+      "label": "mobile",
+      "path": "37-lobby-trio-mobile.png",
+      "width": 390,
+      "height": 1388
+    },
+    {
+      "id": "37-lobby-trio",
+      "title": "ロビー（3人）",
+      "label": "mobile-viewport",
+      "path": "37-lobby-trio-mobile-viewport.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "38-result-ranking",
+      "title": "結果・3人の順位（サンプル採点結果）",
+      "label": "desktop",
+      "path": "38-result-ranking-desktop.png",
+      "width": 1440,
+      "height": 1261
+    },
+    {
+      "id": "38-result-ranking",
+      "title": "結果・3人の順位（サンプル採点結果）",
+      "label": "mobile",
+      "path": "38-result-ranking-mobile.png",
+      "width": 390,
+      "height": 978
+    },
+    {
+      "id": "38-result-ranking",
+      "title": "結果・3人の順位（サンプル採点結果）",
+      "label": "mobile-viewport",
+      "path": "38-result-ranking-mobile-viewport.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "39-result-ranking-guest",
+      "title": "結果・3人の順位（参加者側）",
+      "label": "desktop",
+      "path": "39-result-ranking-guest-desktop.png",
+      "width": 1440,
+      "height": 1261
+    },
+    {
+      "id": "39-result-ranking-guest",
+      "title": "結果・3人の順位（参加者側）",
+      "label": "mobile",
+      "path": "39-result-ranking-guest-mobile.png",
+      "width": 390,
+      "height": 1002
+    },
+    {
+      "id": "39-result-ranking-guest",
+      "title": "結果・3人の順位（参加者側）",
+      "label": "mobile-viewport",
+      "path": "39-result-ranking-guest-mobile-viewport.png",
       "width": 390,
       "height": 844
     }

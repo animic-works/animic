@@ -1,7 +1,7 @@
 #33 の画面確認用画像
 
 撮影対象: https://github.com/animic-works/animic/pull/33
-アプリのコミット: e30dd52281a444737c5c4780f9153c13511e1e2b
+アプリのコミット: 7ce51627636ab9ddbdaaef94feb2ff0346ce4368
 PC: 幅1440px、必要に応じてページ全体。
 モバイル: 390×844の表示領域と、縦長画面の全体画像。
 
