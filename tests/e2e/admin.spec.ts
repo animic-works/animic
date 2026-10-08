@@ -2,7 +2,7 @@ import * as v from "valibot";
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
-import { e2eAdminPassword } from "./admin-password";
+import { loginAdmin, openAdminMenu } from "./admin";
 import { loadApi } from "./api";
 import { executeLocalD1 } from "./d1";
 
@@ -17,6 +17,18 @@ async function adminCalls(page: Page) {
       () => window.animicTest.issueScoringLinkCode({ data: { name: "e2e" } }),
       () => window.animicTest.getScoringAdminData(),
       () => window.animicTest.revokeScoringWorker({ data: { id: crypto.randomUUID() } }),
+      () => window.animicTest.listAdminTopics(),
+      () =>
+        window.animicTest.saveBattleOptions({
+          data: {
+            duration: { choices: [5], defaultSeconds: 5 },
+            selection: { choices: [5], defaultSeconds: 5 },
+          },
+        }),
+      () => window.animicTest.listPromptGroups(),
+      () => window.animicTest.savePromptGroup({ data: { id: crypto.randomUUID(), label: "e2e" } }),
+      () => window.animicTest.getBackup(),
+      () => window.animicTest.applyBackupChunk({ data: {} }),
     ];
     const results: string[] = [];
     for (const call of calls) {
@@ -40,6 +52,12 @@ test("パスワードでログインするまで、管理画面の内容と管�
   expect(response?.headers()["x-robots-tag"]).toBe("noindex");
   await expect(page.getByLabel("パスワード")).toBeVisible();
   await expect(page.getByRole("navigation", { name: "管理メニュー" })).toHaveCount(0);
+  // 管理画面の中の画面を直接開いても、パスワードの入力だけを表示する。
+  const topics = await page.goto("/admin/topics");
+  expect(topics?.headers()["cache-control"]).toBe("private, no-store");
+  await expect(page.getByLabel("パスワード")).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "管理メニュー" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "お題" })).toHaveCount(0);
 
   await page.getByLabel("パスワード").fill("wrong-password");
   await page.getByRole("button", { name: "ログイン" }).click();
@@ -62,10 +80,8 @@ test("ログインしてリンクコードを発行し、リンクした採点�
   page,
   request,
 }) => {
-  await page.goto("/admin");
-  await page.getByLabel("パスワード").fill(e2eAdminPassword);
-  await page.getByRole("button", { name: "ログイン" }).click();
-  await expect(page.getByRole("navigation", { name: "管理メニュー" })).toBeVisible();
+  await loginAdmin(page);
+  await openAdminMenu(page, "採点ワーカー");
 
   await page.getByRole("button", { name: "発行する" }).click();
   await expect(page.getByRole("alert")).toHaveText("名前を入力してください。");
@@ -98,15 +114,19 @@ test("ログインしてリンクコードを発行し、リンクした採点�
   await expect(row).toContainText("available");
   await expect(row).toContainText("E2E GPU（空き4GB／8GB）");
   await expect(row).toContainText("有効");
-  await expect(page.getByRole("row", { name: new RegExp(`battle-${jobId}`) })).toContainText(
-    "待機中",
-  );
 
-  page.once("dialog", (dialog) => void dialog.accept());
   await row.getByRole("button", { name: "失効させる" }).click();
+  const dialog = page.getByRole("dialog", { name: "採点ワーカーを失効させますか？" });
+  await dialog.getByRole("button", { name: "失効させる" }).click();
+  await expect(dialog).toHaveCount(0);
   await expect(row).toContainText("失効（");
   await expect(row.getByRole("button", { name: "失効させる" })).toHaveCount(0);
   expect((await heartbeat()).status()).toBe(401);
+
+  await openAdminMenu(page, "採点ジョブ");
+  await expect(page.getByRole("row", { name: new RegExp(`battle-${jobId}`) })).toContainText(
+    "待機中",
+  );
 
   await page.getByRole("button", { name: "ログアウト" }).click();
   await expect(page.getByLabel("パスワード")).toBeVisible();
