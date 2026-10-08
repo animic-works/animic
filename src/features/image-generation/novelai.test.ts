@@ -2,13 +2,17 @@ import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { buildGeneratePayload, readImageResponse, requestImage } from "./novelai";
 
-const undesiredContent =
+const v5UndesiredContent =
   ", lowres, bad hands, bad anatomy, artistic error, sepia, white haze, worst quality, very displeasing, jpeg artifacts, 0::ai-generated::, ";
-// nai-desktop-studioのbuildGeneratePayloadに同じ入力（V5 Full・seed 12345）を渡した結果。
-const referencePayload = {
+const v45UndesiredContent =
+  ", lowres, artistic error, scan artifacts, worst quality, bad quality, jpeg artifacts, multiple views, very displeasing, too many watermarks, negative space, blank page, ";
+const v5QualityTags = "very aesthetic, masterpiece, no text";
+const v45QualityTags = "location, masterpiece, no text, -0.8::feet::, rating:general";
+// nai-desktop-studioのbuildGeneratePayloadに同じ入力（V5 Curated・seed 12345）を渡した結果。
+const v5Reference = {
   action: "generate",
   input: "1girl, solo",
-  model: "nai-diffusion-5-full",
+  model: "nai-diffusion-5-curated",
   use_new_shared_trial: true,
   parameters: {
     params_version: 4,
@@ -31,26 +35,70 @@ const referencePayload = {
     sampler: "k_euler_ancestral",
     seed: 12345,
     n_samples: 1,
-    negative_prompt: undesiredContent,
+    negative_prompt: v5UndesiredContent,
     qualityToggle: true,
     ucPreset: 1,
     cfg_rescale: 0,
     controlnet_strength: 1,
     characterPrompts: [],
     v4_prompt: {
-      caption: {
-        base_caption: "1girl, solo, very aesthetic, masterpiece, no text",
-        char_captions: [],
-      },
+      caption: { base_caption: `1girl, solo, ${v5QualityTags}`, char_captions: [] },
       use_coords: false,
       use_order: true,
     },
     v4_negative_prompt: {
-      caption: { base_caption: undesiredContent, char_captions: [] },
+      caption: { base_caption: v5UndesiredContent, char_captions: [] },
       legacy_uc: false,
     },
   },
 };
+// 同じ入力をV4.5 Curatedで渡した結果。V5 Curatedと違う項目だけを書き換える。
+const v45Reference = {
+  ...v5Reference,
+  model: "nai-diffusion-4-5-curated",
+  parameters: {
+    ...v5Reference.parameters,
+    params_version: 3,
+    noise_schedule: "karras",
+    negative_prompt: v45UndesiredContent,
+    v4_prompt: {
+      ...v5Reference.parameters.v4_prompt,
+      caption: { base_caption: `1girl, solo, ${v45QualityTags}`, char_captions: [] },
+    },
+    v4_negative_prompt: {
+      ...v5Reference.parameters.v4_negative_prompt,
+      caption: { base_caption: v45UndesiredContent, char_captions: [] },
+    },
+  },
+};
+const models = [
+  {
+    label: "V5 Curated",
+    model: "nai-diffusion-5-curated",
+    reference: v5Reference,
+    qualityTags: v5QualityTags,
+  },
+  {
+    label: "V4.5 Curated",
+    model: "nai-diffusion-4-5-curated",
+    reference: v45Reference,
+    qualityTags: v45QualityTags,
+  },
+] as const;
+
+function withPrompt(reference: typeof v5Reference, input: string, baseCaption: string) {
+  return {
+    ...reference,
+    input,
+    parameters: {
+      ...reference.parameters,
+      v4_prompt: {
+        ...reference.parameters.v4_prompt,
+        caption: { base_caption: baseCaption, char_captions: [] },
+      },
+    },
+  };
+}
 
 const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4]);
 
@@ -101,25 +149,40 @@ async function zip(data: Uint8Array<ArrayBuffer>, method: 0 | 8) {
 }
 
 describe("NovelAIへのペイロード", () => {
-  it("V5 Fullの固定値と品質タグを参考実装と同じ形で送る", () => {
-    expect(buildGeneratePayload("1girl, solo", 12345)).toStrictEqual(referencePayload);
+  it.each(models)("$labelの固定値と品質タグを参考実装と同じ形で送る", ({ model, reference }) => {
+    expect(
+      buildGeneratePayload({ prompt: "1girl, solo", stylePrompt: "", model, seed: 12345 }),
+    ).toStrictEqual(reference);
   });
-  it("品質タグはText:の段落より前に入れ、inputには元のプロンプトを送る", () => {
-    expect(buildGeneratePayload("1girl, solo\nText: Hello", 12345)).toStrictEqual({
-      ...referencePayload,
-      input: "1girl, solo\nText: Hello",
-      parameters: {
-        ...referencePayload.parameters,
-        v4_prompt: {
-          ...referencePayload.parameters.v4_prompt,
-          caption: {
-            base_caption: "1girl, solo, very aesthetic, masterpiece, no text\nText: Hello",
-            char_captions: [],
-          },
-        },
-      },
-    });
-  });
+  it.each(models)(
+    "$labelでは規定の絵柄をプロンプトと品質タグの間に入れ、inputには加えない",
+    ({ model, reference, qualityTags }) => {
+      expect(
+        buildGeneratePayload({
+          prompt: "1girl, solo",
+          stylePrompt: "artist:example",
+          model,
+          seed: 12345,
+        }),
+      ).toStrictEqual(
+        withPrompt(reference, "1girl, solo", `1girl, solo, artist:example, ${qualityTags}`),
+      );
+    },
+  );
+  it.each(models)(
+    "$labelでは規定の絵柄と品質タグをText:の段落より前に入れる",
+    ({ model, reference, qualityTags }) => {
+      const prompt = "1girl, solo\nText: Hello";
+      expect(buildGeneratePayload({ prompt, stylePrompt: "", model, seed: 12345 })).toStrictEqual(
+        withPrompt(reference, prompt, `1girl, solo, ${qualityTags}\nText: Hello`),
+      );
+      expect(
+        buildGeneratePayload({ prompt, stylePrompt: "artist:example", model, seed: 12345 }),
+      ).toStrictEqual(
+        withPrompt(reference, prompt, `1girl, solo, artist:example, ${qualityTags}\nText: Hello`),
+      );
+    },
+  );
 });
 
 describe("NovelAIの応答の読み取り", () => {
@@ -140,7 +203,13 @@ describe("NovelAIの応答の読み取り", () => {
 });
 
 describe("NovelAIへの生成の要求", () => {
-  const request = { apiUrl: "https://novelai.example", token: "pst-test", prompt: "1girl" };
+  const request = {
+    apiUrl: "https://novelai.example",
+    token: "pst-test",
+    prompt: "1girl",
+    stylePrompt: "artist:example",
+    model: "nai-diffusion-4-5-curated",
+  } as const;
   afterEach(() => {
     vi.unstubAllGlobals();
   });
@@ -161,6 +230,10 @@ describe("NovelAIへの生成の要求", () => {
     expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer pst-test");
     expect(typeof init?.body === "string" && JSON.parse(init.body)).toMatchObject({
       input: "1girl",
+      model: "nai-diffusion-4-5-curated",
+      parameters: {
+        v4_prompt: { caption: { base_caption: `1girl, artist:example, ${v45QualityTags}` } },
+      },
     });
   });
   it("429は自分では送り直さず、状態コードを返す", async () => {
