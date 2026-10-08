@@ -1,0 +1,504 @@
+@layer recipes.slots.base {
+  .body {
+    gap: 0.7rem;
+    align-content: stretch;
+    display: grid;
+    grid-template-rows: auto auto minmax(11rem, 1fr) auto minmax(0, 15rem) auto;
+    min-height: var(--sizes-0);
+  }
+
+  .body > * {
+    min-width: var(--sizes-0);
+  }
+
+  .chip {
+    background: var(--colors-bg-surface);
+    padding-inline: 0.7rem;
+    padding-block: 0.32rem;
+    border-color: var(--colors-border-default);
+    border-radius: var(--radii-control);
+    border-style: solid;
+    border-width: 1.5px;
+    transition:
+      border-color 0.15s,
+      background-color 0.15s,
+      color 0.15s,
+      transform 0.15s;
+    gap: 0.3rem;
+    align-items: center;
+    color: var(--colors-fg-default);
+    cursor: pointer;
+    display: inline-flex;
+    font: inherit;
+    font-size: 0.78rem;
+    white-space: nowrap;
+  }
+
+  .chip:hover:not(:disabled) {
+    border-color: var(--dot);
+    transform: translateY(-1px);
+  }
+
+  .chip:disabled {
+    cursor: default;
+    opacity: 0.45;
+  }
+
+  .chip[aria-pressed="true"] {
+    background: var(--colors-bg-inverse);
+    border-color: var(--colors-border-strong);
+    animation: chip-pop 0.35s var(--easings-pop);
+    color: var(--colors-fg-inverse);
+  }
+
+  .chip[aria-pressed="true"]::before {
+    background: var(--dot);
+    border-radius: var(--radii-full);
+    content: "";
+    height: 0.45rem;
+    width: 0.45rem;
+  }
+
+  .chipLabel {
+    gap: 0.35rem;
+    align-items: center;
+    color: var(--colors-fg-muted);
+    display: flex;
+    font-size: 0.7rem;
+    font-weight: var(--font-weights-bold);
+    padding-top: 0.42rem;
+    white-space: nowrap;
+  }
+
+  .chipLabel::before {
+    background: var(--dot);
+    border-radius: 2px;
+    content: "";
+    height: 0.45rem;
+    transform: rotate(45deg);
+    width: 0.45rem;
+  }
+
+  .chipOptions {
+    gap: 0.35rem;
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .chipRow {
+    --dot: var(--colors-accent-brand);
+    gap: 0.5rem;
+    align-items: start;
+    display: grid;
+    grid-template-columns: 3.4rem minmax(0, 1fr);
+  }
+
+  .chipRow[data-tone="amber"] {
+    --dot: var(--colors-amber-500);
+  }
+
+  .chipRow[data-tone="cyan"] {
+    --dot: var(--colors-info-default);
+  }
+
+  .chipRow[data-tone="green"] {
+    --dot: var(--colors-green-500);
+  }
+
+  .chipRow[data-tone="orange"] {
+    --dot: var(--colors-orange-500);
+  }
+
+  .chipRow[data-tone="purple"] {
+    --dot: var(--colors-purple-500);
+  }
+
+  .chips {
+    padding: 0.1rem 0.4rem 0.4rem 0;
+    overflow-y: auto;
+    gap: 0.7rem;
+    align-content: start;
+    display: grid;
+    margin-right: -0.4rem;
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 1.5rem), transparent);
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 1.5rem), transparent);
+    min-height: var(--sizes-0);
+    scrollbar-width: thin;
+  }
+
+  .count {
+    gap: 0.25rem;
+    align-items: baseline;
+    color: var(--colors-fg-default);
+    display: inline-flex;
+    flex: none;
+    font-size: 0.8rem;
+    font-weight: var(--font-weights-bold);
+    margin-left: auto;
+    white-space: nowrap;
+  }
+
+  .count b {
+    font-family: var(--fonts-display);
+    font-size: 1.35rem;
+    font-weight: var(--font-weights-regular);
+    line-height: var(--line-heights-none);
+  }
+
+  .cover {
+    display: grid;
+    inset: -2px;
+    position: absolute;
+    z-index: 5;
+  }
+
+  .eyebrow {
+    color: var(--colors-fg-muted);
+    flex: none;
+    font-family: var(--fonts-latin);
+    font-size: 0.62rem;
+    font-style: italic;
+    font-weight: var(--font-weights-heavy);
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+  }
+
+  .foot {
+    gap: 0.65rem;
+    display: grid;
+    padding-top: 0.2rem;
+  }
+
+  .kbd {
+    gap: 0.2rem;
+    align-items: center;
+    display: inline-flex;
+    margin-left: 0.3rem;
+    opacity: 0.7;
+    white-space: nowrap;
+  }
+
+  .kbd kbd {
+    background: var(--colors-transparent);
+    padding-inline: 0.35rem;
+    padding-block: 0.05rem;
+    border-color: color-mix(in srgb, currentColor 35%, transparent);
+    border-radius: 0.35rem;
+    border-style: solid;
+    border-width: 1.5px 1.5px 3px;
+    color: inherit;
+    font-family: var(--fonts-mono);
+    font-size: 0.64rem;
+    letter-spacing: var(--letter-spacings-normal);
+  }
+
+  @media (hover: none) {
+    .kbd {
+      display: none;
+    }
+  }
+
+  .meter {
+    gap: 0.6rem;
+    align-items: center;
+    display: flex;
+    min-height: 1.5rem;
+    min-width: var(--sizes-0);
+  }
+
+  .reason {
+    color: var(--colors-fg-muted);
+    font-size: 0.72rem;
+    font-weight: var(--font-weights-bold);
+  }
+
+  .root {
+    background: var(--colors-bg-surface);
+    padding: 1.1rem 1.2rem 1.2rem;
+    border-color: var(--colors-border-default);
+    border-radius: 1.6rem;
+    border-style: solid;
+    border-width: var(--border-widths-thick);
+    box-shadow: var(--shadows-md);
+    display: grid;
+    grid-area: compose;
+    grid-template-rows: minmax(0, 1fr);
+    min-height: var(--sizes-0);
+    position: relative;
+  }
+
+  body[data-entering] .root {
+    animation: card-rise 0.8s var(--easings-rise) both;
+    animation-delay: 0.6s;
+  }
+
+  .search {
+    container-type: inline-size;
+    gap: 0.5rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+  }
+
+  .searchButton {
+    --c: var(--colors-prompt-base);
+    --soft: var(--colors-tint-green);
+    background: var(--soft);
+    padding: 0.35rem 0.8rem 0.35rem 0.35rem;
+    border-color: var(--soft);
+    border-radius: var(--radii-control);
+    border-style: solid;
+    border-width: 1.5px;
+    transition: border-color 0.15s;
+    gap: 0.5rem;
+    align-items: center;
+    color: var(--colors-green-800);
+    cursor: pointer;
+    display: inline-flex;
+    font: inherit;
+    font-size: 0.74rem;
+    font-weight: var(--font-weights-bold);
+    justify-content: flex-start;
+    min-width: var(--sizes-0);
+    white-space: nowrap;
+  }
+
+  .searchButton[data-tone="char"] {
+    --c: var(--colors-prompt-char1);
+    --soft: var(--colors-yellow-100);
+    color: var(--colors-yellow-800);
+  }
+
+  .searchButton:hover:not(:disabled) {
+    border-color: var(--c);
+  }
+
+  .searchButton:hover:not(:disabled) .searchIcon {
+    transform: rotate(-8deg) scale(1.08);
+  }
+
+  .searchButton:disabled {
+    cursor: default;
+    opacity: 0.45;
+  }
+
+  .searchIcon {
+    background: var(--c);
+    border-radius: var(--radii-full);
+    transition: transform 0.25s var(--easings-pop);
+    place-items: center;
+    color: var(--colors-fg-inverse);
+    display: grid;
+    flex: none;
+    height: 2rem;
+    width: 2rem;
+  }
+
+  .searchButton[data-tone="char"] .searchIcon {
+    color: var(--colors-fg-default);
+  }
+
+  .searchText {
+    overflow: hidden;
+    min-width: var(--sizes-0);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .searchText b {
+    font-weight: var(--font-weights-heavy);
+  }
+
+  /* 2つ並べて幅が足りないときは「ベースを検索」「キャラを検索」と短くする（欄の幅で判定） */
+  @container (min-width: 21rem) and (max-width: 30rem) {
+    .searchMid {
+      display: none;
+    }
+  }
+
+  @container (max-width: 15rem) {
+    .searchMid {
+      display: none;
+    }
+  }
+
+  .tab {
+    --c: var(--colors-prompt-base);
+    background: color-mix(in srgb, var(--c) 8%, #fff);
+    padding-inline: 0.7rem;
+    padding-block: 0.3rem;
+    border-radius: var(--radii-control);
+    border-width: var(--border-widths-none);
+    transition:
+      background-color 0.15s,
+      color 0.15s;
+    gap: 0.35rem;
+    align-items: center;
+    color: var(--colors-green-800);
+    cursor: pointer;
+    display: inline-flex;
+    flex: none;
+    font: inherit;
+    font-size: 0.74rem;
+    font-weight: var(--font-weights-bold);
+    white-space: nowrap;
+  }
+
+  .tab[data-tone="char1"] {
+    --c: var(--colors-prompt-char1);
+    color: var(--colors-yellow-800);
+  }
+
+  .tab[data-tone="char2"] {
+    --c: var(--colors-prompt-char2);
+    color: var(--colors-cyan-700);
+  }
+
+  .tab:hover {
+    background: color-mix(in srgb, var(--c) 14%, #fff);
+  }
+
+  .tab[data-selected] {
+    background: color-mix(in srgb, var(--c) 24%, #fff);
+    box-shadow: inset 0 0 0 1.5px var(--c);
+  }
+
+  .tabAdd {
+    background: none;
+    padding-inline: 0.7rem;
+    padding-block: 0.3rem;
+    border-color: var(--colors-border-default);
+    border-radius: var(--radii-control);
+    border-style: dashed;
+    border-width: 1.5px;
+    transition:
+      border-color 0.15s,
+      color 0.15s;
+    color: var(--colors-fg-muted);
+    cursor: pointer;
+    flex: none;
+    font: inherit;
+    font-size: 0.74rem;
+    font-weight: var(--font-weights-bold);
+    white-space: nowrap;
+  }
+
+  .tabAdd:hover:not(:disabled) {
+    border-color: var(--colors-accent-brand);
+    color: var(--colors-accent-default);
+  }
+
+  .tabAdd:disabled {
+    cursor: default;
+    opacity: 0.45;
+  }
+
+  .tabList {
+    gap: 0.3rem;
+    align-items: center;
+    display: flex;
+  }
+
+  .tabMark {
+    background: var(--c);
+    border-radius: var(--radii-full);
+    height: 0.55rem;
+    width: 0.55rem;
+  }
+
+  .tab[data-tone="base"] .tabMark {
+    border-radius: 2px;
+  }
+
+  .tabRemove {
+    background: none;
+    padding: var(--spacing-0);
+    border-radius: var(--radii-full);
+    border-width: var(--border-widths-none);
+    place-items: center;
+    color: var(--colors-fg-muted);
+    cursor: pointer;
+    display: grid;
+    flex: none;
+    height: 1.2rem;
+    margin-left: -0.15rem;
+    width: 1.2rem;
+  }
+
+  .tabRemove:hover {
+    background: var(--colors-bg-inverse);
+    color: var(--colors-fg-inverse);
+  }
+
+  .tabs {
+    display: contents;
+  }
+
+  .tabsBar {
+    overflow-x: auto;
+    gap: 0.3rem;
+    align-items: center;
+    display: flex;
+    scrollbar-width: none;
+  }
+
+  .tip {
+    margin: 0.4rem 0 0;
+    padding-inline: 0.9rem;
+    padding-block: 0.75rem;
+    border-color: var(--colors-border-default);
+    border-radius: var(--radii-md);
+    border-style: dashed;
+    border-width: var(--border-widths-thick);
+    gap: 0.6rem;
+    color: var(--colors-fg-muted);
+    display: flex;
+    font-size: 0.74rem;
+    line-height: 1.65;
+  }
+
+  .tip svg {
+    color: var(--colors-amber-500);
+    margin-top: 0.1rem;
+  }
+
+  .tip b {
+    color: var(--colors-fg-default);
+  }
+
+  /* 860px以下はモバイル（Issue #10）で作り直す。ここでは1列に積んで操作できる状態だけを保つ */
+  @media (width < 53.8125rem) {
+    .body {
+      grid-template-rows: auto auto minmax(9rem, auto) auto minmax(0, 15rem) auto;
+    }
+  }
+}
+
+/* Buttonの大きさ（size）の指定より後に当てるため、組み合わせの層に置く */
+@layer recipes.compound_variants {
+  .generate > button {
+    padding-block: var(--spacing-0);
+    border-radius: var(--radii-control);
+    gap: 0.55rem;
+    letter-spacing: 0.08em;
+    min-height: 3.6rem;
+  }
+
+  .generate > button:disabled:not([aria-busy]) {
+    background: var(--colors-neutral-100);
+    box-shadow: var(--shadows-none);
+    color: var(--colors-fg-subtle);
+  }
+}
+
+@keyframes card-rise {
+  from {
+    opacity: 0;
+    transform: translateY(3rem) rotate(-3deg) scale(0.94);
+  }
+}
+
+@keyframes chip-pop {
+  40% {
+    transform: scale(1.12);
+  }
+}

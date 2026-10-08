@@ -1,35 +1,53 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
+import { playerColor } from "../../components/avatar";
 import { Button } from "../../components/button";
 import { Dialog, DialogClose } from "../../components/dialog";
-import { Stack } from "../../components/layout";
-import { Surface } from "../../components/surface";
-import { Text } from "../../components/text";
-import { Entrance } from "../../components/transition";
+import { PanelHead } from "../../components/panel-head";
+import { Switch } from "../../components/switch";
+import { toast } from "../../components/toast";
+import { PromptComposer } from "../image-generation/prompt-composer";
 import {
   ArtFrame,
   ArtImage,
-  BattleColumn,
   BattleLayout,
+  BattlePanel,
+  CompareItem,
+  CompareNote,
+  CompareStage,
+  ComposePhase,
+  ConfirmOption,
+  GenMini,
+  HistoryFailed,
+  HistoryPending,
+  HistoryRail,
+  HistoryShot,
   HudBar,
   HudChip,
+  HudEdge,
   HudLevelChip,
-  HudPhase,
-  HudPhaseStrong,
+  HudRoster,
   HudTimer,
   HudTrack,
-  PanelHead,
+  KickoffBand,
+  LevelBadge,
+  OverlayCard,
+  OverlayProgress,
+  OverlayScan,
+  OverlayWaitRow,
+  RosterMember,
   ScreenOverlay,
-  ShotButton,
-  ShotEmpty,
-  ShotFailed,
-  ShotGrid,
-  ShotImage,
-  ShotPending,
-  SubmitRow,
+  StageEmpty,
+  StageGenerating,
+  StageHint,
+  StageImage,
+  SubmitBox,
+  TopicItem,
 } from "./battle-parts";
+import type { HudTone, RosterState, TopicReveal } from "./battle-parts";
 import { submitBattleImage } from "./battle.functions";
 import { getDifficulty } from "./battle-labels";
+import { useModifierKey, useQuickSubmit, useReducedMotion } from "./battle-preferences";
 import type { BattleStage } from "./battle-screen";
 import type { BattleSnapshot } from "./battle-state";
 import { useRemainingMs } from "./use-remaining-ms";
@@ -37,13 +55,33 @@ import { useRemainingMs } from "./use-remaining-ms";
 type MyGeneration = BattleSnapshot["myGenerations"][number];
 type SucceededGeneration = Extract<MyGeneration, { status: "succeeded" }>;
 
+/** 対戦の開始からこの時間内に画面を開いたときだけ、お題を伏せてから裏返す（再接続・再読み込みでは出さない） */
+const REVEAL_WINDOW_MS = 10_000;
+/** 画面遷移の帯が抜けるのを待ってから、開始の合図を出す */
+const REVEAL_DELAY_MS = 1200;
+/** 合図の帯が出てから、お題を裏返すまで */
+const FLIP_AT_MS = 1100;
+/** 合図の帯を出しておく時間 */
+const KICKOFF_MS = 1600;
+
+const STATE_TEXT: Record<RosterState, string> = {
+  idle: "考え中",
+  working: "生成中",
+  done: "提出済み",
+};
+
+/** 開始から間もない対戦は、お題を伏せた札から始める */
+function initialReveal(battle: BattleSnapshot): TopicReveal {
+  return battle.serverTime - battle.startedAt < REVEAL_WINDOW_MS ? "veiled" : "none";
+}
+
 /** 残りミリ秒を m:ss にする。 */
 function formatClock(ms: number): string {
   const seconds = Math.ceil(ms / 1000);
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
-/** お題・残り時間・生成した画像の選択と提出を行う対戦画面。 */
+/** 左にプロンプト入力、右にお題とあなたの画像の比較・履歴・提出を置く対戦画面。 */
 export function BattleView({
   code,
   battle,
@@ -57,25 +95,47 @@ export function BattleView({
   participantId: string;
   names: Map<string, string>;
 }) {
-  const [pickedId, setPickedId] = useState<string | null>(null);
+  // 履歴で選んだ1枚と、選んだときの成功数。成功数が増えたら新しい画像を自動で出す
+  const [pick, setPick] = useState<{ id: string; after: number } | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [zoomOpen, setZoomOpen] = useState(false);
+  const [reveal, setReveal] = useState<TopicReveal>(() => initialReveal(battle));
+  const [kickoff, setKickoff] = useState(false);
+  const [quick, setQuick] = useQuickSubmit();
+  const modifierKey = useModifierKey();
 
   const difficulty = getDifficulty(battle.settings.difficulty);
-  const opponentId = battle.participantIds.find((id) => id !== participantId);
-  const opponentName = (opponentId && names.get(opponentId)) || "相手";
 
   // 生成は受付順（古い順）。番号は受付順の1始まり、表示は新しい順。
   const ordered = battle.myGenerations.toSorted((a, b) => a.acceptedAt - b.acceptedAt);
-  const numberOf = new Map(ordered.map((generation, index) => [generation.id, index + 1]));
+  const numberOf = (id: string) => ordered.findIndex((generation) => generation.id === id) + 1;
   const succeeded = ordered.filter(
     (generation): generation is SucceededGeneration => generation.status === "succeeded",
   );
-  // 既定は最後に成功した1枚。クリックで選び直せる。
-  const selected = succeeded.find((item) => item.id === pickedId) ?? succeeded.at(-1) ?? null;
+  const pendings = ordered.filter((generation) => generation.status === "pending");
+  const successCount = succeeded.length;
+  const newest = succeeded.at(-1) ?? null;
+  const autoPick = !pick || successCount > pick.after;
+  const selected = autoPick
+    ? newest
+    : (succeeded.find((generation) => generation.id === pick.id) ?? newest);
+
+  // 新しくできた1枚は、3色の帯が駆け抜けて現れる
+  const [seenCount, setSeenCount] = useState(successCount);
+  const [freshId, setFreshId] = useState<string | null>(null);
+  if (seenCount !== successCount) {
+    setSeenCount(successCount);
+    setFreshId(successCount > seenCount ? (newest?.id ?? null) : null);
+  }
 
   const submitted = stage === "waiting" || stage === "scoring";
+  const generationOpen = stage === "generating";
+  const mySubmission = battle.mySubmission;
+  const submittedImage =
+    mySubmission?.status === "submitted"
+      ? (succeeded.find((generation) => generation.id === mySubmission.generationId) ?? null)
+      : null;
 
   // 完成待ち（finishing）は期限が決まっていないため残り時間を出さない。
   const deadline =
@@ -88,27 +148,89 @@ export function BattleView({
     (stage === "generating" ? battle.settings.durationSeconds : battle.settings.selectionSeconds) *
     1000;
   const remainingMs = useRemainingMs(battle.serverTime, deadline);
-  // 画像選択の間は常に、生成中は残り10秒以下で強調する。
-  const hurry = stage === "selecting" || (remainingMs !== null && remainingMs <= 10_000);
+  // 生成中の残り10秒は強調する。画像選択の間は黄色にする。
+  const hurry = stage === "generating" && remainingMs !== null && remainingMs <= 10_000;
+  const tone: HudTone = stage === "selecting" ? "select" : hurry ? "hurry" : "normal";
   // 期限がない間（完成待ち・待機・採点中）は帯を空にする。
   const progress = remainingMs !== null ? remainingMs / totalMs : 0;
+
+  const opponentId = battle.participantIds.find((id) => id !== participantId);
+  const opponentName = (opponentId && names.get(opponentId)) || "相手";
+  const myState: RosterState =
+    mySubmission?.status === "submitted" ? "done" : pendings.length > 0 ? "working" : "idle";
+
+  // 対戦の開始直後に開いたときだけ、伏せたお題を合図のあとに裏返す（再接続・再読み込みでは出さない）。
+  // 配信された時刻から決めるため、サーバーの描画と水和で同じ状態になる。動きを減らす設定では最初から表にする
+  const reducedMotion = useReducedMotion();
+  const [revealBattleId, setRevealBattleId] = useState(battle.id);
+  if (revealBattleId !== battle.id) {
+    setRevealBattleId(battle.id);
+    setReveal(initialReveal(battle));
+    setKickoff(false);
+  }
+  const shownReveal: TopicReveal = reducedMotion ? "none" : reveal;
+  const veiled = shownReveal === "veiled";
+  useEffect(() => {
+    if (!veiled) return undefined;
+    const timers = [
+      setTimeout(() => setKickoff(true), REVEAL_DELAY_MS),
+      setTimeout(() => setReveal("flip"), REVEAL_DELAY_MS + FLIP_AT_MS),
+    ];
+    return () => {
+      for (const timer of timers) clearTimeout(timer);
+    };
+  }, [veiled]);
+  useEffect(() => {
+    if (!kickoff) return undefined;
+    const timer = setTimeout(() => setKickoff(false), KICKOFF_MS);
+    return () => clearTimeout(timer);
+  }, [kickoff]);
 
   async function submit() {
     if (!selected || submitting) return;
     setSubmitting(true);
-    setError(null);
     try {
       await submitBattleImage({ data: { code, battleId: battle.id, generationId: selected.id } });
     } catch {
-      setError("提出できませんでした。もう一度お試しください。");
+      toast("提出できませんでした。もう一度お試しください。");
     } finally {
       setConfirmOpen(false);
       setSubmitting(false);
     }
   }
 
+  const hint =
+    mySubmission?.status === "submitted" && submittedImage
+      ? `#${numberOf(submittedImage.id)} を提出しました`
+      : selected && !submitted
+        ? `#${numberOf(selected.id)} を提出候補にしています`
+        : "画像を1枚選んでください";
+
+  const newestPending = pendings.at(-1);
+  const mineView = selected ? (
+    <>
+      <StageImage
+        key={selected.id}
+        src={selected.imageUrl}
+        alt={`${numberOf(selected.id)}回目の画像`}
+        fresh={freshId === selected.id}
+      />
+      {newestPending && !submitted ? (
+        <GenMini>
+          #{numberOf(newestPending.id)} 生成中
+          {pendings.length > 1 ? ` ほか${pendings.length - 1}枚` : ""}
+        </GenMini>
+      ) : null}
+    </>
+  ) : newestPending ? (
+    <StageGenerating number={numberOf(newestPending.id)} />
+  ) : (
+    <StageEmpty title="まだ画像がありません" sub="プロンプトを書いて「生成する」を押そう" />
+  );
+
   return (
     <>
+      {hurry && !submitted ? <HudEdge /> : null}
       <HudBar
         logoSrc="/animic-logo.svg"
         left={
@@ -128,98 +250,130 @@ export function BattleView({
             <HudTimer
               label={stage === "generating" ? "TIME LEFT" : "SELECT"}
               value={formatClock(remainingMs)}
-              hurry={hurry}
+              tone={tone}
             />
           ) : null
         }
+        right={
+          <HudRoster>
+            {battle.participantIds.map((id, index) =>
+              id === participantId ? (
+                <RosterMember
+                  key={id}
+                  name={names.get(id) ?? "あなた"}
+                  player={playerColor(index)}
+                  me
+                  state={myState}
+                  stateText={STATE_TEXT[myState]}
+                  count={successCount}
+                />
+              ) : (
+                <RosterMember
+                  key={id}
+                  name={names.get(id) || "相手"}
+                  player={playerColor(index)}
+                  me={false}
+                />
+              ),
+            )}
+          </HudRoster>
+        }
       />
-      <HudTrack progress={progress} />
-
-      {stage === "selecting" ? (
-        <HudPhase>
-          生成終了！<span>生成中の画像も完成すれば選べます。</span>
-          <span>
-            残り{" "}
-            <HudPhaseStrong>{Math.max(0, Math.ceil((remainingMs ?? 0) / 1000))}</HudPhaseStrong>{" "}
-            秒で1枚選んで提出
-          </span>
-        </HudPhase>
-      ) : stage === "finishing" ? (
-        <HudPhase>
-          <HudPhaseStrong>生成終了！</HudPhaseStrong>
-          <span>生成中の画像の完成を待っています</span>
-        </HudPhase>
-      ) : null}
+      <HudTrack progress={progress} tone={tone} />
 
       <BattleLayout>
-        <BattleColumn>
-          <Entrance as="section" order={0} aria-labelledby="topic-title">
-            <Surface variant="sticker" padding="fluid">
-              <Stack gap="4">
-                <PanelHead title="お題" titleId="topic-title" note={difficulty.description} />
-                <ArtFrame variant="topic" tag="THEME">
-                  <ArtImage src={battle.topic.imageUrl} alt="お題のイラスト" />
-                </ArtFrame>
-                <Text variant="note" tone="muted">
-                  このイラストにいちばん近い1枚を作ろう。
-                </Text>
-              </Stack>
-            </Surface>
-          </Entrance>
-        </BattleColumn>
+        <PromptComposer
+          // 対戦が変わったら入力を初期状態に戻す
+          key={battle.id}
+          maxCharacters={battle.settings.difficulty === "hard" ? 2 : 1}
+          successCount={successCount}
+          pending={pendings.length > 0}
+          locked={!generationOpen || submitted}
+          cover={
+            stage === "selecting" ? (
+              <ComposePhase seconds={Math.max(0, Math.ceil((remainingMs ?? 0) / 1000))} />
+            ) : stage === "finishing" ? (
+              <ComposePhase />
+            ) : null
+          }
+          // 生成の処理（Issue #12の残り）をつなぐまでは渡さず、「生成する」を押せない理由を出す。
+          // つなぐときは次の関数を渡すだけで動く:
+          // async (prompt) => { await generateImage({ data: { code, battleId: battle.id, generationId: crypto.randomUUID(), prompt } }); }
+          onGenerate={undefined}
+          modifierKey={modifierKey}
+        />
 
-        <BattleColumn>
-          <Entrance as="section" order={1} aria-labelledby="shots-title">
-            <Surface variant="sticker" padding="fluid">
-              <Stack gap="4">
-                <PanelHead title="生成した画像" titleId="shots-title" note="1枚選んで提出" />
-                <ShotGrid>
-                  {ordered.length === 0 ? (
-                    <ShotEmpty>まだ画像がありません。</ShotEmpty>
-                  ) : (
-                    ordered.toReversed().map((item) => {
-                      const number = numberOf.get(item.id) ?? 0;
-                      if (item.status === "pending") return <ShotPending key={item.id} />;
-                      if (item.status === "failed") return <ShotFailed key={item.id} />;
-                      return (
-                        <ShotButton
-                          key={item.id}
-                          number={number}
-                          selected={selected?.id === item.id}
-                          disabled={submitted}
-                          onSelect={() => setPickedId(item.id)}
-                        >
-                          <ShotImage src={item.imageUrl} alt={`${number}回目の画像`} />
-                        </ShotButton>
-                      );
-                    })
-                  )}
-                </ShotGrid>
-                {error ? (
-                  <Text as="p" variant="note" tone="danger">
-                    {error}
-                  </Text>
-                ) : null}
-                <SubmitRow note="提出後は変更できません。">
-                  <Button
-                    size="lg"
-                    disabled={!selected || submitted}
-                    onClick={() => setConfirmOpen(true)}
-                  >
-                    この1枚で提出
-                  </Button>
-                </SubmitRow>
-              </Stack>
-            </Surface>
-          </Entrance>
-        </BattleColumn>
+        <BattlePanel area="stage" labelledBy="stage-title">
+          <PanelHead eyebrow="02 — Compare" title="お題とあなたの画像" titleId="stage-title">
+            <StageHint ready={Boolean(selected) && !submitted}>{hint}</StageHint>
+          </PanelHead>
+          <CompareStage>
+            <TopicItem
+              src={battle.topic.imageUrl}
+              alt="お題のイラスト"
+              label={
+                <>
+                  お題
+                  <LevelBadge>{battle.settings.difficulty.toUpperCase()}</LevelBadge>
+                  <CompareNote>{difficulty.description}</CompareNote>
+                </>
+              }
+              reveal={shownReveal}
+              onZoom={() => setZoomOpen(true)}
+              onRevealEnd={() => setReveal("none")}
+            />
+            <CompareItem
+              label={
+                <>
+                  あなたの画像
+                  {selected ? <CompareNote>#{numberOf(selected.id)}</CompareNote> : null}
+                </>
+              }
+            >
+              {mineView}
+            </CompareItem>
+          </CompareStage>
+          <HistoryRail
+            empty={ordered.length === 0}
+            submit={
+              <SubmitBox
+                quick={quick}
+                onQuickChange={setQuick}
+                disabled={!selected || submitted}
+                loading={submitting}
+                onSubmit={() => {
+                  if (quick) void submit();
+                  else setConfirmOpen(true);
+                }}
+              />
+            }
+          >
+            {ordered.toReversed().map((generation) => {
+              const number = numberOf(generation.id);
+              if (generation.status === "pending")
+                return <HistoryPending key={generation.id} number={number} />;
+              if (generation.status === "failed")
+                return <HistoryFailed key={generation.id} number={number} />;
+              return (
+                <HistoryShot
+                  key={generation.id}
+                  number={number}
+                  src={generation.imageUrl}
+                  selected={selected?.id === generation.id}
+                  disabled={submitted}
+                  onSelect={() => setPick({ id: generation.id, after: successCount })}
+                />
+              );
+            })}
+          </HistoryRail>
+        </BattlePanel>
       </BattleLayout>
 
       <Dialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
-        title="この1枚で提出しますか？"
-        description="提出後は画像を変更できません。"
+        title="提出してもよろしいですか？"
+        description="提出したあとは変更できません。"
         descriptionPlacement="bottom"
         footer={
           <>
@@ -244,15 +398,67 @@ export function BattleView({
             <ArtImage src={selected.imageUrl} alt="提出する画像" />
           </ArtFrame>
         ) : null}
+        <ConfirmOption>
+          <Switch
+            label="次からは確認せずにすぐ提出する"
+            tone="accent"
+            checked={quick}
+            onCheckedChange={setQuick}
+          />
+        </ConfirmOption>
       </Dialog>
 
+      <Dialog open={zoomOpen} onOpenChange={setZoomOpen} title="お題" size="sm">
+        <ArtFrame variant="zoom">
+          <ArtImage src={battle.topic.imageUrl} alt="お題のイラスト（全体）" />
+        </ArtFrame>
+        <DialogClose>
+          <Button variant="secondary" size="lg" fullWidth>
+            閉じる
+          </Button>
+        </DialogClose>
+      </Dialog>
+
+      {kickoff && !reducedMotion ? <KickoffBand /> : null}
+
       {stage === "scoring" ? (
-        <ScreenOverlay title="採点中…" sub="AIが再現度を評価しています" />
+        <ScreenOverlay
+          eyebrow="Judging"
+          title="採点中…"
+          sub="AIが再現度を評価しています"
+          footer={<OverlayProgress />}
+        >
+          <OverlayScan mine={submittedImage?.imageUrl ?? null} topic={battle.topic.imageUrl} />
+        </ScreenOverlay>
       ) : stage === "waiting" ? (
-        battle.mySubmission?.status === "not-submitted" ? (
+        mySubmission?.status === "not-submitted" ? (
           <ScreenOverlay title="時間内に提出できませんでした" sub="結果を待っています" />
         ) : (
-          <ScreenOverlay title="提出しました！" sub={`${opponentName} さんの提出を待っています`} />
+          <ScreenOverlay
+            eyebrow={submittedImage ? `Submitted #${numberOf(submittedImage.id)}` : "Submitted"}
+            title="提出しました！"
+            sub="あとは結果を待つだけ"
+            footer={
+              opponentId ? (
+                <OverlayWaitRow
+                  members={[
+                    {
+                      id: opponentId,
+                      name: opponentName,
+                      player: playerColor(battle.participantIds.indexOf(opponentId)),
+                      done: battle.submissionsClosed,
+                    },
+                  ]}
+                >
+                  {battle.submissionsClosed
+                    ? `${opponentName} さんも提出しました！`
+                    : `${opponentName} さんの提出を待っています`}
+                </OverlayWaitRow>
+              ) : null
+            }
+          >
+            {submittedImage ? <OverlayCard src={submittedImage.imageUrl} stamp="提出済み" /> : null}
+          </ScreenOverlay>
         )
       ) : null}
     </>

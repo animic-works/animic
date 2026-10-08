@@ -1,0 +1,309 @@
+@layer recipes.slots.base {
+  .check {
+    background: var(--colors-accent-brand);
+    border-radius: var(--radii-full);
+    place-items: center;
+    color: var(--colors-fg-inverse);
+    display: none;
+    height: 1.2rem;
+    position: absolute;
+    right: 0.2rem;
+    top: 0.2rem;
+    width: 1.2rem;
+  }
+
+  .confirmOption {
+    display: grid;
+    justify-items: center;
+    margin-top: -0.4rem;
+  }
+
+  .empty {
+    margin: 0.45rem 0.35rem 0;
+    padding-inline: var(--spacing-4);
+    border-color: var(--colors-border-default);
+    border-radius: 0.9rem;
+    border-style: dashed;
+    border-width: var(--border-widths-thick);
+    place-items: center;
+    align-self: start;
+    aspect-ratio: 832 / 1216;
+    color: var(--colors-fg-muted);
+    display: grid;
+    font-size: 0.76rem;
+    line-height: 1.6;
+    text-align: center;
+  }
+
+  .eyebrow {
+    color: var(--colors-fg-muted);
+    font-family: var(--fonts-latin);
+    font-size: 0.62rem;
+    font-style: italic;
+    font-weight: var(--font-weights-heavy);
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+  }
+
+  .history {
+    gap: 0.45rem;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    min-height: var(--sizes-0);
+    min-width: var(--sizes-0);
+  }
+
+  .image {
+    object-fit: cover;
+    display: block;
+    height: var(--sizes-full);
+    width: var(--sizes-full);
+  }
+
+  .number {
+    background: rgb(11 27 43 / 0.8);
+    padding-inline: 0.35rem;
+    padding-block: 0.02rem;
+    border-radius: var(--radii-control);
+    bottom: 0.25rem;
+    color: var(--colors-fg-inverse);
+    font-family: var(--fonts-mono);
+    font-size: 0.58rem;
+    left: 0.25rem;
+    position: absolute;
+  }
+
+  /* PCでは履歴と提出を右の縦の列にまとめ、画像に高さを回す */
+  .rail {
+    padding-left: 1.25rem;
+    gap: var(--spacing-4);
+    border-left-color: var(--colors-border-default);
+    border-left-style: dashed;
+    border-left-width: var(--border-widths-thick);
+    display: grid;
+    grid-area: rail;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    min-height: var(--sizes-0);
+  }
+
+  .shot {
+    background: var(--colors-bg-sunken);
+    padding: var(--spacing-0);
+    border-color: var(--colors-border-default);
+    border-radius: 0.85rem;
+    border-style: solid;
+    border-width: var(--border-widths-thick);
+    overflow: hidden;
+    transition:
+      transform 0.2s var(--easings-pop),
+      box-shadow 0.2s;
+    animation: shot-in 0.5s var(--easings-pop);
+    aspect-ratio: 832 / 1216;
+    cursor: pointer;
+    display: block;
+    position: relative;
+    width: var(--sizes-full);
+  }
+
+  .shot:is(button):hover:not(:disabled) {
+    transform: translateY(-3px) rotate(-2deg);
+  }
+
+  .shot:disabled {
+    cursor: default;
+  }
+
+  .shot[aria-pressed="true"] {
+    border-color: var(--colors-accent-brand);
+    box-shadow:
+      0 0 0 3px rgb(255 45 135 / 0.25),
+      0 10px 18px -10px rgb(255 45 135 / 0.8);
+    transform: translateY(-2px);
+  }
+
+  .shot[aria-pressed="true"] .check {
+    animation: stamp 0.35s var(--easings-pop);
+    display: grid;
+  }
+
+  .shot[data-state="failed"] {
+    background:
+      repeating-linear-gradient(-45deg, rgb(212 20 90 / 0.08) 0 6px, transparent 6px 12px),
+      var(--colors-bg-surface);
+    border-color: var(--colors-accent-default);
+    border-style: dashed;
+    gap: 0.1rem;
+    place-items: center;
+    align-content: center;
+    animation: glitch 0.45s steps(2);
+    color: var(--colors-accent-default);
+    cursor: default;
+    display: grid;
+    font-size: 0.66rem;
+    font-weight: var(--font-weights-bold);
+  }
+
+  .shot[data-state="pending"] {
+    background:
+      radial-gradient(circle, rgb(11 27 43 / 0.08) 1.2px, transparent 1.6px) 0 0 / 16px 16px,
+      var(--colors-bg-sunken);
+    border-color: var(--colors-accent-brand);
+    border-style: dashed;
+    place-items: center;
+    cursor: default;
+    display: grid;
+  }
+
+  .shots {
+    margin: var(--spacing-0);
+    padding: 0.45rem 0.35rem 0.6rem;
+    overflow-x: hidden;
+    overflow-y: auto;
+    gap: 0.6rem;
+    align-content: start;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    list-style: none;
+    min-height: var(--sizes-0);
+    scrollbar-width: thin;
+  }
+
+  .spinner {
+    background: conic-gradient(
+      from 0deg,
+      transparent 0 10%,
+      var(--colors-info-default) 40%,
+      var(--colors-accent-brand) 75%,
+      var(--colors-warning-default)
+    );
+    border-radius: var(--radii-full);
+    aspect-ratio: 1;
+    animation: spin 0.9s linear infinite;
+    -webkit-mask: radial-gradient(
+      farthest-side,
+      transparent calc(100% - 3px),
+      #000 calc(100% - 2.5px)
+    );
+    mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px));
+    width: clamp(1.4rem, 28%, 3.6rem);
+  }
+
+  .submitBox {
+    gap: 0.45rem;
+    display: grid;
+    justify-items: stretch;
+  }
+
+  .submitBox > :first-child {
+    justify-self: start;
+  }
+
+  .title {
+    margin: var(--spacing-0);
+    gap: 0.5rem;
+    align-items: baseline;
+    display: flex;
+    font-family: var(--fonts-round);
+    font-size: 0.88rem;
+    font-weight: var(--font-weights-heavy);
+  }
+
+  /* 860px以下は比較の下に横並びにする（モバイルの配置はIssue #10で作る） */
+  @media (width < 53.8125rem) {
+    .rail {
+      padding-left: var(--spacing-0);
+      padding-top: 0.9rem;
+      border-left-width: var(--border-widths-none);
+      border-top-color: var(--colors-border-default);
+      border-top-style: dashed;
+      border-top-width: var(--border-widths-thick);
+      grid-template-rows: auto auto;
+    }
+
+    .shots {
+      overflow-x: auto;
+      overflow-y: hidden;
+      display: flex;
+    }
+
+    .shots > li {
+      flex: none;
+      width: 4.4rem;
+    }
+
+    .empty {
+      aspect-ratio: auto;
+      min-height: 4.6rem;
+    }
+  }
+}
+
+/* Buttonの大きさ（size）の指定より後に当てるため、組み合わせの層に置く */
+@layer recipes.compound_variants {
+  .submitButton > button {
+    padding-inline: var(--spacing-4);
+    padding-block: var(--spacing-0);
+    border-radius: var(--radii-control);
+    gap: 0.55rem;
+    letter-spacing: 0.08em;
+    min-height: 3.4rem;
+  }
+
+  .submitButton > button:disabled:not([aria-busy]) {
+    background: var(--colors-neutral-100);
+    box-shadow: var(--shadows-none);
+    color: var(--colors-fg-subtle);
+  }
+
+  .submitButton[data-ready] > button {
+    animation: ready 2.4s ease-in-out infinite;
+  }
+}
+
+@keyframes glitch {
+  25% {
+    transform: translate(-3px, 1px) skewX(8deg);
+  }
+  50% {
+    transform: translate(3px, -1px) skewX(-8deg);
+  }
+  75% {
+    transform: translate(-1px, 0);
+  }
+}
+
+@keyframes ready {
+  0%,
+  70%,
+  100% {
+    filter: none;
+  }
+  80% {
+    filter: brightness(1.12);
+  }
+}
+
+@keyframes shot-in {
+  from {
+    opacity: 0;
+    transform: scale(0.5) rotate(-12deg);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes stamp {
+  from {
+    opacity: 0;
+    scale: 2.2;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
