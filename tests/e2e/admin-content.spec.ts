@@ -68,7 +68,7 @@ function chunkNames(bytes: Buffer) {
 }
 
 async function addTopic(page: Page, fileName: string, prompt: string) {
-  await page.goto("/admin/topics/new");
+  await page.goto("/admin/topics/new", { waitUntil: "networkidle" });
   await page.locator('input[type="file"]').setInputFiles({
     name: fileName,
     mimeType: "image/png",
