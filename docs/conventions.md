@@ -21,6 +21,8 @@
 
 ファイルを分ける場合は、Server Functionsの定義を`*.functions.ts`、サーバー専用の処理を`*.server.ts`に置きます。フォルダー名だけでサーバー専用と判断せず、TanStack Startの仕組みでクライアントへの読み込みを防ぎます。
 
+Design Systemを利用するUIの公開APIとパッケージの責務は[アーキテクチャ](architecture.md#design-system)に従います。
+
 ## 静的検査
 
 - 型情報を使う厳格なlintを維持します。型チェック、テスト、ビルドと合わせて変更に適した検証を実施します。
