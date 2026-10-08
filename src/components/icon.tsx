@@ -205,6 +205,42 @@ const ICONS = {
     viewBox: "0 0 24 24",
     body: <path d="M12 5v14M5 12h14" {...STROKE} strokeWidth="3" />,
   },
+  // 減らす・弱くする
+  minus: {
+    viewBox: "0 0 24 24",
+    body: <path d="M5 12h14" {...STROKE} strokeWidth="3" />,
+  },
+  // 文章で書く（横線）
+  textLines: {
+    viewBox: "0 0 24 24",
+    body: <path d="M4 6h16M4 12h16M4 18h10" {...STROKE} strokeWidth="3" />,
+  },
+  // タグで書く（#）
+  hash: {
+    viewBox: "0 0 24 24",
+    body: <path d="M9 3 7 21M17 3l-2 18M3.5 8.5h17M2.5 15.5h17" {...STROKE} strokeWidth="3" />,
+  },
+  // 景色の額縁（ベースプロンプト）
+  frame: {
+    viewBox: "0 0 24 24",
+    body: (
+      <g {...STROKE} strokeWidth="2.4">
+        <rect x="3" y="4" width="18" height="16" rx="3" />
+        <circle cx="9" cy="10" r="1.8" fill="currentColor" />
+        <path d="m3.5 18 5.5-5.5 4 4 2.5-2.5 5 5" />
+      </g>
+    ),
+  },
+  // 注意（生成の失敗）
+  warning: {
+    viewBox: "0 0 24 24",
+    body: (
+      <g {...STROKE} strokeWidth="3">
+        <path d="M12 7v6M12 17h.01" />
+        <circle cx="12" cy="12" r="10" />
+      </g>
+    ),
+  },
   // 閉じる
   close: {
     viewBox: "0 0 24 24",

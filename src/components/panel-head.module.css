@@ -1,0 +1,41 @@
+@layer recipes.slots.base {
+  .eyebrow {
+    color: var(--colors-accent-brand);
+    font-family: var(--fonts-latin);
+    font-size: 0.62rem;
+    font-style: italic;
+    font-weight: var(--font-weights-heavy);
+    letter-spacing: 0.24em;
+    line-height: var(--line-heights-none);
+    text-transform: uppercase;
+  }
+
+  .note {
+    color: var(--colors-fg-muted);
+    font-size: 0.8rem;
+  }
+
+  .root {
+    gap: var(--spacing-3);
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    min-width: var(--sizes-0);
+  }
+
+  .title {
+    margin: var(--spacing-0);
+    font-family: var(--fonts-round);
+    font-size: 1.15rem;
+    font-weight: var(--font-weights-heavy);
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  .titles {
+    gap: 0.2rem;
+    display: grid;
+    margin-right: auto;
+    min-width: var(--sizes-0);
+  }
+}

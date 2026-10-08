@@ -1,0 +1,94 @@
+@layer recipes.slots.base {
+  .band {
+    background: linear-gradient(
+      var(--colors-info-default) 0 10px,
+      var(--colors-bg-inverse) 10px calc(100% - 10px),
+      var(--colors-accent-brand) calc(100% - 10px)
+    );
+    animation: kick-band 1.5s cubic-bezier(0.7, 0, 0.3, 1) forwards;
+    height: 9rem;
+    left: -10%;
+    position: absolute;
+    right: -10%;
+    rotate: -6deg;
+    top: 50%;
+    translate: 0 -50%;
+  }
+
+  .root {
+    inset: var(--spacing-0);
+    overflow: hidden;
+    place-items: center;
+    display: grid;
+    pointer-events: none;
+    position: fixed;
+    z-index: var(--z-index-modal);
+  }
+
+  .text {
+    gap: 0.1rem;
+    animation: kick-text 1.5s var(--easings-standard) forwards;
+    display: grid;
+    justify-items: center;
+    position: relative;
+    rotate: -6deg;
+  }
+
+  .text b {
+    color: var(--colors-warning-default);
+    font-family: var(--fonts-display);
+    font-size: clamp(3.2rem, 11vw, 6rem);
+    font-weight: var(--font-weights-regular);
+    letter-spacing: 0.02em;
+    line-height: var(--line-heights-none);
+    text-shadow: 0.05em 0.05em 0 var(--colors-accent-brand);
+  }
+
+  .text span {
+    color: var(--colors-fg-inverse);
+    font-size: clamp(0.8rem, 2.4vw, 1rem);
+    font-weight: var(--font-weights-bold);
+    letter-spacing: 0.1em;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .root {
+      display: none;
+    }
+  }
+}
+
+@keyframes kick-band {
+  0% {
+    clip-path: inset(0 100% 0 0);
+  }
+  22%,
+  76% {
+    clip-path: inset(0 0 0 0);
+  }
+  100% {
+    clip-path: inset(0 0 0 100%);
+  }
+}
+
+@keyframes kick-text {
+  0%,
+  14% {
+    opacity: 0;
+    transform: translateX(-30vw) skewX(24deg);
+  }
+  28% {
+    opacity: 1;
+    transform: translateX(1.5vw) skewX(-8deg);
+  }
+  34%,
+  66% {
+    opacity: 1;
+    transform: none;
+  }
+  78%,
+  100% {
+    opacity: 0;
+    transform: translateX(30vw) skewX(24deg);
+  }
+}

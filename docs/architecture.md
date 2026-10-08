@@ -242,7 +242,7 @@ Panda Native Specは、Design Systemの定義から生成する機械向けの�
 
 ### 画面の部品
 
-ボタン・ダイアログ・入力欄・トースト・画面遷移の演出など、機能に依存しない部品は`src/components/`に置きます。トップの各節は`src/routes/-home/`、ロビー・対戦・結果の部品は`src/features/room/`・`src/features/battle/`、管理画面の部品は`src/features/admin/`に置きます。スタイルはCSS Modulesで部品に隣接させ、色・書体・余白などは`src/styles/tokens.css`のCSS変数を使います。部品のスタイルは`@layer`（`recipes.base`・`recipes.slots`・`recipes.variants`など）に入れます。部品のCSSは別のファイルに分かれて全体のCSSより先に読み込まれることがあるため、層の順序は`vite.config.ts`ですべてのCSSの先頭に宣言します。リセット・全体の土台・書体の読み込み（Fontsource）は`src/styles/global.css`にまとめ、`src/routes/__root.tsx`で最初に読み込みます。画面遷移の演出は`src/components/transition.tsx`で、ルートの外側で1つだけ持ち、ページの移動とルームの状態による画面の切り替えの両方で使います。
+ボタン・ダイアログ・入力欄・トースト・画面遷移の演出など、機能に依存しない部品は`src/components/`に置きます。トップの各節は`src/routes/-home/`、ロビー・対戦・結果の部品は`src/features/room/`・`src/features/battle/`、管理画面の部品は`src/features/admin/`に置きます。対戦画面のプロンプト入力の部品（`prompt-composer.tsx`・`prompt-field.tsx`・`prompt-search-dialog.tsx`）と、語句の操作・表現の辞書の処理（`prompt-blocks.ts`・`prompt-dictionary.ts`）は`src/features/image-generation/`に置き、`battle`の対戦画面から使います。スタイルはCSS Modulesで部品に隣接させ、色・書体・余白などは`src/styles/tokens.css`のCSS変数を使います。部品のスタイルは`@layer`（`recipes.base`・`recipes.slots`・`recipes.variants`など）に入れます。部品のCSSは別のファイルに分かれて全体のCSSより先に読み込まれることがあるため、層の順序は`vite.config.ts`ですべてのCSSの先頭に宣言します。リセット・全体の土台・書体の読み込み（Fontsource）は`src/styles/global.css`にまとめ、`src/routes/__root.tsx`で最初に読み込みます。画面遷移の演出は`src/components/transition.tsx`で、ルートの外側で1つだけ持ち、ページの移動とルームの状態による画面の切り替えの両方で使います。
 
 #### 暫定対応と解消条件
 
@@ -405,7 +405,7 @@ WebSocketは状態の配信に使い、開始・生成・提出などの操作�
 
 ホストの再接続を待つ期限・ルームを閉じる期限・対戦の締切・保存の再試行に使うAlarmは、ルームのDOでまとめて管理します。各期限を保存して最も早いものを予約し、処理後に次の期限を予約します。実行時に接続状態と期限を再確認し、再接続によって解除された期限は適用しません。Alarmの再実行でホストが繰り返し変わったり、閉じたルームが復活したりしないようにします。
 
-ゲーム画面は、同じルームURL上で待機・対戦・画像選択・結果の表示を切り替えます。`src/routes/`で`room`・`battle`・`image-generation`のUIを組み立て、サーバーが確定した状態を表示します。表示する画面は`src/features/battle/battle-screen.ts`で、結果の見出しと参加者ごとの提出画像・最終スコアは`src/features/battle/battle-outcome.ts`で、対戦の状態から決めます。結果を閉じた対戦は、その参加者の画面だけロビーに戻し、次の対戦の開始に使います。フォームの入力値や提出前に選んでいる画像は画面側で保持します。提出の確定・締切・勝敗はサーバー側の状態で判断します。 残り時間は配信時のサーバー時刻と期限を基準に表示し、受信後の経過時間にはブラウザーの単調増加時計を使います。端末の時計設定を締切判定に使わず、表示が0秒になったことだけで提出状態を確定しません。
+ゲーム画面は、同じルームURL上で待機・対戦・画像選択・結果の表示を切り替えます。`src/routes/`で`room`・`battle`・`image-generation`のUIを組み立て、サーバーが確定した状態を表示します。表示する画面は`src/features/battle/battle-screen.ts`で、結果の見出しと参加者ごとの提出画像・最終スコアは`src/features/battle/battle-outcome.ts`で、対戦の状態から決めます。結果を閉じた対戦は、その参加者の画面だけロビーに戻し、次の対戦の開始に使います。フォームの入力値や提出前に選んでいる画像は画面側で保持します。プロンプトの語句・重み・入力方法は`PromptComposer`が持ち、対戦が変わると初期状態に戻します。「確認なしですぐ提出」の設定はこの端末の`localStorage`（`animic-quick-submit`）に保存し、読み書きできない環境ではオフとして扱います。相手の生成状態と生成回数は配信しないため、画面にも出しません。提出の確定・締切・勝敗はサーバー側の状態で判断します。 残り時間は配信時のサーバー時刻と期限を基準に表示し、受信後の経過時間にはブラウザーの単調増加時計を使います。端末の時計設定を締切判定に使わず、表示が0秒になったことだけで提出状態を確定しません。
 
 ### DBアクセスの配置
 

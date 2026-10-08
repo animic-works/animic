@@ -1,11 +1,89 @@
 @layer recipes.slots.base {
-  .root {
-    background: var(--colors-bg-scrim);
+  /* 背景をゆっくり流れる3色の帯 */
+  .bands {
     inset: var(--spacing-0);
-    padding: var(--spacing-4);
+    pointer-events: none;
+    position: absolute;
+  }
+
+  .bands span {
+    animation: band-drift 9s linear infinite;
+    height: 160%;
+    position: absolute;
+    top: -30%;
+    transform: skewX(-18deg);
+    width: 7rem;
+  }
+
+  .bands span:nth-child(1) {
+    background: var(--colors-info-default);
+    left: 6%;
+  }
+
+  .bands span:nth-child(2) {
+    background: var(--colors-warning-default);
+    left: calc(6% + 7.5rem);
+    width: 1.6rem;
+  }
+
+  .bands span:nth-child(3) {
+    background: var(--colors-accent-brand);
+    animation-direction: reverse;
+    right: 8%;
+    width: 5.5rem;
+  }
+
+  .body {
     gap: var(--spacing-4);
+    display: grid;
+    justify-items: center;
+    position: relative;
+    width: min(100%, 34rem);
+    z-index: 1;
+  }
+
+  .card {
+    background: var(--colors-bg-surface);
+    border-color: var(--colors-bg-surface);
+    border-radius: 1.2rem;
+    border-style: solid;
+    border-width: 3px;
+    overflow: hidden;
+    animation: card-throw 0.8s var(--easings-pop) both;
+    aspect-ratio: 832 / 1216;
+    box-shadow:
+      0 8px 0 var(--colors-accent-brand),
+      0 30px 60px -20px rgb(0 0 0 / 0.6);
+    position: relative;
+    transform: rotate(-4deg);
+    width: clamp(10rem, 28vh, 15rem);
+  }
+
+  .card img {
+    object-fit: cover;
+    display: block;
+    height: var(--sizes-full);
+    width: var(--sizes-full);
+  }
+
+  .eyebrow {
+    margin: 0.4rem 0 -0.5rem;
+    color: var(--colors-info-default);
+    font-family: var(--fonts-latin);
+    font-size: 0.62rem;
+    font-style: italic;
+    font-weight: var(--font-weights-heavy);
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+  }
+
+  .root {
+    background: var(--colors-bg-inverse);
+    padding: var(--spacing-4);
+    inset: var(--spacing-0);
+    overflow: hidden;
     place-items: center;
-    align-content: center;
+    animation: fade-in 0.3s ease-out;
     color: var(--colors-fg-inverse);
     display: grid;
     position: fixed;
@@ -13,22 +91,121 @@
     z-index: var(--z-index-overlay);
   }
 
-  .spinner {
-    border-width: 4px;
-    height: 2.4rem;
-    width: 2.4rem;
+  .root::after {
+    background: radial-gradient(ellipse at 50% 50%, rgb(11 27 43 / 0.9) 18%, rgb(11 27 43 / 0) 62%);
+    inset: var(--spacing-0);
+    content: "";
+    pointer-events: none;
+    position: absolute;
+  }
+
+  .stamp {
+    background: var(--colors-warning-default);
+    padding-inline: 0.8rem;
+    padding-block: 0.3rem;
+    border-color: var(--colors-bg-surface);
+    border-radius: var(--radii-sm);
+    border-style: solid;
+    border-width: 3px;
+    animation: stamp 0.45s var(--easings-pop) 0.65s both;
+    bottom: 0.9rem;
+    color: var(--colors-fg-default);
+    font-family: var(--fonts-display);
+    font-size: 0.95rem;
+    letter-spacing: 0.04em;
+    position: absolute;
+    right: -0.3rem;
+    rotate: -10deg;
   }
 
   .sub {
     margin: var(--spacing-0);
+    color: rgb(255 255 255 / 0.85);
     font-weight: var(--font-weights-bold);
   }
 
   .title {
     margin: var(--spacing-0);
-    color: var(--colors-warning-default);
+    animation: title-slam 0.6s var(--easings-pop) 0.15s both;
+    color: var(--colors-fg-inverse);
     font-family: var(--fonts-display);
-    font-size: clamp(1.8rem, 6vw, 2.8rem);
+    font-size: clamp(2rem, 6vw, 3.2rem);
     font-weight: var(--font-weights-regular);
+    line-height: 1.15;
+    text-shadow:
+      0.06em 0.06em 0 var(--colors-accent-brand),
+      0.12em 0.12em 0 rgb(0 0 0 / 0.25);
+  }
+
+  .waitAvatar {
+    border-radius: var(--radii-full);
+    box-shadow: 0 0 0 2px var(--colors-bg-inverse);
+    display: grid;
+    margin-left: -0.35rem;
+    opacity: 0.45;
+  }
+
+  .waitAvatar:first-child {
+    margin-left: var(--spacing-0);
+  }
+
+  .waitAvatar[data-done] {
+    opacity: 1;
+  }
+
+  .waitAvatars {
+    display: flex;
+  }
+
+  .waitRow {
+    background: rgb(255 255 255 / 0.1);
+    padding: 0.45rem 1rem 0.45rem 0.45rem;
+    border-radius: var(--radii-control);
+    gap: 0.65rem;
+    align-items: center;
+    display: flex;
+    font-size: 0.88rem;
+    font-weight: var(--font-weights-bold);
+  }
+}
+
+@keyframes band-drift {
+  50% {
+    translate: 2.5rem 0;
+  }
+}
+
+@keyframes card-throw {
+  from {
+    opacity: 0;
+    transform: translateY(40vh) rotate(-25deg) scale(0.7);
+  }
+  to {
+    transform: rotate(-4deg);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes stamp {
+  from {
+    opacity: 0;
+    scale: 2.2;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+@keyframes title-slam {
+  from {
+    filter: blur(6px);
+    opacity: 0;
+    transform: scale(1.8);
   }
 }
