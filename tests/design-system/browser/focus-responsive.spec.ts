@@ -43,7 +43,7 @@ test("操作の種類に応じたキーボード表示とinvalid borderを維持
     }
     if (name === "Strong border focus")
       await expect(target).toHaveCSS("border-color", "rgb(11, 27, 43)");
-    if (name === "通常の入力") await expect(target).toHaveCSS("border-radius", "8px");
+    if (name === "通常の入力") await expect(target).toHaveCSS("border-radius", "14.4px");
     if (name === "Primary focus") await expect(target).toHaveCSS("border-radius", "16px");
     if (name === "Link focus") await expect(target).toHaveCSS("border-radius", "0px");
   }

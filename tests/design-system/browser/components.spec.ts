@@ -78,6 +78,9 @@ test("Fieldのlabel・description・errorと無効状態", async ({ page }) => {
   await expect(input).toBeVisible();
   await expect(input).toHaveAttribute("required", "");
   await expect(input).toHaveAccessibleDescription("ほかの参加者に表示されます。");
+  // 入力欄の枠は淡い色で、フォーカス中だけ濃くする。
+  await expect(input).toHaveCSS("border-color", "rgb(223, 226, 231)");
+  await input.focus();
   await expect(input).toHaveCSS("border-color", "rgb(11, 27, 43)");
   const invalid = page.getByLabel("招待コード");
   await expect(invalid).toHaveAttribute("aria-invalid", "true");
