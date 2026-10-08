@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { animicPreset } from "@animic/design-system/preset";
 import * as v from "valibot";
 import { describe, expect, it } from "vite-plus/test";
+import { acceptsTextContrast } from "./contrast-policy";
 
 const specSchema = v.object({
   schemaVersion: v.literal(1),
@@ -55,9 +56,16 @@ describe("generated design-system contract", () => {
     const css = await readFile(new URL("styles.css", generatedRoot), "utf8");
     for (const [path, definition] of Object.entries(spec.tokens)) {
       if (!definition.semantic || definition.category !== "colors") continue;
-      expect(definition.originalValue).toMatch(/^\{colors\.[a-z]+\.[0-9]+\}$/);
-      const reference = definition.originalValue?.slice(1, -1);
-      expect(values.get(path)).toBe(values.get(reference ?? ""));
+      if (definition.originalValue?.startsWith("{")) {
+        expect(definition.originalValue).toMatch(/^\{colors\.[a-z]+\.[0-9]+(?:\.[0-9]+)?\}$/);
+        const reference = definition.originalValue.slice(1, -1);
+        expect(values.get(path)).toBe(values.get(reference));
+      } else {
+        expect(definition.originalValue).toMatch(
+          /^color-mix\(in srgb, \{colors\.[a-z]+\.[0-9]+\} (?:12|35)%, \{colors.neutral.0\}\)$/,
+        );
+        expect(values.get(path)).not.toContain("{colors.");
+      }
       expect(definition.cssVar).toBeDefined();
       expect(css).toContain(definition.cssVar);
     }
@@ -68,9 +76,16 @@ describe("generated design-system contract", () => {
 
   it("defines stacking as semantic roles without a primitive scale", () => {
     const names = Object.keys(spec.tokens).filter((name) => name.startsWith("zIndex."));
-    expect(names.toSorted()).toEqual(["zIndex.overlay", "zIndex.toast"]);
+    expect(names.toSorted()).toEqual([
+      "zIndex.navigation",
+      "zIndex.overlay",
+      "zIndex.scrollbar",
+      "zIndex.toast",
+    ]);
     expect(animicPreset.theme?.tokens).not.toHaveProperty("zIndex");
     expect(animicPreset.theme?.semanticTokens?.zIndex).toEqual({
+      navigation: { value: 1 },
+      scrollbar: { value: 2 },
       overlay: { value: 10 },
       toast: { value: 20 },
     });
@@ -111,11 +126,11 @@ describe("generated design-system contract", () => {
     expect(values.get("colors.action.primary.pressed")).toBe(
       values.get("colors.action.primary.bg"),
     );
-    expect(values.get("colors.accent.primary")).not.toBe(values.get("colors.action.primary.bg"));
+    expect(values.get("colors.accent.primary")).toBe(values.get("colors.action.primary.bg"));
     expect(values.get("colors.disabled.bg")).toBe(values.get("colors.neutral.2"));
   });
 
-  it("meets normal-text contrast for semantic text pairs", () => {
+  it("enforces text contrast with only the approved color pairs accepted", () => {
     const pairs = [
       [resolvedColor("colors.fg.default"), resolvedColor("colors.bg.canvas")],
       [resolvedColor("colors.fg.muted"), resolvedColor("colors.bg.surface")],
@@ -125,11 +140,28 @@ describe("generated design-system contract", () => {
       [resolvedColor("colors.status.success.fg"), resolvedColor("colors.status.success.bg")],
       [resolvedColor("colors.status.danger.fg"), resolvedColor("colors.status.danger.bg")],
     ];
+    for (const palette of [
+      "pink",
+      "cyan",
+      "yellow",
+      "rose",
+      "gray",
+      "green",
+      "violet",
+      "orange",
+      "ink",
+    ]) {
+      pairs.push([
+        resolvedColor(`colors.avatar.${palette}.fg`),
+        resolvedColor(`colors.avatar.${palette}.bg`),
+      ]);
+    }
+    pairs.push([resolvedColor("colors.fg.default"), resolvedColor("colors.accent.primary")]);
     for (const [foreground = "", background = ""] of pairs) {
       expect(
-        contrast(foreground, background),
-        `${foreground} on ${background}`,
-      ).toBeGreaterThanOrEqual(4.5);
+        contrast(foreground, background) >= 4.5 || acceptsTextContrast(foreground, background),
+        `${foreground} on ${background}: ${contrast(foreground, background)}:1`,
+      ).toBe(true);
     }
     expect(
       contrast(resolvedColor("colors.focus.ring"), resolvedColor("colors.bg.surface")),

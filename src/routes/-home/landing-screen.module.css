@@ -1,0 +1,66 @@
+@layer recipes.slots.base {
+  html[data-scroll] .reveal {
+    opacity: 0;
+    transform: translateY(2rem);
+  }
+
+  html[data-scroll] [data-active] .reveal {
+    transition:
+      opacity 0.5s ease,
+      transform 0.7s var(--easings-standard);
+    opacity: 1;
+    transform: none;
+    transition-delay: calc(0.15s + var(--reveal-order, 0) * 0.08s);
+  }
+
+  .root {
+    --snap-head-offset: clamp(7rem, 16vh, 9rem);
+    position: relative;
+    min-height: 100svh;
+  }
+
+  html[data-scroll] .root {
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+  }
+
+  @media (max-width: 900px) {
+    .root {
+      --snap-head-offset: 5.5rem;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .root {
+      --appbar-h: calc(56px + env(safe-area-inset-top));
+      --safe-bottom: max(12px, env(safe-area-inset-bottom));
+      --snap-head-offset: calc(var(--appbar-h) + 1.25rem);
+    }
+  }
+}
+
+@layer recipes.slots.variants {
+  .reveal--delay_0 {
+    --reveal-order: 0;
+  }
+
+  .reveal--delay_1 {
+    --reveal-order: 1;
+  }
+
+  .reveal--delay_2 {
+    --reveal-order: 2;
+  }
+
+  .reveal--delay_3 {
+    --reveal-order: 3;
+  }
+
+  .reveal--delay_4 {
+    --reveal-order: 4;
+  }
+
+  .reveal--delay_5 {
+    --reveal-order: 5;
+  }
+}

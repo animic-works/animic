@@ -1,5 +1,11 @@
 import { defineLayerStyles } from "@pandacss/dev";
 export const layerStyles = defineLayerStyles({
+  "text.highlight": {
+    value: {
+      backgroundImage:
+        "linear-gradient(transparent 62%, token(colors.accent.highlight) 62% 92%, transparent 92%)",
+    },
+  },
   "surface.base": { value: { background: "bg.surface", boxShadow: "none" } },
   "surface.subtle": { value: { background: "bg.subtle", boxShadow: "none" } },
   "surface.raised": {

@@ -1,36 +1,73 @@
 import { expect, test } from "@playwright/test";
 import { AxeBuilder } from "@axe-core/playwright";
+import { expectAccessible } from "./accessibility";
 const stories = [
   "foundations--typography",
   "foundations--surfaces",
   "foundations--layouts",
   "controls--buttons",
+  "controls--auxiliary-buttons",
+  "overlays--fullscreen-dialog",
   "controls--inputs",
   "controls--feedback",
   "overlays--dialog-and-toast",
   "overlays--without-description",
   "overlays--open-dialog",
 ];
+
+test("Dialogのサイズ・配置・色は独立し、見出しを隠しても検索を操作できる", async ({ page }) => {
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/iframe.html?id=overlays--compact-centered-dialog&viewMode=story");
+    const dialog = page.getByRole("dialog", { name: "変更を確認" });
+    await expect(dialog).toBeVisible();
+    const bounds = (await dialog.boundingBox())!;
+    expect(bounds.width).toBeLessThanOrEqual(400);
+    expect(Math.abs(bounds.x + bounds.width / 2 - width / 2)).toBeLessThan(1);
+    expect(Math.abs(bounds.y + bounds.height / 2 - 450)).toBeLessThan(1);
+    const title = page.getByRole("heading", { name: "変更を確認" });
+    await expect(title).toHaveCSS("text-align", "center");
+    await expect(title).toHaveCSS("padding-left", "0px");
+    const confirm = dialog.getByRole("button", { name: "保存する" });
+    await expect(confirm).toHaveCSS("box-shadow", "none");
+    await confirm.hover();
+    await expect(confirm).toHaveCSS("box-shadow", "none");
+    await page.mouse.down();
+    await expect(confirm).toHaveCSS("box-shadow", "none");
+    await page.mouse.up();
+  }
+  await page.goto("/iframe.html?id=overlays--immersive-compact-dialog&viewMode=story");
+  await expect(page.getByText("しばらくお待ちください。", { exact: true })).toHaveCSS(
+    "color",
+    "rgb(255, 255, 255)",
+  );
+  await page.goto("/iframe.html?id=overlays--hidden-title-with-actions&viewMode=story");
+  await expect(page.getByRole("dialog", { name: "候補を選択" })).toBeVisible();
+  const search = page.getByRole("textbox", { name: "候補を検索" });
+  await search.fill("画像");
+  await expect(search).toHaveValue("画像");
+});
 for (const story of stories) {
   test(`${story}: 表示・アクセシビリティ`, async ({ page }) => {
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
     // axeはPlaywright側で実行し、Storybook addonとの同時実行を避ける。
-    await page.goto(`/iframe.html?id=${story}&viewMode=story&globals=a11y.manual:true`);
+    await page.goto(`/iframe.html?id=${story}&viewMode=story&globals=a11y.manual:!true`);
     await expect(page.locator("#storybook-root main")).toBeVisible();
     await page.evaluate(() => document.fonts.ready);
     if (story === "foundations--surfaces")
       await expect(page.getByRole("separator")).toHaveCSS("height", "1px");
-    if (story === "overlays--open-dialog") await expect(page.getByRole("dialog")).toBeVisible();
-    const result = await new AxeBuilder({ page })
-      .include(
-        story === "overlays--open-dialog" || story === "overlays--without-description"
-          ? '[role="dialog"]'
-          : "main",
-      )
-      .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
-      .analyze();
-    expect(result.violations).toEqual([]);
+    const openDialog = [
+      "overlays--open-dialog",
+      "overlays--without-description",
+      "overlays--fullscreen-dialog",
+    ].includes(story);
+    if (openDialog) await expect(page.getByRole("dialog")).toBeVisible();
+    await expectAccessible(
+      new AxeBuilder({ page })
+        .include(openDialog ? '[role="dialog"]' : "main")
+        .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]),
+    );
     expect(errors).toEqual([]);
   });
 }
@@ -84,7 +121,7 @@ test("Dialogのfocus trap・Escape・復帰・スクロール制限", async ({ p
 });
 test("ToastのSemantic積層と複数通知の配置・dismiss", async ({ page }) => {
   await page.goto(
-    "/iframe.html?id=overlays--dialog-and-toast&viewMode=story&globals=a11y.manual:true",
+    "/iframe.html?id=overlays--dialog-and-toast&viewMode=story&globals=a11y.manual:!true",
   );
   const trigger = page.getByRole("button", { name: "通知を表示" });
   await trigger.click();
@@ -93,11 +130,11 @@ test("ToastのSemantic積層と複数通知の配置・dismiss", async ({ page }
   await expect(notices).toHaveCount(2);
   const region = page.locator('[data-scope="toast"][data-part="group"]');
   await expect(region).toHaveCSS("z-index", "20");
-  const accessibility = await new AxeBuilder({ page })
-    .include('[data-scope="toast"][data-part="group"]')
-    .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
-    .analyze();
-  expect(accessibility.violations).toEqual([]);
+  await expectAccessible(
+    new AxeBuilder({ page })
+      .include('[data-scope="toast"][data-part="group"]')
+      .withTags(["wcag2a", "wcag2aa", "wcag21aa"]),
+  );
   const boxes = await notices.evaluateAll((nodes) =>
     nodes.map((n) => n.getBoundingClientRect().toJSON()),
   );
@@ -108,13 +145,13 @@ test("ToastのSemantic積層と複数通知の配置・dismiss", async ({ page }
 test("Primary state・focus・reduced motion", async ({ page }) => {
   await page.goto("/iframe.html?id=controls--buttons&viewMode=story");
   const button = page.getByRole("button", { name: "Primary", exact: true });
-  await expect(button).toHaveCSS("background-color", "rgb(199, 21, 101)");
+  await expect(button).toHaveCSS("background-color", "rgb(255, 45, 135)");
   await button.hover();
-  await expect(button).toHaveCSS("box-shadow", "rgba(11, 27, 43, 0.24) 0px 12px 32px -20px");
-  await expect(button).toHaveCSS("background-color", "rgb(199, 21, 101)");
+  await expect(button).toHaveCSS("transform", "matrix(1, 0, 0, 1, 0, -2)");
+  await expect(button).toHaveCSS("background-color", "rgb(255, 45, 135)");
   await page.mouse.down();
-  await expect(button).toHaveCSS("transform", "matrix(1, 0, 0, 1, 0, 2)");
-  await expect(button).toHaveCSS("background-color", "rgb(199, 21, 101)");
+  await expect(button).toHaveCSS("transform", "matrix(1, 0, 0, 1, 0, 1)");
+  await expect(button).toHaveCSS("background-color", "rgb(255, 45, 135)");
   await page.mouse.up();
   await page.keyboard.press("Shift+Tab");
   await page.keyboard.press("Tab");
@@ -144,8 +181,11 @@ test("長い入力・文字拡大でもControlを縮めない", async ({ page })
   });
   await expect(page.getByLabel("表示名（必須）")).toHaveCSS("font-size", "32px");
   await page.getByLabel("表示名（必須）").focus();
-  await expect(page.getByLabel("表示名（必須）")).toHaveCSS("outline-width", "2px");
-  await expect(page.getByLabel("表示名（必須）")).toHaveCSS("outline-offset", "2px");
+  await expect(page.getByLabel("表示名（必須）")).toHaveCSS("outline-style", "none");
+  await expect(page.getByLabel("表示名（必須）")).toHaveCSS(
+    "box-shadow",
+    "rgb(11, 27, 43) 0px 0px 0px 1px inset",
+  );
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth > window.innerWidth,
   );
@@ -163,7 +203,10 @@ for (const story of [
     await expect(page.locator("#storybook-root main")).toBeVisible();
     await page.evaluate(() => document.fonts.ready);
     if (story === "overlays--open-dialog") await expect(page.getByRole("dialog")).toBeVisible();
-    await expect(page).toHaveScreenshot(`${story}.png`, { fullPage: true, animations: "disabled" });
+    await expect(page).toHaveScreenshot(`${story}.png`, {
+      fullPage: true,
+      animations: "disabled",
+    });
   });
 }
 
@@ -181,9 +224,18 @@ for (const name of ["利用できません", "処理中です", "削除できま
       }
       // トランジションの開始直後だけを見て、ホバー・押下時の誤った遷移先を見逃さない。
       await page.waitForTimeout(200);
-      await expect(button).toHaveCSS("background-color", "rgb(230, 232, 236)");
-      await expect(button).toHaveCSS("color", "rgb(154, 163, 174)");
-      await expect(button).toHaveCSS("border-color", "rgb(223, 226, 231)");
+      await expect(button).toHaveCSS(
+        "background-color",
+        name === "削除できません" ? "rgb(230, 232, 236)" : "color(srgb 1 0.711765 0.835294)",
+      );
+      await expect(button).toHaveCSS(
+        "color",
+        name === "削除できません" ? "rgb(154, 163, 174)" : "rgb(255, 255, 255)",
+      );
+      await expect(button).toHaveCSS(
+        "border-color",
+        name === "削除できません" ? "rgb(223, 226, 231)" : "rgba(0, 0, 0, 0)",
+      );
       await expect(button).toHaveCSS("box-shadow", "none");
       await expect(button).toHaveCSS("transform", "none");
     }
@@ -213,9 +265,32 @@ test("Visualのraw geometryと局所Keyframesがブラウザまで成立する",
   expect(await artwork.evaluate((node) => node.getAnimations().length)).toBe(0);
 });
 
+test("アートワークの画面条件が境界幅と縦横に応じて切り替わる", async ({ page }) => {
+  await page.goto("/iframe.html?id=feature-visual--responsive-artwork&viewMode=story");
+  const artwork = page.getByTestId("responsive-artwork");
+  for (const [width, height, expectedWidth, expectedTop, angle] of [
+    [560, 800, 110, 20, -9],
+    [561, 800, 160, 40, -9],
+    [561, 500, 200, 80, -17],
+    [1100, 1200, 160, 40, -9],
+    [1101, 1200, 200, 80, -17],
+    [1440, 900, 200, 80, -17],
+    [390, 844, 110, 20, -9],
+  ]) {
+    await page.setViewportSize({ width, height });
+    await expect(artwork).toHaveCSS("width", `${expectedWidth}px`);
+    await expect(artwork).toHaveCSS("top", `${expectedTop}px`);
+    const rotation = await artwork.evaluate((node) => {
+      const matrix = new DOMMatrix(getComputedStyle(node).transform);
+      return (Math.atan2(matrix.b, matrix.a) * 180) / Math.PI;
+    });
+    expect(rotation).toBeCloseTo(angle, 2);
+  }
+});
+
 test("Fieldがid・ラベル・説明・エラーの関連付けを管理する", async ({ page }) => {
   await page.goto(
-    "/iframe.html?id=controls--field-associations&viewMode=story&globals=a11y.manual:true",
+    "/iframe.html?id=controls--field-associations&viewMode=story&globals=a11y.manual:!true",
   );
   for (const [id, label, description] of [
     ["email", "メール", "連絡先を入力します。"],
@@ -239,9 +314,9 @@ test("Fieldがid・ラベル・説明・エラーの関連付けを管理する"
     await expect(control).toHaveAttribute("id", id);
     await expect(control).toHaveAccessibleDescription("別の説明");
   }
-  const result = await new AxeBuilder({ page })
-    .include("main")
-    .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
-    .analyze();
-  expect(result.violations).toEqual([]);
+  await expectAccessible(
+    new AxeBuilder({ page })
+      .include("main")
+      .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]),
+  );
 });

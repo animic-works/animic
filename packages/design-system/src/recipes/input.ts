@@ -1,5 +1,5 @@
 import { defineRecipe } from "@pandacss/dev";
-import { focus, disabled } from "./control";
+import { fieldFocus, disabled } from "./control";
 export const input = defineRecipe({
   className: "input",
   base: {
@@ -18,7 +18,9 @@ export const input = defineRecipe({
     textStyle: "body.md",
     fontSynthesis: "none",
     _placeholder: { color: "fg.muted" },
-    _focusVisible: focus,
+    outlineStyle: "none",
+    outlineWidth: "0",
+    _focusWithin: fieldFocus,
     _invalid: { borderColor: "status.danger.border", borderWidth: "2" },
     _disabled: disabled,
   },

@@ -1,0 +1,47 @@
+@layer recipes.slots.base {
+  .root {
+    --transition-easing: cubic-bezier(0.21, 1.02, 0.73, 1);
+    background: var(--colors-bg-inverse);
+    padding-inline: var(--spacing-5);
+    padding-block: var(--spacing-3);
+    border-radius: var(--radii-control);
+    transition:
+      translate 400ms,
+      scale 400ms,
+      opacity 400ms,
+      height 400ms;
+    align-items: center;
+    color: var(--colors-fg-inverse);
+    display: flex;
+    font-size: 0.9rem;
+    font-weight: var(--font-weights-bold);
+    opacity: var(--opacity);
+    position: relative;
+    scale: var(--scale);
+    transition-timing-function: cubic-bezier(0.21, 1.02, 0.73, 1);
+    translate: var(--x) var(--y);
+    white-space: nowrap;
+    will-change: translate, opacity, scale;
+    z-index: var(--z-index);
+    height: var(--height);
+  }
+
+  .root[data-state="closed"] {
+    transition:
+      translate 400ms,
+      scale 400ms,
+      opacity 200ms;
+  }
+
+  @media (width < 35.0625rem) {
+    .root {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: calc(100% - 32px);
+    }
+  }
+
+  .title {
+    margin: var(--spacing-0);
+  }
+}

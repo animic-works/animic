@@ -16,8 +16,11 @@
 - [Git hooksとCIの選定理由](docs/decisions/0001-git-workflow.md)
 - [アプリ構成の決定](docs/decisions/0002-application-foundation.md)
 - [採点の実行先とキュー方式の決定](docs/decisions/0004-scoring-workers.md)
-- [デザイン定義とUIの分離](docs/decisions/0006-design-system.md)
-- [Panda CSS v2の採用理由](docs/decisions/0005-panda-css-v2.md)
+- [運営者の認証](docs/decisions/0005-operator-password.md)
+- [参加者のログイン](docs/decisions/0006-participant-login.md)
+- [お題の画像とバックアップ](docs/decisions/0007-topic-images-and-backup.md)
+- [デザイン定義とUIの分離](docs/decisions/0008-design-system.md)
+- [Panda CSS v2の採用理由](docs/decisions/0009-panda-css-v2.md)
 - [Design Systemの設計資料](docs/design-system/README.md): 設計で得た判断材料と、比較・検証・判断変更の事例
 
 文書の役割とテンプレートの使い方は[CONTRIBUTING.md](CONTRIBUTING.md#文書の管理)にまとめています。

@@ -26,7 +26,11 @@ export function fontImports(
         `Text Style ${name}: font family / weight tokenまたはasset対応を解決できません。`,
       );
     }
-    const specifier = `${asset}/${weight}.css`;
+    const style = value.fontStyle ?? "normal";
+    if (style !== "normal" && style !== "italic") {
+      throw new Error(`Text Style ${name}: fontStyleはnormalまたはitalicを指定してください。`);
+    }
+    const specifier = `${asset}/${weight}${style === "italic" ? "-italic" : ""}.css`;
     // styled-systemが配信するアセットを、そのパッケージの依存関係から解決する。
     requireAsset.resolve(specifier);
     imports.add(specifier);
@@ -35,11 +39,9 @@ export function fontImports(
 }
 
 export function fontCss() {
-  return (
-    fontImports()
-      .map((specifier) => `@import "${specifier}";`)
-      .join("\n") + "\n"
-  );
+  return fontImports()
+    .map((specifier) => `@import "${specifier}";\n`)
+    .join("");
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

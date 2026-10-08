@@ -1,0 +1,50 @@
+@layer recipes.slots.base {
+  body[data-entering] .root {
+    animation: card-rise 0.8s var(--easings-rise) both;
+    animation-delay: calc(0.6s + var(--enter-order, 0) * 0.12s);
+  }
+}
+
+@layer recipes.slots.variants {
+  .root--order_0 {
+    --enter-order: 0;
+  }
+
+  @media (width < 53.8125rem) {
+    body[data-entering] .root--motion_fade {
+      animation-name: fade-in;
+    }
+  }
+
+  .root--order_1 {
+    --enter-order: 1;
+  }
+
+  .root--order_2 {
+    --enter-order: 2;
+  }
+
+  .root--order_3 {
+    --enter-order: 3;
+  }
+
+  .root--order_4 {
+    --enter-order: 4;
+  }
+}
+
+@keyframes card-rise {
+  from {
+    opacity: 0;
+    transform: translateY(3rem) rotate(-3deg) scale(0.94);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

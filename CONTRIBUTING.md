@@ -5,7 +5,6 @@
 - [ゲーム仕様](docs/product.md): プロダクトの要件
 - [アーキテクチャ](docs/architecture.md): 構成と各機能の役割
 - [実装規約](docs/conventions.md): コードを書く際の判断基準
-- [Design Systemの設計資料](docs/design-system/README.md): 設計判断の事例・根拠と、再利用する判断材料
 
 ## セットアップと検証
 
@@ -20,6 +19,10 @@ node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
 `BETTER_AUTH_URL`は利用するアプリのURLに合わせます。`.env`はGitに含めません。環境変数で値を上書きできるよう、ローカル設定は`.env`に統一し、優先して読み込まれる`.dev.vars`とは併用しません。
 
 NovelAIで画像を生成する場合は、NovelAIのアカウント設定で発行した永続APIトークン（`pst-`で始まる値）を`NOVELAI_API_TOKEN`に設定します。未設定でも起動できますが、画像の生成は失敗します。トークンはサーバー側の生成キューのDOだけで読み、ブラウザへのレスポンスやログには含めません。
+
+管理画面（`/admin`）を使う場合は、12文字以上のパスワードを`ADMIN_PASSWORD`に設定します。`#`や`$`を含む場合は`ADMIN_PASSWORD='...'`のように単一引用符で囲みます。囲まないと`#`以降がコメントとして扱われます。
+
+ルームを作るにはログインが必要なため、開発サーバーの画面でルームを作る場合も、[ログインのOAuthアプリ](#ログインのoauthアプリ)に従って`GOOGLE_CLIENT_ID`・`GOOGLE_CLIENT_SECRET`・`DISCORD_CLIENT_ID`・`DISCORD_CLIENT_SECRET`を設定します。
 
 初回は次の順序で実行します。
 
@@ -38,36 +41,33 @@ vp run dev
 
 開発サーバーは`http://localhost:3000`です。Cloudflare Vite pluginを通じてサーバー処理をローカルのWorkersランタイムで実行します。Linuxでブラウザのシステムライブラリが不足している場合は、Playwrightの[環境構築手順](https://playwright.dev/docs/browsers#install-system-dependencies)に従います。
 
-| 操作                          | コマンド                               |
-| ----------------------------- | -------------------------------------- |
-| 依存パッケージのインストール  | `vp install --frozen-lockfile`         |
-| Git hooksの有効化             | `vp hooks enable`                      |
-| Git hooksの確認               | `vp hooks status`                      |
-| 開発サーバー                  | `vp run dev`                           |
-| DB変更のSQL生成               | `vp run db:generate --name <変更名>`   |
-| ローカルD1へのSQL適用         | `vp run db:migrate:local`              |
-| Workers型の生成               | `vp run typegen`                       |
-| クライアント・Workerのビルド  | `vp run build`                         |
-| ビルド成果物のローカル起動    | `vp run preview`                       |
-| 業務ルールの単体テスト        | `vp run test`                          |
-| Design Systemの生成・契約検証 | `vp run test:design-system`            |
-| Design Systemのブラウザ検証   | `vp run test:design-system:browser`    |
-| Storybookの起動               | `vp run storybook`                     |
-| ブラウザでのE2E検証           | `vp run test:e2e`                      |
-| 静的検査                      | `vp run check`                         |
-| フォーマット修正              | `vp fmt`                               |
-| 未使用コードの検査            | `vp run knip`                          |
-| コミットメッセージの検証      | `vp exec commitlint --edit <ファイル>` |
+| 操作                         | コマンド                               |
+| ---------------------------- | -------------------------------------- |
+| 依存パッケージのインストール | `vp install --frozen-lockfile`         |
+| Git hooksの有効化            | `vp hooks enable`                      |
+| Git hooksの確認              | `vp hooks status`                      |
+| 開発サーバー                 | `vp run dev`                           |
+| DB変更のSQL生成              | `vp run db:generate --name <変更名>`   |
+| ローカルD1へのSQL適用        | `vp run db:migrate:local`              |
+| Workers型の生成              | `vp run typegen`                       |
+| クライアント・Workerのビルド | `vp run build`                         |
+| ビルド成果物のローカル起動   | `vp run preview`                       |
+| 業務ルールの単体テスト       | `vp run test`                          |
+| ブラウザでのE2E検証          | `vp run test:e2e`                      |
+| 静的検査                     | `vp run check`                         |
+| フォーマット修正             | `vp fmt`                               |
+| 未使用コードの検査           | `vp run knip`                          |
+| コミットメッセージの検証     | `vp exec commitlint --edit <ファイル>` |
 
-`vp run check`はDesign Systemを生成してから、import境界・styling propsの検査、フォーマット・lint・型チェック・Knipを実行します。`vp check`ではフォーマットと型情報を使うlintを実行し、プロジェクト全体の型チェックは`tsc --noEmit`、未使用コードの検査はKnipが担当します。現在の設定とKnipの例外は[静的検査の設定](#静的検査の設定)を参照してください。
+`vp run check`はDesign Systemの生成とパッケージ依存の検査を行ってから、フォーマット・lint・型チェック・Knipを実行します。`vp check`ではフォーマットと型情報を使うlintを実行し、プロジェクト全体の型チェックは`tsc --noEmit`、未使用コードの検査はKnipが担当します。コマンドの定義は[package.json](package.json)、lint・format・staged設定は[vite.config.ts](vite.config.ts)を参照してください。
 
-E2Eは[playwright.config.ts](playwright.config.ts)がビルド・DBの初期化・プレビュー起動を行います。テストごとではなく実行ごとに`.wrangler/e2e/`を初期化し、開発用の`.wrangler/state/`とは分けます。Wranglerによるテストデータ操作と他のテストが同じSQLiteを同時に更新しないよう、E2Eは1 workerで順に実行します。複数人の同時操作は各テスト内で複数のブラウザコンテキストを使って確認します。認証URLと鍵、NovelAIのトークンはテスト用の値を設定するため、E2Eだけなら`.env`の用意は不要です。E2Eのビルドには実際のNovelAIのトークンを含めず、ブラウザへ配信するファイルとトップページのHTMLにテスト用のトークンが含まれないことを確認します。
+E2Eは[playwright.config.ts](playwright.config.ts)がビルド・DBの初期化・プレビュー起動を行います。テストごとではなく実行ごとに`.wrangler/e2e/`を初期化し、開発用の`.wrangler/state/`とは分けます。Wranglerによるテストデータ操作と他のテストが同じSQLiteを同時に更新しないよう、E2Eは1 workerで順に実行します。複数人の同時操作は各テスト内で複数のブラウザコンテキストを使って確認します。認証URLと鍵、NovelAIのトークン、管理画面のパスワード、OAuthクライアントはテスト用の値を設定するため、E2Eだけなら`.env`の用意は不要です。E2Eのビルドには実際のNovelAIのトークンとOAuthクライアントを含めず、ブラウザへ配信するファイルとトップページのHTMLに、テスト用のNovelAIのトークンとOAuthの秘密情報が含まれないことを確認します。
 
-E2E専用クライアントは`ANIMIC_E2E=true`のビルドにだけ含め、共通ルートのクライアントコードから読み込みます。通常のビルドや開発サーバーにはこの読み込みを追加しません。E2Eのビルド成果物はデプロイせず、公開用にはこの環境変数を指定せずにビルドし直します。
+E2E専用クライアントは`ANIMIC_E2E=true`のビルドにだけ含め、共通ルートのクライアントコードから読み込みます。通常のビルドや開発サーバーにはこの読み込みを追加しません。ログインした状態は、同じビルドにだけ含めるBetter Authのプラグイン（`src/lib/auth-e2e.server.ts`の`/api/auth/sign-in/e2e`）で作り、実際のOAuthは通しません。ルームを作るテストでは、このプラグインでホストをログインさせてから作ります。このプラグインは、`BETTER_AUTH_URL`がローカルのURLでなければ拒否します。E2Eのビルド成果物はデプロイせず、公開用にはこの環境変数を指定せずにビルドし直します。
 
 `vp run test`はVite+内蔵のVitestで`src/**/*.test.ts`を実行します。期限やホストの引き継ぎなど、時刻を指定して確認する業務ルールを対象とします。Workersランタイムが必要な処理はE2Eで実際のD1・DOと組み合わせて確認します。
 
-E2Eでは、ロゴのSSR表示・画像の読み込み・狭い画面での表示・404応答をブラウザで確認します。認証・ルーム・対戦は、`tests/fixtures/api-client.ts`をブラウザで読み込んで実際のServer FunctionsとWebSocketを呼び出し、モックUIを経由せずに検証します。匿名セッションの復元・失効、CSRF対策、ルームへの参加と状態同期、複数タブ、ホストの退出・切断、WebSocketの認証、対戦開始・再戦・復帰・途中参加・提出期限による未提出・勝負不成立の確定と、D1への結果保存に失敗した場合の再試行を含めます。採点ワーカー向けAPIは、ブラウザを使わずPlaywrightの`request`から採点ワーカーとして要求を送り、リンク・heartbeat・採点ジョブの割り当て・完了・差し戻しと、D1に保存される状態を確認します。失敗時のtraceは`test-results/`に保存され、CIでは`e2e-failure-traces` artifactから7日間取得できます。展開したtraceは`vp exec playwright show-trace <trace.zipのパス>`で確認します。
+E2Eでは、トップページのSSR表示・説明文・画像の読み込み・狭い画面での表示・404応答・検索対象の判定をブラウザで確認します。画面の操作は`tests/e2e/ui.spec.ts`で、トップの「スタート」からのログインのダイアログと認証画面への移動・認証の失敗の表示・ログイン中の表示名の初期値とログアウト・ルームの作成・URLとルームコードからの参加・準備完了・対戦の条件の反映・開始できない理由・対戦の開始から勝負不成立と再戦・招待・退出とホストの引き継ぎ・別のタブでの退出・途中参加・画面遷移の演出のスキップ・遊び方の切り替え・利用規約とプライバシーポリシーを確認します。画面の選択肢より短い制限時間は、検証用クライアントで保存してから画面で開始します。画像を生成する操作がまだ画面にないため、画像の選択・提出は画面では確認せず、スコアで決まる結果の表示は単体テストで確認します。認証・ルーム・対戦の処理は、`tests/fixtures/api-client.ts`をブラウザで読み込んで実際のServer FunctionsとWebSocketを呼び出し、画面を経由せずに検証します。匿名セッションの復元・失効、ログインの開始で各サービスの認証URLを返すこと、ログイン中の参加者情報、匿名の参加者がログインしたときの参加者IDの切り替え、ログインしていない参加者のルームの作成の拒否、CSRF対策、ルームへの参加と状態同期、複数タブ、ホストの退出・切断、WebSocketの認証、対戦開始・再戦・復帰・途中参加・提出期限による未提出・勝負不成立の確定と、D1への結果保存に失敗した場合の再試行を含めます。採点ワーカー向けAPIは、ブラウザを使わずPlaywrightの`request`から採点ワーカーとして要求を送り、リンク・heartbeat・採点ジョブの割り当て・完了・差し戻しと、D1に保存される状態を確認します。管理画面は、ログイン前の表示と管理用の操作の拒否、ログイン後のリンクコードの発行から採点ワーカーのリンク・一覧・失効、採点ジョブの一覧、ログアウトまでを確認します。お題は、プロンプトを埋め込んだ半透明のPNGを追加して、配信される画像にメタデータと透過が残らないこと、非公開のお題を出題せず公開すると出題すること、削除後も画像の配信を続けることを確かめ、メタデータの残ったWebPをServer Functionへ直接送ると拒否されることも確認します。あわせて、対戦条件の候補の検証とロビーへの反映、よく使う表現の追加・並べ替え・削除、書き出したZIPを読み込むと消したお題と画像・対戦条件・表現が戻ることを確認します。失敗時のtraceは`test-results/`に保存され、CIでは`e2e-failure-traces` artifactから7日間取得できます。展開したtraceは`vp exec playwright show-trace <trace.zipのパス>`で確認します。
 
 Drizzleスキーマを変更したら`vp run db:generate --name <変更名>`でSQLを生成し、`migrations/`のSQLとスナップショットを確認して一緒に管理します。ローカルへの適用には`vp run db:migrate:local`を使います。適用済みのSQLは書き換えず、追加のmigrationで変更します。
 
@@ -85,13 +85,31 @@ git config --local commit.template .gitmessage
 
 テンプレートは`git commit`でエディターを開くと表示されます。`git commit -m`には適用されません。
 
+## 本番デプロイ
+
+Cloudflare Workers Buildsは次の設定で通常のアプリをビルド・デプロイします。Vite+とWranglerはリポジトリの依存パッケージから実行します。
+
+| 設定               | 値                          |
+| ------------------ | --------------------------- |
+| Worker名           | `animic`                    |
+| 本番ブランチ       | `main`                      |
+| ルートディレクトリ | リポジトリルート            |
+| ビルドコマンド     | `pnpm run build`            |
+| デプロイコマンド   | `pnpm exec wrangler deploy` |
+
+Node.jsは`.node-version`、pnpmは`package.json`の指定に合わせます。初回は本番D1を作成・確認し、`wrangler.jsonc`の`database_id`を設定してから`vp exec wrangler d1 migrations apply DB --remote`でSQLを適用します。お題の画像を保存するR2のバケットは、`vp exec wrangler r2 bucket create animic-topic-images`で作成します。Workerの秘密情報として`BETTER_AUTH_SECRET`に本番専用の鍵、`BETTER_AUTH_URL`に`https://animic.party`、`NOVELAI_API_TOKEN`にNovelAIの永続APIトークン、`ADMIN_PASSWORD`に管理画面のパスワード（ローカルとは別の12文字以上の値）、`GOOGLE_CLIENT_ID`・`GOOGLE_CLIENT_SECRET`・`DISCORD_CLIENT_ID`・`DISCORD_CLIENT_SECRET`に本番用のOAuthアプリの値を設定します。これらは`wrangler.jsonc`の`secrets.required`で必須にしているため、設定していないとデプロイが失敗します。DOのクラス登録は`wrangler.jsonc`のmigrationによってデプロイ時に行います。
+
+Custom Domainに`animic.party`を設定します。公開前に変更が`main`へ取り込まれていることと、Cloudflareがビルドするコミットを確認します。公開後はHTTPS、トップページ、アイコン・OGP画像、robots.txt、sitemap.xml、存在しないページの404を確認します。`www`を使う場合は正規ホストへ恒久リダイレクトします。開発環境を公開する場合は、Accessによる閲覧制限と、本番から独立したD1・DO・認証情報を設定します。
+
+Search Consoleは`animic.party`のドメインプロパティを追加し、指定されたDNS TXTレコードで所有権を確認します。コンテンツやサイト公開は所有権確認の前提ではありません。TXTは確認後も維持します。サイトマップの公開を確認したらSearch Consoleに送信し、robots.txtにも`Sitemap:`でそのURLを指定します。公開するページを追加した際は同じURLのサイトマップを更新し、URL検査で取得・登録状況を確認します。所有権確認だけで検索掲載が保証されるわけではありません。
+
 ## 静的検査の設定
 
 コマンドとKnipの設定は[package.json](package.json)、lint・format・staged設定は[vite.config.ts](vite.config.ts)で管理します。検出結果への対応と例外の判断は[実装規約](docs/conventions.md#react-compilerと未使用コード)に従います。
 
 Knipでは、Design System用に次の例外とentryを設定しています。
 
-- 生成CSSの`@import`からフォント依存を追跡しないため、`packages/styled-system`のFontsource依存だけを明示的に除外します。対応するCSSの解決は[フォント生成とStorybookのビルド](#design-systemの生成と検証)で検証します。
+- 生成CSSの`@import`からフォント依存を追跡しないため、アプリのCSSで使うルートのFontsource依存と、生成CSSで使う`packages/styled-system`のFontsource依存を明示的に除外します。対応するCSSの解決はアプリのビルドと[フォント生成・Storybookのビルド](#design-systemの生成と検証)で検証します。
 - 検査・生成スクリプトのJSに対応する型宣言は、TypeScriptでの利用を解析するentryとして指定します。
 
 参考: [KnipのVite+対応](https://knip.dev/reference/plugins/vite-plus)。
@@ -103,7 +121,7 @@ Knipでは、Design System用に次の例外とentryを設定しています。
 1. [デザイン原則](docs/design.md)、[アーキテクチャ](docs/architecture.md#design-system)、既存のデザイン定義を確認し、表現できない内容・状態・操作・利用条件を具体化します。
 2. Panda MCPで既存のToken・Style・Recipe・Patternを調べ、詳細は必要に応じて`packages/design-system/src/`を確認します。React Componentの公開APIと、その組み合わせも確認します。
 3. 不足しているものを、下表の責務に分けます。既存の公開APIの組み合わせで成立するなら、利用側の構成を変更し、Design Systemは変更しません。
-4. 通常UIの不足を、任意CSS、`style`、自由な`className`、styled-systemの低レベルAPI、Visual領域による迂回で解決しません。
+4. Design Systemを利用する通常UIの不足を、任意CSS、`style`、自由な`className`、styled-systemの低レベルAPI、Visual領域による迂回で解決しません。
 5. 新しいToken・Style・Recipe・Pattern・Component・variant・Responsive条件・公開API等が必要なら、既存定義で不足する理由、変更先、選択肢と影響を示し、新しいDesign判断として実装前に承認を得ます。
 6. 承認後、[各層の責務](docs/architecture.md#design-system)に従って変更します。デザイン定義、DOM・操作、利用側の構成を混同しません。
 7. [生成と検証](#design-systemの生成と検証)から、変更に必要な生成結果・型・Guardrail・Storybook・ブラウザ操作・アクセシビリティ・画像比較等を選び、目的が成立したか確認します。
@@ -130,11 +148,13 @@ vp run design-system:analyze
 vp run check
 ```
 
-`design-system:generate`は`panda codegen --spec`、`panda cssgen`、`scripts/generate-fonts.mjs`を実行します。Native Specは`generated/specs/design-system.json`、Panda CSSは`generated/styles.css`、フォントCSSは`generated/fonts.css`です。必要なフォントの太さはText Styleから求め、styled-systemの依存からFontsource CSSを解決します。生成物を削除した後も同じコマンドで復元できます。直接値を持つSemantic TokenはNative Specの`semantic`フラグが省略されるため、分類はMCPのSemantic Token問い合わせとソースコードで確認します。アプリの`dev`・`build`・`preview`は`-C .`でルートパッケージを明示し、ワークスペース全体の選択と区別します。`dev`・`build`・`typecheck`・`check`・`test:design-system`も先に生成するため、初回チェックアウトの生成物に依存しません。
+`design-system:generate`は`panda codegen --spec`、`panda cssgen`、`scripts/generate-fonts.mjs`を実行します。Native Specは`generated/specs/design-system.json`、Panda CSSは`generated/styles.css`、フォントCSSは`generated/fonts.css`です。必要なフォント・太さ・正体と斜体はText Styleから求め、styled-systemの依存からFontsource CSSを解決します。生成物を削除した後も同じコマンドで復元できます。直接値を持つSemantic TokenはNative Specの`semantic`フラグが省略されるため、分類はMCPのSemantic Token問い合わせとソースコードで確認します。`typecheck`・`check`・`test:design-system`・Storybookの起動とビルドも先に生成するため、初回チェックアウトの生成物に依存しません。アプリの起動とビルドはDesign Systemの生成を必要としません。`dev`・`build`・`preview`は`-C .`でルートパッケージを指定し、ワークスペース全体の選択と区別します。
 
-`test:design-system`は生成されたSemantic Tokenの参照・CSS変数・非公開サブパスの解決失敗・色ペアのコントラスト・フォントCSSの導出と依存の解決・JSX spreadの型を検証します。禁止する値を使った型検証は`tests/design-system/strict-types.ts`と`public-types.tsx`にあり、`check`に含まれる型チェックで確認します。`design-system:analyze`は使用状況を`generated/analysis.json`へ出力します。未使用という結果だけで承認済みの定義を削除しません。
+`test:design-system`は生成されたSemantic Tokenの参照・CSS変数・非公開サブパスの解決失敗・色ペアのコントラスト・フォントCSSの導出と依存の解決・共通パッケージの依存方向を検証します。禁止する値を使った型検証は`tests/design-system/strict-types.ts`と`public-types.tsx`にあり、`check`に含まれる型チェックで確認します。`design-system:analyze`は使用状況を`generated/analysis.json`へ出力します。未使用という結果だけで承認済みの定義を削除しません。
 
 定義やReact内のスタイル指定を変更した場合は`vp run design-system:generate`を再実行してから表示を確認します。
+
+`design-system:guard`は`packages/design-system/src/`と`packages/react/src/`の依存方向を検査します。共通パッケージからアプリケーションへの依存、PresetからReact・生成SDKへの依存、React実装からPanda・Presetへの依存を禁止します。アプリケーションの`src/`はこの検査の対象ではありません。利用境界は[アーキテクチャ](docs/architecture.md#uiからの利用)を参照してください。
 
 生成物はGit管理せず、整形・lintの修正対象にも含めません。各パッケージの`package.json`、CSSエントリーポイント、生成設定・生成スクリプト・検証コードはGit管理します。
 
@@ -142,7 +162,7 @@ vp run check
 
 `vp run storybook`は`http://localhost:6006`でComponentと状態を確認するStorybookを起動します。`vp run storybook:build`で静的出力を作り、`vp run storybook:preview`で確認できます。アプリ用のCloudflare・ルーティング設定は読み込まず、React Compilerと同じワークスペース内のパッケージを使用します。フォントはローカルの依存パッケージから配信し、外部フォントサーバーへ依存しません。
 
-`vp run test:design-system:browser`はStorybookのビルド・起動とPlaywrightを実行します。既存のローカルサーバーは開発時だけ再利用し、CIでは必ずビルドから実行します。ARIAの関連付け、キーボード操作、Dialogのフォーカストラップ・フォーカスの復帰、Toastの重なり、reduced motion設定、文字拡大を検証します。axeによるWCAG A・AAの自動検査を含みますが、スクリーンリーダーによる確認や人間の使いやすさの評価を置き換えません。
+`vp run test:design-system:browser`はStorybookのビルド・起動とPlaywrightを実行します。既存のローカルサーバーは開発時だけ再利用し、CIでは必ずビルドから実行します。ARIAの関連付け、キーボード操作、Dialogのフォーカストラップ・フォーカスの復帰、Toastの重なり、reduced motion設定、文字拡大を検証します。axeによるWCAG A・AAの自動検査を含みますが、スクリーンリーダーによる確認や人間の使いやすさの評価を置き換えません。承認済みの配色は[コントラストの扱い](docs/design.md#コントラストの扱い)に従い、`expectAccessible`で判定します。許容した検出結果は`accepted-text-contrast`添付に残るため、テストの成功をWCAG適合と読み替えません。Storybookのアクセシビリティパネルには元の検出結果を表示します。
 
 画像比較テストのベースライン画像は`tests/design-system/browser/snapshots/linux/`で管理します。Playwrightが指定するChrome for Testingを`channel: "chromium"`で起動し、ビューポート・ロケールを固定してフォントの読み込みを待ちます。Headless Shellとは文字描画が異なるため混用しません。画像比較はLinux上で実行・更新し、CIでも必ず実行します。Linux以外では画像比較だけをスキップし、操作・アクセシビリティ等のテストは実行します。更新時は意図した表示変更であることを画像で確認します。差分を消すためだけにベースライン画像を更新しません。
 
@@ -161,24 +181,6 @@ Panda MCPは既存のデザイン定義、Ark UI MCPは内部利用するUIのAP
 
 MCPはDesign Systemの定義元ではありません。実際の定義は`packages/design-system/src/`、責務と利用境界は[アーキテクチャ](docs/architecture.md#design-system)で確認します。MCPへの接続はUIの実行・ビルドの要件ではありません。
 
-## 本番デプロイ
-
-Cloudflare Workers Buildsは次の設定で通常のアプリをビルド・デプロイします。Vite+とWranglerはリポジトリの依存パッケージから実行します。
-
-| 設定               | 値                          |
-| ------------------ | --------------------------- |
-| Worker名           | `animic`                    |
-| 本番ブランチ       | `main`                      |
-| ルートディレクトリ | リポジトリルート            |
-| ビルドコマンド     | `pnpm run build`            |
-| デプロイコマンド   | `pnpm exec wrangler deploy` |
-
-Node.jsは`.node-version`、pnpmは`package.json`の指定に合わせます。初回は本番D1を作成・確認し、`wrangler.jsonc`の`database_id`を設定してから`vp exec wrangler d1 migrations apply DB --remote`でSQLを適用します。Workerの秘密情報として`BETTER_AUTH_SECRET`に本番専用の鍵、`BETTER_AUTH_URL`に`https://animic.party`、`NOVELAI_API_TOKEN`にNovelAIの永続APIトークンを設定します。これらは`wrangler.jsonc`の`secrets.required`で必須にしているため、設定していないとデプロイが失敗します。DOのクラス登録は`wrangler.jsonc`のmigrationによってデプロイ時に行います。
-
-Custom Domainに`animic.party`を設定します。公開前に変更が`main`へ取り込まれていることと、Cloudflareがビルドするコミットを確認します。公開後はHTTPS、トップページ、アイコン・OGP画像、robots.txt、sitemap.xml、存在しないページの404を確認します。`www`を使う場合は正規ホストへ恒久リダイレクトします。開発環境を公開する場合は、Accessによる閲覧制限と、本番から独立したD1・DO・認証情報を設定します。
-
-Search Consoleは`animic.party`のドメインプロパティを追加し、指定されたDNS TXTレコードで所有権を確認します。コンテンツやサイト公開は所有権確認の前提ではありません。TXTは確認後も維持します。サイトマップの公開を確認したらSearch Consoleに送信し、robots.txtにも`Sitemap:`でそのURLを指定します。公開するページを追加した際は同じURLのサイトマップを更新し、URL検査で取得・登録状況を確認します。所有権確認だけで検索掲載が保証されるわけではありません。
-
 ## アイコンの更新
 
 `public/favicon.svg`を原本とし、ブラウザ用のICO、Apple Touch Icon、Manifest用のPNGを生成します。SVGは絵柄を保持し、正方形のviewBoxで外側の余白を詰めています。SVGを更新したら、セットアップ済みのChromiumで次のコマンドを実行し、生成したファイルもコミットします。追加の画像変換パッケージは不要です。
@@ -195,22 +197,15 @@ HTMLの参照は`src/routes/__root.tsx`、ホーム画面用アイコンの参�
 
 ## お題の登録
 
-自前で生成した画像を配信できるURLに配置し、D1の`topic`テーブルへID・難易度・画像URLを登録します。難易度は`easy`（かんたん）、`normal`（ふつう）、`hard`（むずかしい）です。画像のバイナリはD1に保存しません。
+お題は管理画面（`/admin`）の「お題」で登録します。「お題を追加」で画像（PNG・WebP・JPEG、10MB以下、1回に20件まで）と難易度を選んで追加します。画像はブラウザーでメタデータと透過のないWebPに変換してからR2へ保存するため、WebPを書き出せるブラウザー（Chromeなど）を使います。追加したお題は非公開です。一覧から開いて題名・備考を入力し、「公開する」で出題の対象にします。ロビーで選べる制限時間・画像選択の猶予の候補は「対戦条件」、プロンプト入力の選択肢は「よく使う表現」で登録します。
 
-登録用SQLの例です。画像URLは実際の配信先に置き換えます。
+ローカルのD1とR2は`vp run dev`の保存先（`.wrangler/state/`）に入ります。E2Eは専用DBへテスト用のお題を登録するため、開発用データを必要としません。画像の配信先はテスト内で差し替えます。
 
-```sql
-INSERT INTO topic (id, difficulty, image_url)
-VALUES ('easy-001', 'easy', 'https://example.com/topics/easy-001.webp');
-```
+## 管理画面のバックアップ
 
-ローカルD1には、SQLを保存したファイルを指定して適用します。
+管理画面の「バックアップ」で「書き出す」を押すと、お題（画像を含む）・対戦条件の候補・よく使う表現を1つのZIP（`animic-backup-<日時>.zip`）に書き出します。採点ワーカー・採点ジョブ・対戦結果・参加者の情報・生成した画像は含みません。本番の内容を変えたら書き出し、ZIPはリポジトリの外に保管します。
 
-```sh
-vp exec wrangler d1 execute DB --local --file /path/to/topics.sql
-```
-
-E2Eは専用DBへテスト用のお題を登録するため、開発用データを必要としません。画像の配信先はテスト内で差し替えます。
+戻すときは、同じ画面でZIPを選び、追加・上書きされる件数を確かめてから「読み込む」を押します。同じIDのものは上書きし、ないものは追加します。ZIPにないものは削除しません。途中で失敗したら、同じZIPをもう一度読み込みます。ローカルと本番の間でデータを移すときも同じ手順を使い、画像は読み込んだ環境のR2に保存されます。
 
 ## 採点ワーカーの準備
 
@@ -218,32 +213,21 @@ E2Eは専用DBへテスト用のお題を登録するため、開発用データ
 
 1. PCにdesktop-comfyui-serverとComfyUIを用意し、ComfyUIの`custom_nodes`にcomfyui-illust-similarityを配置して依存パッケージを入れます。平坦な画像でも厳密なJSONを出力する版を使います。
 2. 初回の採点でモデル（約5GB）をダウンロードするため、登録の前に一度評価を実行しておきます。ダウンロード中はAnimicの割り当ての期限（2分）に間に合いません。
-3. D1にリンクコードを登録します。コードは英大文字と数字の`XXXX-XXXX`形式、有効期限はUNIX時刻のミリ秒で、発行から10分後を指定します。
+3. 管理画面（`/admin`）に`ADMIN_PASSWORD`でログインし、メニューの「採点ワーカー」の「リンクコードの発行」で採点ワーカーの名前を入力して、リンクコードを発行します。コードは10分間有効で、1回だけ使えます。
+4. desktop-comfyui-serverのサーバー設定にAnimicのURLを追加し、リンクコードを入力してリンクします。ローカルでは`vp run dev`の`http://localhost:3000`を指定できます。
 
-   ```sh
-   node -e "console.log(Date.now() + 10 * 60_000)"
-   ```
+採点ワーカーを止める場合は、管理画面の「採点ワーカー」で「失効させる」を押します。以後その採点ワーカーの要求は拒否されます。採点ジョブの状態は、管理画面の「採点ジョブ」で新しい順に最大100件を確認できます。
 
-   ```sql
-   INSERT INTO scoring_link_code (code, name, expires_at)
-   VALUES ('K7M2-Q9XD', 'studio-pc', 1790000000000);
-   ```
+## ログインのOAuthアプリ
 
-   ローカルD1には`vp exec wrangler d1 execute DB --local --command "<SQL>"`、本番には`--remote`で適用します。
+参加者のログイン（[アーキテクチャ](docs/architecture.md#参加者のログイン)）には、GoogleとDiscordのOAuthアプリを使います。開発用と本番用でアプリを分け、リダイレクトURIには`<BETTER_AUTH_URL>/api/auth/callback/google`と`<BETTER_AUTH_URL>/api/auth/callback/discord`を登録します。ローカルでは`http://localhost:3000/api/auth/callback/google`のようになります。
 
-4. desktop-comfyui-serverのサーバー設定にAnimicのURLを追加し、リンクコードを入力してリンクします。ローカルでは`vp dev`の`http://localhost:3000`を指定できます。
+| サービス | 作成する場所                                                              | 設定                                                                                                                                                            |
+| -------- | ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Google   | [Google Cloud Console](https://console.cloud.google.com/apis/credentials) | 種類が「ウェブ アプリケーション」のOAuthクライアントを作成し、リダイレクトURIを登録します。IDと秘密情報を`GOOGLE_CLIENT_ID`・`GOOGLE_CLIENT_SECRET`に設定します |
+| Discord  | [Discord Developer Portal](https://discord.com/developers/applications)   | アプリケーションを作成し、OAuth2のRedirectsにURIを登録します。Client IDとClient Secretを`DISCORD_CLIENT_ID`・`DISCORD_CLIENT_SECRET`に設定します                |
 
-採点ワーカーを止める場合は、失効日時を設定します。以後その採点ワーカーの要求は拒否されます。
-
-```sql
-UPDATE scoring_worker SET revoked_at = 1790000000000 WHERE id = '<採点ワーカーのID>';
-```
-
-採点ジョブの状態は次のSQLで確認できます。
-
-```sql
-SELECT id, state, attempts, worker_id, error FROM scoring_job ORDER BY created_at DESC LIMIT 20;
-```
+ローカルでは`.env`、本番ではWorkerの秘密情報に設定します。IDと秘密情報のどちらかが未設定のサービスは無効になり、ログインを始めると`PROVIDER_NOT_FOUND`で失敗します。ほかの機能はそのまま使えます。Googleの同意画面の公開ステータスが「テスト」の間は、登録したテストユーザーだけがログインできます。
 
 ## 作業の流れ
 
@@ -292,7 +276,7 @@ Issue・PRのタイトルとコミットの件名は`type(scope): 日本語の�
 
 ## CIとレビュー
 
-- [Checks](.github/workflows/checks.yml)はPRの作成・更新・再オープン時と手動実行時に起動します。pushを起点にした重複実行は行いません。`Quality`でWorkers型生成、業務ルールとDesign Systemの契約・ブラウザ・画像比較検証、E2Eに含まれるビルドとローカルD1・DOでの検証、生成ルートの差分確認、静的検査を実行します。
+- [Checks](.github/workflows/checks.yml)はPRの作成・更新・再オープン時と手動実行時に起動します。pushを起点にした重複実行は行いません。`Quality`でDesign Systemの契約・Storybookブラウザ検証、Workers型生成、単体テスト、E2Eに含まれるビルドとローカルD1・DOでの検証、生成ルートの差分確認、静的検査を実行します。
 - `Quality`ではワークフローの変更時にactionlint、依存関係の変更時に`vp pm audit -- --audit-level high`も実行します。手動実行では両方を検査します。脆弱性検査は開発用の依存関係も含め、High・Criticalを失敗条件にします。依存関係を変更しないPRでは実行しないため、新たに公表された脆弱性を継続監視するものではありません。actionlintはバージョンと配布バイナリのSHA-256を固定します。
 - [Commit policy](.github/workflows/commit-policy.yml)でPRのブランチ名・取り込み先・タイトル・コミット形式を検証します。
 - テスト・ビルド対象を追加する変更では、それに対応する検証もCIに組み込みます。

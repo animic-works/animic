@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import type { Locator } from "@playwright/test";
 import { AxeBuilder } from "@axe-core/playwright";
+import { expectAccessible } from "./accessibility";
 
 async function expectRing(target: Locator) {
   await expect(target).toHaveCSS("outline-width", "2px");
@@ -8,7 +9,7 @@ async function expectRing(target: Locator) {
   await expect(target).toHaveCSS("outline-offset", "2px");
 }
 
-test("focus-visibleの共通外形とinvalid borderを同時に維持する", async ({ page }) => {
+test("操作の種類に応じたキーボード表示とinvalid borderを維持する", async ({ page }) => {
   await page.goto("/iframe.html?id=controls--focus-states&viewMode=story");
   await expect(page.getByRole("button", { name: "Primary focus" })).toBeVisible();
   const names = [
@@ -25,8 +26,16 @@ test("focus-visibleの共通外形とinvalid borderを同時に維持する", as
     const focused = page.locator(":focus");
     await expect(focused).toHaveAccessibleName(name);
     const target = name === "選択肢1" ? focused.locator("..") : focused;
-    await expectRing(target);
-    await expect(target).toHaveCSS("outline-color", "rgb(11, 27, 43)");
+    if (name.includes("入力")) {
+      await expect(target).toHaveCSS("outline-style", "none");
+      await expect(target).toHaveCSS("box-shadow", "rgb(11, 27, 43) 0px 0px 0px 1px inset");
+    } else if (name === "Link focus") {
+      await expect(target).toHaveCSS("outline-style", "none");
+      await expect(target).toHaveCSS("text-decoration-thickness", "2px");
+    } else {
+      await expectRing(target);
+      await expect(target).toHaveCSS("outline-color", "rgb(11, 27, 43)");
+    }
     if (name === "エラーの入力") {
       await expect(focused).toHaveAttribute("aria-invalid", "true");
       await expect(focused).toHaveCSS("border-color", "rgb(180, 35, 24)");
@@ -58,9 +67,12 @@ test("pointer操作だけではButton・Link・SegmentedControlにringを出さ�
     await target.click();
     await expect(target).toHaveCSS("outline-style", "none");
   }
-  // テキスト入力欄はポインター操作でもブラウザの:focus-visible判定が成立する。
   await page.getByLabel("通常の入力").click();
-  await expectRing(page.getByLabel("通常の入力"));
+  await expect(page.getByLabel("通常の入力")).toHaveCSS("outline-style", "none");
+  await expect(page.getByLabel("通常の入力")).toHaveCSS(
+    "box-shadow",
+    "rgb(11, 27, 43) 0px 0px 0px 1px inset",
+  );
 });
 
 test("forced-colorsでもfocus outlineとinvalidの説明を保持する", async ({ page }) => {
@@ -71,7 +83,13 @@ test("forced-colorsでもfocus outlineとinvalidの説明を保持する", async
     await page.keyboard.press("Tab");
     const focused = page.locator(":focus");
     const radio = (await focused.getAttribute("type")) === "radio";
-    await expectRing(radio ? focused.locator("..") : focused);
+    if (index === 2 || index === 3) {
+      await expect(focused).toHaveCSS("outline-style", "solid");
+      await expect(focused).toHaveCSS("outline-offset", "-2px");
+    } else if (index === 5) {
+      await expect(focused).toHaveCSS("text-decoration-line", "underline");
+      await expect(focused).toHaveCSS("text-decoration-thickness", "2px");
+    } else await expectRing(radio ? focused.locator("..") : focused);
   }
   const error = page.getByLabel("エラーの入力");
   await expect(error).toHaveAttribute("aria-invalid", "true");
@@ -390,12 +408,9 @@ test("320px・文字200%のDialogは内部scrollで情報と操作を維持す�
   expect(await dialog.evaluate((n) => n.scrollHeight > n.clientHeight)).toBe(true);
   await dialog.getByRole("button", { name: "確認して保存する" }).scrollIntoViewIfNeeded();
   await expect(dialog.getByRole("button", { name: "確認して保存する" })).toBeInViewport();
-  expect(
-    (
-      await new AxeBuilder({ page })
-        .include('[role="dialog"]')
-        .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
-        .analyze()
-    ).violations,
-  ).toEqual([]);
+  await expectAccessible(
+    new AxeBuilder({ page })
+      .include('[role="dialog"]')
+      .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]),
+  );
 });

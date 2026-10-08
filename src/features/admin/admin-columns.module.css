@@ -1,0 +1,51 @@
+@layer recipes.slots.base {
+  .primary {
+    gap: var(--spacing-4);
+    display: grid;
+    min-width: var(--sizes-0);
+  }
+
+  .root {
+    gap: var(--spacing-6);
+    align-items: start;
+    display: grid;
+  }
+
+  .secondary {
+    gap: var(--spacing-4);
+    display: grid;
+    min-width: var(--sizes-0);
+  }
+}
+
+@layer recipes.slots.variants {
+  .root--layout_detail {
+    grid-template-columns: minmax(12rem, 20rem) minmax(0, 1fr);
+  }
+
+  @media (width < 53.8125rem) {
+    .root--layout_detail {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  .root--layout_form {
+    grid-template-columns: minmax(0, 44rem) minmax(12rem, 1fr);
+  }
+
+  @media (width < 53.8125rem) {
+    .root--layout_form {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  .root--layout_split {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.25fr);
+  }
+
+  @media (width < 53.8125rem) {
+    .root--layout_split {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+}

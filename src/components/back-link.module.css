@@ -1,0 +1,30 @@
+@layer recipes.base {
+  .root {
+    background: none;
+    padding: var(--spacing-0);
+    border-width: var(--border-widths-none);
+    gap: 0.4rem;
+    text-decoration: none;
+    align-items: center;
+    color: var(--colors-fg-default);
+    cursor: pointer;
+    display: inline-flex;
+    font-family: var(--fonts-body);
+    font-size: 0.9rem;
+    font-weight: var(--font-weights-bold);
+    position: absolute;
+    z-index: 2;
+    left: clamp(1rem, 4vw, 3rem);
+    top: var(--spacing-6);
+  }
+
+  .root:is(:hover, [data-hover]) {
+    color: var(--colors-accent-default);
+  }
+
+  @media (width < 35.0625rem) {
+    .root {
+      display: none;
+    }
+  }
+}

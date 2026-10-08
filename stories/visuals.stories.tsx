@@ -37,3 +37,25 @@ export const LocalMotion: Story = {
     </div>
   ),
 };
+
+const responsiveArtwork = css({
+  position: "relative",
+  top: "[80px]",
+  width: "[200px]",
+  transform: "rotate(-17deg)",
+  _artworkCompact: { top: "[20px]", width: "[110px]", transform: "rotate(-9deg)" },
+  _artworkPortrait: { top: "[40px]", width: "[160px]", transform: "rotate(-9deg)" },
+});
+
+export const ResponsiveArtwork: Story = {
+  render: () => (
+    <svg
+      data-testid="responsive-artwork"
+      aria-hidden="true"
+      viewBox="0 0 200 100"
+      className={responsiveArtwork}
+    >
+      <path d="M100 0 120 35 200 50 120 65 100 100 80 65 0 50 80 35Z" />
+    </svg>
+  ),
+};

@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders, setResponseHeader } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import * as v from "valibot";
 
@@ -28,7 +28,7 @@ export const startBattle = createServerFn({ method: "POST" })
     const [chosen] = await drizzle(env.DB)
       .select()
       .from(topic)
-      .where(eq(topic.difficulty, data.settings.difficulty))
+      .where(and(eq(topic.status, "published"), eq(topic.difficulty, data.settings.difficulty)))
       .orderBy(sql`random()`)
       .limit(1);
     if (!chosen) return { error: "この難易度のお題がありません。別の難易度を選んでください。" };

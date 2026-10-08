@@ -4,7 +4,9 @@ import type { CommonProps } from "./dom";
 import { domProps } from "./dom";
 export interface IconButtonProps extends CommonProps<HTMLButtonElement> {
   label: string;
-  size?: "sm" | "md" | "lg";
+  appearance?: "standard" | "quiet";
+  size?: "xs" | "sm" | "md" | "lg";
+  shape?: "rounded" | "circle";
   disabled?: boolean;
   onClick?: MouseEventHandler<HTMLButtonElement>;
 }
@@ -17,7 +19,7 @@ export function IconButton({ ref, ...props }: IconButtonProps) {
       aria-label={props.label}
       disabled={props.disabled}
       onClick={props.onClick}
-      className={iconButton({ size: props.size })}
+      className={iconButton({ appearance: props.appearance, size: props.size, shape: props.shape })}
     >
       {props.children}
     </button>

@@ -79,10 +79,82 @@ export const CenteredDialog: Story = {
   render: () => <Example initialOpen presentation="centered" />,
 };
 
+export const CompactCenteredDialog: Story = {
+  render: () => (
+    <Dialog
+      open
+      onOpenChange={() => {}}
+      title="変更を確認"
+      description="内容を確認してください。"
+      size="compact"
+      presentation="centered"
+      closeButton={false}
+    >
+      <Button prominence="raised">保存する</Button>
+    </Dialog>
+  ),
+};
+
+export const ImmersiveCompactDialog: Story = {
+  render: () => (
+    <Dialog
+      open
+      onOpenChange={() => {}}
+      title="処理の案内"
+      description="しばらくお待ちください。"
+      size="compact"
+      presentation="centered"
+      appearance="immersive"
+      closeButton={false}
+    >
+      <Text tone="inverse">処理を進めています。</Text>
+    </Dialog>
+  ),
+};
+
+export const HiddenTitleWithActions: Story = {
+  render: () => (
+    <Dialog
+      open
+      onOpenChange={() => {}}
+      title="候補を選択"
+      titleVisibility="hidden"
+      headerActions={<Input aria-label="候補を検索" />}
+      size="expanded"
+    >
+      <Text>候補の一覧</Text>
+    </Dialog>
+  ),
+};
+
 export const WithoutDescription: Story = {
   render: () => (
     <Dialog open onOpenChange={() => {}} title="お知らせ">
       <Text>説明文を省略したDialogです。</Text>
+    </Dialog>
+  ),
+};
+
+export const FullscreenDialog: Story = {
+  render: () => (
+    <Dialog
+      open
+      onOpenChange={() => {}}
+      title="演出の操作"
+      titleVisibility="hidden"
+      appearance="transparent"
+      presentation="fullscreen"
+      closeButton={false}
+      dismissible={false}
+      footer={
+        <Button appearance="overlay" shape="pill" size="compact">
+          スキップ
+        </Button>
+      }
+    >
+      <svg width="100%" height="100%" aria-hidden="true">
+        <rect width="100%" height="100%" fill="#ff2d87" />
+      </svg>
     </Dialog>
   ),
 };

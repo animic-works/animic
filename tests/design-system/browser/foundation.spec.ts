@@ -17,7 +17,13 @@ test("単一CSS入口から必要なFontsourceとPanda CSSが読み込まれる"
   const styles = v.parse(
     v.record(
       v.string(),
-      v.object({ value: v.object({ fontFamily: v.string(), fontWeight: v.string() }) }),
+      v.object({
+        value: v.object({
+          fontFamily: v.string(),
+          fontWeight: v.string(),
+          fontStyle: v.optional(v.string(), "normal"),
+        }),
+      }),
     ),
     textStyles,
   );
@@ -28,21 +34,27 @@ test("単一CSS入口から必要なFontsourceとPanda CSSが読み込まれる"
     const weight = String(weights.get(value.fontWeight)?.value);
     if (!family) throw new Error(`Unknown family: ${value.fontFamily}`);
     const faces = await page.evaluate(
-      async ({ familyName, fontWeight }) => {
+      async ({ familyName, fontWeight, fontStyle }) => {
         const loaded = await document.fonts.load(
-          `${fontWeight} 16px ${familyName}`,
+          `${fontStyle} ${fontWeight} 16px ${familyName}`,
           "Animic あにみく",
         );
         return loaded.map((font) => ({
           family: font.family,
           weight: font.weight,
+          style: font.style,
           status: font.status,
         }));
       },
-      { familyName: family, fontWeight: weight },
+      { familyName: family, fontWeight: weight, fontStyle: value.fontStyle },
     );
     expect(faces.length).toBeGreaterThan(0);
-    expect(faces.every((face) => face.weight === weight && face.status === "loaded")).toBe(true);
+    expect(
+      faces.every(
+        (face) =>
+          face.weight === weight && face.style === value.fontStyle && face.status === "loaded",
+      ),
+    ).toBe(true);
   }
   expect(failedFonts).toEqual([]);
   await expect(page.locator("[data-animic-root]")).toHaveCSS(

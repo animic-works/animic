@@ -15,7 +15,13 @@ describe("Text StyleからのFont asset生成", () => {
     const styles = v.parse(
       v.record(
         v.string(),
-        v.object({ value: v.object({ fontFamily: v.string(), fontWeight: v.string() }) }),
+        v.object({
+          value: v.object({
+            fontFamily: v.string(),
+            fontWeight: v.string(),
+            fontStyle: v.optional(v.picklist(["normal", "italic"])),
+          }),
+        }),
       ),
       textStyles,
     );
@@ -27,7 +33,7 @@ describe("Text StyleからのFont asset生成", () => {
         const family = families.get(value.fontFamily)?.value;
         const weight = weights.get(value.fontWeight)?.value;
         expect(family).toContain('"');
-        return `${assets.get(value.fontFamily)}/${weight}.css`;
+        return `${assets.get(value.fontFamily)}/${weight}${value.fontStyle === "italic" ? "-italic" : ""}.css`;
       }),
     );
     expect(fontImports()).toEqual(
@@ -36,13 +42,21 @@ describe("Text StyleからのFont asset生成", () => {
     for (const specifier of fontImports()) {
       const css = await readFile(assetRequire.resolve(specifier), "utf8");
       expect(css).toContain("@font-face");
-      expect(css).toContain(`font-weight: ${specifier.split("/").at(-1)?.replace(".css", "")};`);
+      expect(css).toContain("font-display: swap;");
+      const filename = specifier.split("/").at(-1) ?? "";
+      expect(css).toContain(`font-weight: ${Number.parseInt(filename, 10)};`);
+      expect(css).toContain(`font-style: ${filename.includes("-italic") ? "italic" : "normal"};`);
     }
     const generated = await readFile(
       new URL("../../packages/styled-system/generated/fonts.css", import.meta.url),
       "utf8",
     );
     expect(generated).toBe(fontCss());
+    expect(generated).toBe(
+      fontImports()
+        .map((specifier) => `@import "${specifier}";\n`)
+        .join(""),
+    );
   });
   it("Text Styleの追加・削除・weight変更に追従し、generatorに組を固定しない", () => {
     const styles = { sample: { value: { fontFamily: "body", fontWeight: "emphasis" } } };
@@ -69,5 +83,41 @@ describe("Text StyleからのFont asset生成", () => {
     expect(() => fontImports(styles, families, {}, assets)).toThrow();
     expect(() => fontImports(styles, families, weights, {})).toThrow();
     expect(() => fontImports(styles, families, { regular: { value: 900 } }, assets)).toThrow();
+  });
+  it("normalとitalicを区別し、実在する書体だけを配信する", () => {
+    const families = { latin: { value: '"Montserrat", sans-serif' } };
+    const weights = { medium: { value: 500 } };
+    const assets = { latin: "@fontsource/montserrat" };
+    const value = { fontFamily: "latin", fontWeight: "medium" };
+    expect(
+      fontImports(
+        {
+          regular: { value },
+          italic: { value: { ...value, fontStyle: "italic" } },
+          duplicate: { value: { ...value, fontStyle: "normal" } },
+        },
+        families,
+        weights,
+        assets,
+      ),
+    ).toEqual(["@fontsource/montserrat/500-italic.css", "@fontsource/montserrat/500.css"]);
+    expect(() =>
+      fontImports(
+        { invalid: { value: { ...value, fontStyle: "oblique" } } },
+        families,
+        weights,
+        assets,
+      ),
+    ).toThrow("fontStyle");
+    expect(() =>
+      fontImports(
+        {
+          italic: { value: { fontFamily: "display", fontWeight: "regular", fontStyle: "italic" } },
+        },
+        { display: { value: '"Dela Gothic One"' } },
+        { regular: { value: 400 } },
+        { display: "@fontsource/dela-gothic-one" },
+      ),
+    ).toThrow();
   });
 });

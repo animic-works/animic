@@ -6,6 +6,7 @@ import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { drizzle } from "drizzle-orm/d1";
 import * as v from "valibot";
 
+import { e2eSignIn } from "./auth-e2e.server";
 import * as schema from "./auth-schema";
 
 const configSchema = v.object({
@@ -43,6 +44,21 @@ export function createAuth() {
       transaction: false,
     }),
     session: { cookieCache: { enabled: false } },
+    // IDと秘密情報の両方を設定したサービスだけを有効にする。
+    socialProviders: {
+      google: {
+        clientId: env.GOOGLE_CLIENT_ID,
+        clientSecret: env.GOOGLE_CLIENT_SECRET,
+        enabled: Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET),
+        // Googleにログイン済みのブラウザでも、毎回アカウントを選べるようにする。
+        prompt: "select_account",
+      },
+      discord: {
+        clientId: env.DISCORD_CLIENT_ID,
+        clientSecret: env.DISCORD_CLIENT_SECRET,
+        enabled: Boolean(env.DISCORD_CLIENT_ID && env.DISCORD_CLIENT_SECRET),
+      },
+    },
     rateLimit: {
       enabled: true,
       storage: "database",
@@ -55,6 +71,17 @@ export function createAuth() {
       cookiePrefix: secure ? "__Host-animic" : "animic",
       defaultCookieAttributes: { secure, httpOnly: true, sameSite: "lax", path: "/" },
     },
-    plugins: [anonymous({ disableDeleteAnonymousUser: true }), tanstackStartCookies()],
+    plugins: [
+      anonymous({
+        disableDeleteAnonymousUser: true,
+        // ログインしたら匿名のセッションを失効させ、同じブラウザのほかのタブのルーム接続も閉じる。
+        onLinkAccount: async ({ anonymousUser, newUser, ctx }) => {
+          if (anonymousUser.user.id === newUser.user.id) return;
+          await ctx.context.internalAdapter.deleteUserSessions(anonymousUser.user.id);
+        },
+      }),
+      ...(ANIMIC_E2E_BUILD ? [e2eSignIn()] : []),
+      tanstackStartCookies(),
+    ],
   });
 }

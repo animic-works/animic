@@ -1,0 +1,35 @@
+@layer recipes.slots.base {
+  .actions {
+    gap: var(--spacing-3);
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .body {
+    margin: var(--spacing-0);
+    color: var(--colors-fg-muted);
+    font-size: var(--font-sizes-sm);
+    max-width: var(--sizes-prose);
+  }
+
+  .root {
+    padding-inline: var(--spacing-4);
+    padding-block: var(--spacing-12);
+    border-radius: var(--radii-card);
+    border-width: var(--border-widths-none);
+    gap: var(--spacing-3);
+    background-color: var(--colors-bg-sunken);
+    box-shadow: var(--shadows-none);
+    display: grid;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .title {
+    margin: var(--spacing-0);
+    font-family: var(--fonts-round);
+    font-size: var(--font-sizes-lg);
+    font-weight: var(--font-weights-bold);
+  }
+}

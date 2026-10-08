@@ -2,7 +2,9 @@ import { randomBytes } from "node:crypto";
 
 import { defineConfig, devices } from "@playwright/test";
 
+import { e2eAdminPassword } from "./tests/e2e/admin-password";
 import { e2eNovelAiToken } from "./tests/e2e/novelai-token";
+import { e2eOAuthClients } from "./tests/e2e/oauth-clients";
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -30,7 +32,12 @@ export default defineConfig({
         "animic.party,animic.example.workers.dev,dev.animic.party",
       BETTER_AUTH_URL: "http://127.0.0.1:4173",
       BETTER_AUTH_SECRET: randomBytes(32).toString("hex"),
+      ADMIN_PASSWORD: e2eAdminPassword,
       NOVELAI_API_TOKEN: e2eNovelAiToken,
+      GOOGLE_CLIENT_ID: e2eOAuthClients.google.id,
+      GOOGLE_CLIENT_SECRET: e2eOAuthClients.google.secret,
+      DISCORD_CLIENT_ID: e2eOAuthClients.discord.id,
+      DISCORD_CLIENT_SECRET: e2eOAuthClients.discord.secret,
     },
     url: "http://127.0.0.1:4173",
     reuseExistingServer: false,

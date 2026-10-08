@@ -1,0 +1,509 @@
+/* 色・書体・余白・影などのデザインのトークン。 */
+@layer tokens {
+  :where(:root, :host) {
+    --z-index-base: 0;
+    --z-index-raised: 1;
+    --z-index-sticky: 10;
+    --z-index-overlay: 30;
+    --z-index-modal: 40;
+    --z-index-toast: 50;
+    --z-index-wipe: 100;
+    --colors-white: #ffffff;
+    --colors-black: #000000;
+    --colors-transparent: transparent;
+    --colors-current: currentColor;
+    --colors-neutral-50: #f5f6f8;
+    --colors-neutral-100: #e6e8ec;
+    --colors-neutral-200: #dfe2e7;
+    --colors-neutral-250: #c7cbd1;
+    --colors-neutral-300: #c9ced6;
+    --colors-neutral-350: #b5bcc6;
+    --colors-neutral-400: #9aa3ae;
+    --colors-neutral-500: #7a838f;
+    --colors-neutral-600: #5b6573;
+    --colors-neutral-700: #3b4654;
+    --colors-neutral-800: #1c2a39;
+    --colors-neutral-900: #0b1b2b;
+    --colors-pink-50: #fff7fb;
+    --colors-pink-100: #fff0f7;
+    --colors-pink-150: #ffe4f1;
+    --colors-pink-200: #ffd0e4;
+    --colors-pink-300: #ffb8d6;
+    --colors-pink-400: #ff72b9;
+    --colors-pink-500: #ff2d87;
+    --colors-pink-600: #d7116a;
+    --colors-pink-700: #c4105f;
+    --colors-pink-800: #a30d4f;
+    --colors-red-50: #fdecec;
+    --colors-red-600: #cc2233;
+    --colors-cyan-50: #eaf8ff;
+    --colors-cyan-75: #e0f6ff;
+    --colors-cyan-100: #ccefff;
+    --colors-cyan-300: #6fd3ff;
+    --colors-cyan-500: #00b4fc;
+    --colors-cyan-700: #0075a6;
+    --colors-yellow-50: #fff8d6;
+    --colors-yellow-75: #fff9d1;
+    --colors-yellow-100: #fff6cc;
+    --colors-yellow-300: #ffe98a;
+    --colors-yellow-500: #fddb13;
+    --colors-yellow-700: #7a6700;
+    --colors-green-50: #f1fbf6;
+    --colors-green-75: #e3f6ee;
+    --colors-green-100: #dcfce7;
+    --colors-green-400: #22c55e;
+    --colors-green-500: #16b37e;
+    --colors-green-700: #15803d;
+    --colors-purple-75: #efe9ff;
+    --colors-purple-500: #7c5cff;
+    --colors-orange-500: #ff7a45;
+    --colors-discord-500: #5865f2;
+    --fonts-display:
+      "Dela Gothic One", "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Yu Gothic", sans-serif;
+    --fonts-round: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Yu Gothic", sans-serif;
+    --fonts-body: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
+    --fonts-latin: "Montserrat", "Helvetica Neue", Arial, sans-serif;
+    --fonts-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    --font-sizes-2xs: 0.6875rem;
+    --font-sizes-xs: 0.75rem;
+    --font-sizes-sm: 0.875rem;
+    --font-sizes-md: 1rem;
+    --font-sizes-lg: 1.125rem;
+    --font-sizes-xl: 1.375rem;
+    --font-sizes-2xl: 1.75rem;
+    --font-sizes-3xl: 2.25rem;
+    --font-sizes-4xl: 3rem;
+    --font-sizes-5xl: 4rem;
+    --font-weights-regular: 500;
+    --font-weights-bold: 700;
+    --font-weights-heavy: 900;
+    --line-heights-none: 1;
+    --line-heights-normal: normal;
+    --line-heights-relaxed: 1.7;
+    --letter-spacings-normal: 0;
+    --letter-spacings-wide: 0.04em;
+    --letter-spacings-wider: 0.12em;
+    --letter-spacings-widest: 0.2em;
+    --sizes-0: 0;
+    --sizes-1: 0.25rem;
+    --sizes-2: 0.5rem;
+    --sizes-3: 0.75rem;
+    --sizes-4: 1rem;
+    --sizes-5: 1.25rem;
+    --sizes-6: 1.5rem;
+    --sizes-8: 2rem;
+    --sizes-10: 2.5rem;
+    --sizes-12: 3rem;
+    --sizes-16: 4rem;
+    --sizes-20: 5rem;
+    --sizes-24: 6rem;
+    --sizes-28: 7rem;
+    --sizes-40: 10rem;
+    --sizes-52: 13rem;
+    --sizes-80: 20rem;
+    --sizes-0\.5: 0.125rem;
+    --sizes-1\.5: 0.375rem;
+    --sizes-2\.5: 0.625rem;
+    --sizes-full: 100%;
+    --sizes-min: min-content;
+    --sizes-max: max-content;
+    --sizes-fit: fit-content;
+    --sizes-prose: 27rem;
+    --sizes-dialog: 25rem;
+    --sizes-sm: 40rem;
+    --sizes-md: 48rem;
+    --sizes-doc: 50rem;
+    --sizes-lg: 60rem;
+    --sizes-xl: 72rem;
+    --sizes-2xl: 76rem;
+    --shadows-none: none;
+    --shadows-sm: 0 1px 0 rgb(11 27 43 / 0.04), 0 8px 20px -14px rgb(11 27 43 / 0.35);
+    --shadows-md: 0 12px 32px -20px rgb(11 27 43 / 0.35);
+    --shadows-lg: 0 1px 0 rgb(11 27 43 / 0.04), 0 30px 60px -30px rgb(11 27 43 / 0.35);
+    --shadows-glow: 0 0 0 5px rgb(255 45 135 / 0.16), 0 12px 26px -10px rgb(255 45 135 / 0.6);
+    --shadows-glow-strong:
+      0 0 0 5px rgb(255 45 135 / 0.18), 0 14px 30px -10px rgb(255 45 135 / 0.6);
+    --shadows-glow-soft: 0 8px 18px -8px rgb(255 45 135 / 0.7);
+    --shadows-sticker: 0 8px 0 #0b1b2b;
+    --shadows-sticker-sm: 0 6px 0 #0b1b2b;
+    --shadows-sticker-xs: 0 5px 0 #0b1b2b;
+    --shadows-bar: 0 10px 30px -18px rgb(11 27 43 / 0.25);
+    --shadows-pager: 0 6px 18px -8px rgb(11 27 43 / 0.35);
+    --shadows-float: 0 8px 20px -10px rgb(11 27 43 / 0.5);
+    --spacing-0: 0;
+    --spacing-1: 0.25rem;
+    --spacing-2: 0.5rem;
+    --spacing-3: 0.75rem;
+    --spacing-4: 1rem;
+    --spacing-5: 1.25rem;
+    --spacing-6: 1.5rem;
+    --spacing-8: 2rem;
+    --spacing-10: 2.5rem;
+    --spacing-12: 3rem;
+    --spacing-16: 4rem;
+    --spacing-20: 5rem;
+    --spacing-24: 6rem;
+    --spacing-0\.5: 0.125rem;
+    --spacing-1\.5: 0.375rem;
+    --spacing-2\.5: 0.625rem;
+    --radii-none: 0;
+    --radii-xs: 0.4rem;
+    --radii-sm: 0.5rem;
+    --radii-md: 1rem;
+    --radii-lg: 1.25rem;
+    --radii-xl: 1.75rem;
+    --radii-2xl: 2rem;
+    --radii-full: 9999px;
+    --durations-instant: 0.01ms;
+    --durations-fast: 150ms;
+    --durations-normal: 280ms;
+    --durations-slow: 500ms;
+    --durations-slower: 700ms;
+    --easings-standard: cubic-bezier(0.2, 0.9, 0.3, 1);
+    --easings-bounce: cubic-bezier(0.2, 0.9, 0.3, 1.4);
+    --easings-pop: cubic-bezier(0.3, 1.6, 0.5, 1);
+    --easings-sweep: cubic-bezier(0.65, 0, 0.35, 1);
+    --easings-rise: cubic-bezier(0.2, 0.9, 0.3, 1.15);
+    --easings-linear: linear;
+    --border-widths-none: 0;
+    --border-widths-thin: 1px;
+    --border-widths-thick: 2px;
+    --border-widths-heavy: 2.5px;
+    --breakpoints-sm: 561px;
+    --sizes-breakpoint-sm: 561px;
+    --breakpoints-md: 861px;
+    --sizes-breakpoint-md: 861px;
+    --breakpoints-lg: 1101px;
+    --sizes-breakpoint-lg: 1101px;
+    --breakpoints-xl: 1440px;
+    --sizes-breakpoint-xl: 1440px;
+    --colors-bg-canvas: var(--colors-neutral-50);
+    --colors-bg-surface: var(--colors-white);
+    --colors-bg-elevated: var(--colors-white);
+    --colors-bg-sunken: var(--colors-neutral-50);
+    --colors-bg-inverse: var(--colors-neutral-900);
+    --colors-bg-backdrop: rgb(11 27 43 / 0.45);
+    --colors-bg-scrim: rgb(11 27 43 / 0.85);
+    --colors-bg-translucent: rgb(245 246 248 / 0.9);
+    --colors-bg-translucent-surface: rgb(255 255 255 / 0.7);
+    --colors-fg-default: var(--colors-neutral-900);
+    --colors-fg-muted: var(--colors-neutral-600);
+    --colors-fg-description: var(--colors-neutral-700);
+    --colors-fg-subtle: var(--colors-neutral-400);
+    --colors-fg-faint: var(--colors-neutral-350);
+    --colors-fg-inverse: var(--colors-white);
+    --colors-border-default: var(--colors-neutral-200);
+    --colors-border-provider: var(--colors-neutral-250);
+    --colors-border-subtle: var(--colors-neutral-100);
+    --colors-border-strong: var(--colors-neutral-900);
+    --colors-grid-line: var(--colors-neutral-100);
+    --colors-accent-default: var(--colors-pink-600);
+    --colors-accent-brand: var(--colors-pink-500);
+    --colors-accent-disabled: var(--colors-pink-300);
+    --colors-accent-subtle: var(--colors-pink-100);
+    --colors-accent-wash: var(--colors-pink-50);
+    --colors-accent-muted: var(--colors-pink-400);
+    --colors-accent-fg: var(--colors-white);
+    --colors-info-default: var(--colors-cyan-500);
+    --colors-info-strong: var(--colors-cyan-700);
+    --colors-info-subtle: var(--colors-cyan-50);
+    --colors-success-default: var(--colors-green-500);
+    --colors-success-strong: var(--colors-green-700);
+    --colors-success-subtle: var(--colors-green-50);
+    --colors-success-muted: var(--colors-green-100);
+    --colors-success-dot: var(--colors-green-400);
+    --colors-warning-default: var(--colors-yellow-500);
+    --colors-warning-strong: var(--colors-yellow-700);
+    --colors-warning-subtle: var(--colors-yellow-50);
+    --colors-warning-fg: var(--colors-neutral-900);
+    --colors-danger-default: var(--colors-red-600);
+    --colors-danger-subtle: var(--colors-red-50);
+    --colors-focus-ring: var(--colors-cyan-500);
+    --colors-tint-pink: var(--colors-pink-100);
+    --colors-tint-pink-deep: var(--colors-pink-150);
+    --colors-tint-cyan: var(--colors-cyan-75);
+    --colors-tint-yellow: var(--colors-yellow-75);
+    --colors-tint-green: var(--colors-green-75);
+    --colors-tint-purple: var(--colors-purple-75);
+    --colors-deco-dot: #c3c8d0;
+    --colors-deco-line: #cfd4db;
+    --colors-brand-discord: var(--colors-discord-500);
+    --colors-player-1: var(--colors-pink-600);
+    --colors-player-2: var(--colors-cyan-500);
+    --colors-player-3: var(--colors-yellow-500);
+    --colors-player-4: var(--colors-pink-400);
+    --colors-player-5: var(--colors-cyan-300);
+    --colors-player-6: var(--colors-yellow-300);
+    --colors-player-7: var(--colors-neutral-600);
+    --shadows-surface: var(--shadows-md);
+    --shadows-elevated: var(--shadows-lg);
+    --shadows-accent: var(--shadows-glow);
+    --radii-control: var(--radii-full);
+    --radii-field: 0.9rem;
+    --radii-card: var(--radii-xl);
+    --radii-panel: var(--radii-lg);
+    --radii-chip: var(--radii-sm);
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes fade-out {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+  @keyframes scale-in {
+    from {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  @keyframes slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes pop {
+    from {
+      opacity: 0;
+      transform: scale(0.4);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  @keyframes band-in {
+    to {
+      transform: translateX(0) skewX(-18deg);
+    }
+  }
+  @keyframes band-out {
+    to {
+      transform: translateX(120%) skewX(-18deg);
+    }
+  }
+  @keyframes logo-pop {
+    0% {
+      scale: 0;
+      rotate: -30deg;
+    }
+    100% {
+      scale: 1;
+      rotate: 0deg;
+    }
+  }
+  @keyframes logo-out {
+    to {
+      scale: 0.4;
+      opacity: 0;
+      rotate: 20deg;
+    }
+  }
+  @keyframes card-rise {
+    from {
+      opacity: 0;
+      transform: translateY(3rem) rotate(-3deg) scale(0.94);
+    }
+  }
+  @keyframes item-rise {
+    from {
+      opacity: 0;
+      transform: translateY(0.8rem);
+    }
+  }
+  @keyframes press {
+    40% {
+      transform: scale(0.94);
+    }
+  }
+  @keyframes room-in {
+    from {
+      opacity: 0;
+      transform: translateY(1.5rem);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes room-out {
+    to {
+      opacity: 0;
+      transform: scale(0.9);
+    }
+  }
+  @keyframes char-set {
+    0% {
+      scale: 1.3;
+      background: #fddb13;
+    }
+    100% {
+      scale: 1;
+    }
+  }
+  @keyframes char-pop {
+    from {
+      opacity: 0;
+      scale: 0.4;
+    }
+  }
+  @keyframes hint-line {
+    from {
+      background-position: 0 100%;
+    }
+    to {
+      background-position: 0 -100%;
+    }
+  }
+  @keyframes caret {
+    50% {
+      opacity: 0;
+    }
+  }
+  @keyframes waiting {
+    50% {
+      transform: scale(0.88);
+    }
+  }
+  @keyframes joined {
+    from {
+      transform: scale(0.85);
+      opacity: 0;
+    }
+  }
+  @keyframes beat {
+    50% {
+      transform: scale(1.08);
+    }
+  }
+  @keyframes shimmer {
+    to {
+      background-position:
+        -250% 0,
+        0 0;
+    }
+  }
+  @keyframes shot-in {
+    from {
+      transform: scale(0.8);
+      opacity: 0;
+    }
+  }
+  @keyframes step-out {
+    to {
+      opacity: 0;
+      transform: translateX(-2.5rem) rotate(-2deg);
+    }
+  }
+  @keyframes step-in {
+    from {
+      opacity: 0;
+      transform: translateX(2.5rem) rotate(2deg);
+    }
+  }
+  @keyframes step-out-back {
+    to {
+      opacity: 0;
+      transform: translateX(2.5rem) rotate(2deg);
+    }
+  }
+  @keyframes step-in-back {
+    from {
+      opacity: 0;
+      transform: translateX(-2.5rem) rotate(-2deg);
+    }
+  }
+  @keyframes count-pop {
+    from {
+      transform: scale(1.6);
+      opacity: 0;
+    }
+    30% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+  @keyframes hero-in {
+    from {
+      opacity: 0;
+      transform: var(--base) var(--tilt) translate(5rem, 3rem) scale(0.92);
+    }
+    to {
+      opacity: 1;
+      transform: var(--base) var(--tilt);
+    }
+  }
+  @keyframes hero-float {
+    50% {
+      transform: translateY(-0.8rem);
+    }
+  }
+  @keyframes hero-twinkle {
+    0%,
+    100% {
+      opacity: 0.35;
+      transform: scale(0.7) rotate(0deg);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.15) rotate(20deg);
+    }
+  }
+  @keyframes logo-drop {
+    from {
+      opacity: 0;
+      transform: translateY(-1rem) scale(0.9) rotate(-3deg);
+    }
+  }
+  @keyframes sheet-up {
+    from {
+      transform: translateY(100%);
+    }
+  }
+  @keyframes m-float {
+    50% {
+      transform: translateY(-8px);
+    }
+  }
+  @keyframes m-twinkle {
+    50% {
+      opacity: 0.35;
+      transform: scale(0.7) rotate(20deg);
+    }
+  }
+  @keyframes m-sheet-out {
+    to {
+      opacity: 0;
+      transform: translateY(1.5rem);
+    }
+  }
+  @keyframes m-sheet-in {
+    from {
+      opacity: 0;
+      transform: translateY(2.5rem);
+    }
+  }
+}

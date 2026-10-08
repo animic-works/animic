@@ -1,0 +1,12 @@
+@layer recipes.slots.base {
+  .icon {
+    place-items: center;
+    display: grid;
+    width: 1.5rem;
+  }
+
+  .spacer {
+    display: block;
+    width: 1.5rem;
+  }
+}

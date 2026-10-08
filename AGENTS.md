@@ -4,9 +4,9 @@
 
 作業前に[CONTRIBUTING.md](CONTRIBUTING.md)、[docs/architecture.md](docs/architecture.md)、[docs/conventions.md](docs/conventions.md)を読み、プロダクトの変更では[docs/product.md](docs/product.md)も確認してください。
 
-UI・Design Systemの変更では[デザイン原則](docs/design.md)と[Design Systemの利用境界](docs/architecture.md#design-system)を確認してください。実装前にPanda MCPへ既存の語彙を問い合わせ、詳細が不足する場合は`packages/design-system/src/`を読んでください。Ark UIを内部利用する場合はArk UI MCPでAPIを確認してください。接続できない場合は未確認の内容を推測で補わず、接続状況を報告してください。
+Design Systemと、それを利用するUIの変更では[デザイン原則](docs/design.md)と[Design Systemの利用境界](docs/architecture.md#design-system)を確認してください。実装前にPanda MCPへ既存の語彙を問い合わせ、詳細が不足する場合は`packages/design-system/src/`を読んでください。Ark UIを内部利用する場合はArk UI MCPでAPIを確認してください。接続できない場合は未確認の内容を推測で補わず、接続状況を報告してください。
 
-既存定義で必要なUIを表現できない場合は、[Design Systemの変更判断](CONTRIBUTING.md#design-systemの変更判断)に従ってください。任意CSSやVisualへ勝手に逃がさず、新しいDesign判断が必要な箇所は実装で既成事実にせず、人間へ論点と選択肢を返してください。
+Design Systemの既存定義で必要なUIを表現できない場合は、[Design Systemの変更判断](CONTRIBUTING.md#design-systemの変更判断)に従ってください。任意CSSやVisualへ勝手に逃がさず、新しいDesign判断が必要な箇所は実装で既成事実にせず、人間へ論点と選択肢を返してください。
 
 UI・Design Systemの判断理由を調べる際は、[Design Systemの設計資料](docs/design-system/README.md)に関連する設計事例や設計ガイドがあれば参照してください。過去の事例や一般化した判断方法を現在の仕様として扱わず、現在の利用形式はアーキテクチャ文書・実装・テストで確認してください。
 

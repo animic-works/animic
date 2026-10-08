@@ -1,0 +1,46 @@
+@layer recipes.base {
+  .root {
+    background: var(--colors-bg-sunken);
+    margin: var(--spacing-0);
+    padding-inline: 0.85rem;
+    padding-block: 0.3rem;
+    border-radius: var(--radii-control);
+    gap: 0.4rem;
+    align-items: center;
+    display: inline-flex;
+    font-size: 0.82rem;
+    font-weight: var(--font-weights-bold);
+    white-space: nowrap;
+  }
+
+  .root b {
+    font-family: var(--fonts-display);
+    font-size: var(--font-sizes-md);
+    font-weight: var(--font-weights-regular);
+  }
+
+  .root::before {
+    background: var(--colors-border-default);
+    border-radius: var(--radii-full);
+    content: "";
+    height: 0.55rem;
+    width: 0.55rem;
+  }
+
+  @media (width < 35.0625rem) {
+    .root {
+      display: none;
+    }
+  }
+}
+
+@layer recipes.variants {
+  .all_true {
+    background: var(--colors-success-muted);
+    color: var(--colors-success-strong);
+  }
+
+  .all_true::before {
+    background: var(--colors-success-dot);
+  }
+}

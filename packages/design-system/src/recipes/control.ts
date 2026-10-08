@@ -6,6 +6,28 @@ export const focus = defineStyles({
   outlineColor: "focus.ring",
   outlineOffset: "2px",
 });
+export const textFocus = defineStyles({
+  outlineStyle: "none",
+  outlineWidth: "0",
+  textDecorationLine: "underline",
+  textDecorationThickness: "2px",
+  textUnderlineOffset: "0.2em",
+});
+export const fieldFocus = defineStyles({
+  outlineStyle: "none",
+  outlineWidth: "0",
+  boxShadow: "inset 0 0 0 1px currentColor",
+  "@media (forced-colors: active)": {
+    outlineStyle: "solid",
+    outlineWidth: "2px",
+    outlineColor: "Highlight",
+    outlineOffset: "-2px",
+  },
+});
+export const buttonFocus = defineStyles({
+  ...focus,
+  "[data-animic-dialog] &": textFocus,
+});
 export const disabled = defineStyles({
   background: "disabled.bg",
   color: "disabled.fg",

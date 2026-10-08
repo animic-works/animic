@@ -3,7 +3,10 @@ import { field } from "@animic/styled-system/recipes";
 import type { CommonProps } from "./dom";
 import { domProps } from "./dom";
 export interface FieldProps extends CommonProps {
+  messageLayout?: "stacked" | "status";
+  messageAlign?: "start" | "center";
   label: string;
+  labelVisibility?: "visible" | "hidden";
   description?: string;
   error?: string;
   required?: boolean;
@@ -11,7 +14,11 @@ export interface FieldProps extends CommonProps {
   readOnly?: boolean;
 }
 export function Field({ ref, ...props }: FieldProps) {
-  const classes = field();
+  const classes = field({
+    messageLayout: props.messageLayout,
+    labelVisibility: props.labelVisibility,
+    messageAlign: props.messageAlign,
+  });
   return (
     <ArkField.Root
       {...domProps(props)}
@@ -27,13 +34,13 @@ export function Field({ ref, ...props }: FieldProps) {
         {props.required && "（必須）"}
       </ArkField.Label>
       <div className={classes.control}>{props.children}</div>
-      {props.description && (
+      {props.description !== undefined && !(props.messageLayout === "status" && props.error) && (
         <ArkField.HelperText className={classes.description}>
           {props.description}
         </ArkField.HelperText>
       )}
       {props.error && (
-        <ArkField.ErrorText className={classes.error}>エラー: {props.error}</ArkField.ErrorText>
+        <ArkField.ErrorText className={classes.error}>{props.error}</ArkField.ErrorText>
       )}
     </ArkField.Root>
   );

@@ -10,43 +10,235 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminRouteRouteImport } from './routes/admin/route'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as StartRouteImport } from './routes/start'
+import { Route as TermsRouteImport } from './routes/terms'
+import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as AdminBackupRouteImport } from './routes/admin/backup'
+import { Route as AdminBattleOptionsRouteImport } from './routes/admin/battle-options'
+import { Route as AdminPromptsRouteImport } from './routes/admin/prompts'
+import { Route as RoomsCodeRouteImport } from './routes/rooms.$code'
+import { Route as AdminScoringJobsRouteImport } from './routes/admin/scoring/jobs'
+import { Route as AdminScoringWorkersRouteImport } from './routes/admin/scoring/workers'
+import { Route as AdminTopicsIndexRouteImport } from './routes/admin/topics/index'
+import { Route as AdminTopicsTopicIdRouteImport } from './routes/admin/topics/$topicId'
+import { Route as AdminTopicsNewRouteImport } from './routes/admin/topics/new'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as TopicImagesTopicIdImageIdRouteImport } from './routes/topic-images.$topicId.$imageId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRouteRoute = AdminRouteRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StartRoute = StartRouteImport.update({
+  id: '/start',
+  path: '/start',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminBackupRoute = AdminBackupRouteImport.update({
+  id: '/backup',
+  path: '/backup',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminBattleOptionsRoute = AdminBattleOptionsRouteImport.update({
+  id: '/battle-options',
+  path: '/battle-options',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminPromptsRoute = AdminPromptsRouteImport.update({
+  id: '/prompts',
+  path: '/prompts',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const RoomsCodeRoute = RoomsCodeRouteImport.update({
+  id: '/rooms/$code',
+  path: '/rooms/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminScoringJobsRoute = AdminScoringJobsRouteImport.update({
+  id: '/scoring/jobs',
+  path: '/scoring/jobs',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminScoringWorkersRoute = AdminScoringWorkersRouteImport.update({
+  id: '/scoring/workers',
+  path: '/scoring/workers',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminTopicsIndexRoute = AdminTopicsIndexRouteImport.update({
+  id: '/topics/',
+  path: '/topics/',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminTopicsTopicIdRoute = AdminTopicsTopicIdRouteImport.update({
+  id: '/topics/$topicId',
+  path: '/topics/$topicId',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminTopicsNewRoute = AdminTopicsNewRouteImport.update({
+  id: '/topics/new',
+  path: '/topics/new',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TopicImagesTopicIdImageIdRoute =
+  TopicImagesTopicIdImageIdRouteImport.update({
+    id: '/topic-images/$topicId/$imageId',
+    path: '/topic-images/$topicId/$imageId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteRouteWithChildren
+  '/privacy': typeof PrivacyRoute
+  '/start': typeof StartRoute
+  '/terms': typeof TermsRoute
+  '/admin/backup': typeof AdminBackupRoute
+  '/admin/battle-options': typeof AdminBattleOptionsRoute
+  '/admin/prompts': typeof AdminPromptsRoute
+  '/rooms/$code': typeof RoomsCodeRoute
+  '/admin/': typeof AdminIndexRoute
+  '/admin/scoring/jobs': typeof AdminScoringJobsRoute
+  '/admin/scoring/workers': typeof AdminScoringWorkersRoute
+  '/admin/topics/$topicId': typeof AdminTopicsTopicIdRoute
+  '/admin/topics/new': typeof AdminTopicsNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/topic-images/$topicId/$imageId': typeof TopicImagesTopicIdImageIdRoute
+  '/admin/topics/': typeof AdminTopicsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/privacy': typeof PrivacyRoute
+  '/start': typeof StartRoute
+  '/terms': typeof TermsRoute
+  '/admin/backup': typeof AdminBackupRoute
+  '/admin/battle-options': typeof AdminBattleOptionsRoute
+  '/admin/prompts': typeof AdminPromptsRoute
+  '/rooms/$code': typeof RoomsCodeRoute
+  '/admin': typeof AdminIndexRoute
+  '/admin/scoring/jobs': typeof AdminScoringJobsRoute
+  '/admin/scoring/workers': typeof AdminScoringWorkersRoute
+  '/admin/topics/$topicId': typeof AdminTopicsTopicIdRoute
+  '/admin/topics/new': typeof AdminTopicsNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/topic-images/$topicId/$imageId': typeof TopicImagesTopicIdImageIdRoute
+  '/admin/topics': typeof AdminTopicsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteRouteWithChildren
+  '/privacy': typeof PrivacyRoute
+  '/start': typeof StartRoute
+  '/terms': typeof TermsRoute
+  '/admin/backup': typeof AdminBackupRoute
+  '/admin/battle-options': typeof AdminBattleOptionsRoute
+  '/admin/prompts': typeof AdminPromptsRoute
+  '/rooms/$code': typeof RoomsCodeRoute
+  '/admin/': typeof AdminIndexRoute
+  '/admin/scoring/jobs': typeof AdminScoringJobsRoute
+  '/admin/scoring/workers': typeof AdminScoringWorkersRoute
+  '/admin/topics/$topicId': typeof AdminTopicsTopicIdRoute
+  '/admin/topics/new': typeof AdminTopicsNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/topic-images/$topicId/$imageId': typeof TopicImagesTopicIdImageIdRoute
+  '/admin/topics/': typeof AdminTopicsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/auth/$'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/privacy'
+    | '/start'
+    | '/terms'
+    | '/admin/backup'
+    | '/admin/battle-options'
+    | '/admin/prompts'
+    | '/rooms/$code'
+    | '/admin/'
+    | '/admin/scoring/jobs'
+    | '/admin/scoring/workers'
+    | '/admin/topics/$topicId'
+    | '/admin/topics/new'
+    | '/api/auth/$'
+    | '/topic-images/$topicId/$imageId'
+    | '/admin/topics/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/auth/$'
-  id: '__root__' | '/' | '/api/auth/$'
+  to:
+    | '/'
+    | '/privacy'
+    | '/start'
+    | '/terms'
+    | '/admin/backup'
+    | '/admin/battle-options'
+    | '/admin/prompts'
+    | '/rooms/$code'
+    | '/admin'
+    | '/admin/scoring/jobs'
+    | '/admin/scoring/workers'
+    | '/admin/topics/$topicId'
+    | '/admin/topics/new'
+    | '/api/auth/$'
+    | '/topic-images/$topicId/$imageId'
+    | '/admin/topics'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/privacy'
+    | '/start'
+    | '/terms'
+    | '/admin/backup'
+    | '/admin/battle-options'
+    | '/admin/prompts'
+    | '/rooms/$code'
+    | '/admin/'
+    | '/admin/scoring/jobs'
+    | '/admin/scoring/workers'
+    | '/admin/topics/$topicId'
+    | '/admin/topics/new'
+    | '/api/auth/$'
+    | '/topic-images/$topicId/$imageId'
+    | '/admin/topics/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRouteRoute: typeof AdminRouteRouteWithChildren
+  PrivacyRoute: typeof PrivacyRoute
+  StartRoute: typeof StartRoute
+  TermsRoute: typeof TermsRoute
+  RoomsCodeRoute: typeof RoomsCodeRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  TopicImagesTopicIdImageIdRoute: typeof TopicImagesTopicIdImageIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -58,6 +250,104 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/start': {
+      id: '/start'
+      path: '/start'
+      fullPath: '/start'
+      preLoaderRoute: typeof StartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/backup': {
+      id: '/admin/backup'
+      path: '/backup'
+      fullPath: '/admin/backup'
+      preLoaderRoute: typeof AdminBackupRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/battle-options': {
+      id: '/admin/battle-options'
+      path: '/battle-options'
+      fullPath: '/admin/battle-options'
+      preLoaderRoute: typeof AdminBattleOptionsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/prompts': {
+      id: '/admin/prompts'
+      path: '/prompts'
+      fullPath: '/admin/prompts'
+      preLoaderRoute: typeof AdminPromptsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/rooms/$code': {
+      id: '/rooms/$code'
+      path: '/rooms/$code'
+      fullPath: '/rooms/$code'
+      preLoaderRoute: typeof RoomsCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/scoring/jobs': {
+      id: '/admin/scoring/jobs'
+      path: '/scoring/jobs'
+      fullPath: '/admin/scoring/jobs'
+      preLoaderRoute: typeof AdminScoringJobsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/scoring/workers': {
+      id: '/admin/scoring/workers'
+      path: '/scoring/workers'
+      fullPath: '/admin/scoring/workers'
+      preLoaderRoute: typeof AdminScoringWorkersRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/topics/': {
+      id: '/admin/topics/'
+      path: '/topics'
+      fullPath: '/admin/topics/'
+      preLoaderRoute: typeof AdminTopicsIndexRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/topics/$topicId': {
+      id: '/admin/topics/$topicId'
+      path: '/topics/$topicId'
+      fullPath: '/admin/topics/$topicId'
+      preLoaderRoute: typeof AdminTopicsTopicIdRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/topics/new': {
+      id: '/admin/topics/new'
+      path: '/topics/new'
+      fullPath: '/admin/topics/new'
+      preLoaderRoute: typeof AdminTopicsNewRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -65,12 +355,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/topic-images/$topicId/$imageId': {
+      id: '/topic-images/$topicId/$imageId'
+      path: '/topic-images/$topicId/$imageId'
+      fullPath: '/topic-images/$topicId/$imageId'
+      preLoaderRoute: typeof TopicImagesTopicIdImageIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
+interface AdminRouteRouteChildren {
+  AdminBackupRoute: typeof AdminBackupRoute
+  AdminBattleOptionsRoute: typeof AdminBattleOptionsRoute
+  AdminPromptsRoute: typeof AdminPromptsRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+  AdminScoringJobsRoute: typeof AdminScoringJobsRoute
+  AdminScoringWorkersRoute: typeof AdminScoringWorkersRoute
+  AdminTopicsTopicIdRoute: typeof AdminTopicsTopicIdRoute
+  AdminTopicsNewRoute: typeof AdminTopicsNewRoute
+  AdminTopicsIndexRoute: typeof AdminTopicsIndexRoute
+}
+
+const AdminRouteRouteChildren: AdminRouteRouteChildren = {
+  AdminBackupRoute: AdminBackupRoute,
+  AdminBattleOptionsRoute: AdminBattleOptionsRoute,
+  AdminPromptsRoute: AdminPromptsRoute,
+  AdminIndexRoute: AdminIndexRoute,
+  AdminScoringJobsRoute: AdminScoringJobsRoute,
+  AdminScoringWorkersRoute: AdminScoringWorkersRoute,
+  AdminTopicsTopicIdRoute: AdminTopicsTopicIdRoute,
+  AdminTopicsNewRoute: AdminTopicsNewRoute,
+  AdminTopicsIndexRoute: AdminTopicsIndexRoute,
+}
+
+const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
+  AdminRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRouteRoute: AdminRouteRouteWithChildren,
+  PrivacyRoute: PrivacyRoute,
+  StartRoute: StartRoute,
+  TermsRoute: TermsRoute,
+  RoomsCodeRoute: RoomsCodeRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  TopicImagesTopicIdImageIdRoute: TopicImagesTopicIdImageIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

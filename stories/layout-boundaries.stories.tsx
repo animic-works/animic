@@ -111,3 +111,18 @@ export const StackedRegions: Story = {
     </Container>
   ),
 };
+
+export const BalancedSplit: Story = {
+  render: () => (
+    <Container size="wide">
+      <Split layout="balanced" collapseOrder="reverse" data-testid="balanced-split">
+        <Surface appearance="card">
+          <Text>画像の比較</Text>
+        </Surface>
+        <Surface appearance="card">
+          <Text>集計の情報</Text>
+        </Surface>
+      </Split>
+    </Container>
+  ),
+};

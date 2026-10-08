@@ -10,6 +10,26 @@ import {
 } from "../../src/features/room/room.functions";
 import { startBattle, submitBattleImage } from "../../src/features/battle/battle.functions";
 import { connectRoom } from "../../src/features/room/room-connection";
+import {
+  getScoringAdminData,
+  issueScoringLinkCode,
+  revokeScoringWorker,
+} from "../../src/features/scoring/scoring-admin.functions";
+import { createTopic, listAdminTopics } from "../../src/features/battle/topic-admin.functions";
+import {
+  getBattleOptions,
+  saveBattleOptions,
+} from "../../src/features/room/battle-options.functions";
+import {
+  listPromptGroups,
+  savePromptGroup,
+  savePromptPhrase,
+} from "../../src/features/image-generation/prompt-phrases.functions";
+import {
+  applyBackupChunk,
+  getBackup,
+  putBackupImage,
+} from "../../src/features/admin/backup.functions";
 import type { RoomSnapshot } from "../../src/features/room/room-state";
 
 let disconnect: (() => void) | undefined;
@@ -27,6 +47,19 @@ const api = {
   setRoomSettings,
   startBattle,
   submitBattleImage,
+  issueScoringLinkCode,
+  getScoringAdminData,
+  revokeScoringWorker,
+  createTopic,
+  listAdminTopics,
+  getBattleOptions,
+  saveBattleOptions,
+  listPromptGroups,
+  savePromptGroup,
+  savePromptPhrase,
+  getBackup,
+  putBackupImage,
+  applyBackupChunk,
   async connect(code: string) {
     disconnect?.();
     const entry = await getRoomEntry({ data: { code } });

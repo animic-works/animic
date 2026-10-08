@@ -11,6 +11,7 @@ import { Textarea } from "@animic/react/textarea";
 import { SegmentedControl } from "@animic/react/segmented-control";
 import { Avatar } from "@animic/react/avatar";
 import { Progress } from "@animic/react/progress";
+import { Readout } from "@animic/react/readout";
 import { Spinner } from "@animic/react/spinner";
 import { Surface } from "@animic/react/surface";
 import { Stack } from "@animic/react/stack";
@@ -47,6 +48,27 @@ export const Buttons: Story = {
     </Container>
   ),
 };
+
+function PlaybackControls() {
+  const [fast, setFast] = useState(false);
+  return (
+    <Cluster>
+      <Button
+        appearance="outlined"
+        size="xs"
+        shape="pill"
+        aria-pressed={fast}
+        onClick={() => setFast(!fast)}
+      >
+        ×3
+      </Button>
+      <Button appearance="outlined" size="xs" shape="pill">
+        スキップ
+      </Button>
+    </Cluster>
+  );
+}
+export const AuxiliaryButtons: Story = { render: () => <PlaybackControls /> };
 function Form() {
   const [choice, setChoice] = useState("one");
   return (
@@ -112,6 +134,22 @@ export const Feedback: Story = {
         <Progress label="完了" value={100} />
         <Progress label="読み込み" value={null} />
         <Spinner label="処理中です" />
+      </Stack>
+    </Container>
+  ),
+};
+export const ProgressStates: Story = {
+  render: () => (
+    <Container size="reading">
+      <Stack space="section">
+        <Heading level={1} size="lg">
+          進捗率と強調
+        </Heading>
+        <Progress label="通常の進捗" value={75} />
+        <Progress label="縞の進捗" value={75} striped />
+        <Progress label="強調する進捗" value={75} striped emphasis="urgent" presentation="track" />
+        <Progress label="割合が未確定" value={null} striped />
+        <Readout label="残り時間" value="1:09" role="timer" format="clock" emphasis="urgent" />
       </Stack>
     </Container>
   ),
