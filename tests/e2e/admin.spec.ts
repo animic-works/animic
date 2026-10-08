@@ -108,7 +108,7 @@ test("ログインしてリンクコードを発行し、リンクした採点�
   expect((await heartbeat()).status()).toBe(200);
   const jobId = crypto.randomUUID();
   await executeLocalD1(
-    `INSERT INTO scoring_job (id, battle_id, room_code, workflow_version, inputs, state, created_at) VALUES ('${jobId}', 'battle-${jobId}', 'E2EROOM2', 'illust-similarity-v1', '[]', 'queued', ${Date.now()})`,
+    `INSERT INTO scoring_job (id, battle_id, room_code, workflow_version, inputs, state, created_at) VALUES ('${jobId}', 'battle-${jobId}', 'E2EROOM2', 'illust-similarity-v2', '[]', 'queued', ${Date.now()})`,
   );
 
   await page.getByRole("button", { name: "最新の状態にする" }).click();

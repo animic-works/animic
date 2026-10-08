@@ -138,8 +138,8 @@ NovelAIで生成するモデルは、管理画面（`/admin`）の「画像生�
 
 採点は、運営者のPCで動く[desktop-comfyui-server](https://github.com/mintani/desktop-comfyui-server)を採点ワーカーとして登録して実行します。構成は[採点の設計](docs/scoring.md)を参照してください。
 
-1. PCにdesktop-comfyui-serverとComfyUIを用意し、ComfyUIの`custom_nodes`にcomfyui-illust-similarityを配置して依存パッケージを入れます。平坦な画像でも厳密なJSONを出力する版を使います。
-2. 初回の採点でモデル（約5GB）をダウンロードするため、登録の前に一度評価を実行しておきます。ダウンロード中はAnimicの割り当ての期限（2分）に間に合いません。
+1. PCにdesktop-comfyui-serverとComfyUIを用意し、ComfyUIの`custom_nodes`にcomfyui-illust-similarityの0.2.0以降を配置して依存パッケージを入れます。PixAI Taggerは1枚の処理に時間がかかるため、ComfyUIはGPUで動かします。
+2. 初回の採点でモデル（約4GB）をダウンロードするため、登録の前に一度評価を実行しておきます。ダウンロード中はAnimicの割り当ての期限（2分）に間に合いません。
 3. 管理画面（`/admin`）に`ADMIN_PASSWORD`でログインし、メニューの「採点ワーカー」の「リンクコードの発行」で採点ワーカーの名前を入力して、リンクコードを発行します。コードは10分間有効で、1回だけ使えます。
 4. desktop-comfyui-serverのサーバー設定にAnimicのURLを追加し、リンクコードを入力してリンクします。ローカルでは`vp dev`の`http://localhost:3000`を指定できます。
 
