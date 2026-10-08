@@ -1,12 +1,13 @@
 import { expect, test } from "@playwright/test";
-import type { Browser, Page } from "@playwright/test";
 
 import type { BattleSettings } from "../../src/features/battle/battle-state";
 import { signIn } from "./api";
 import { executeLocalD1 } from "./d1";
+import { createFromTop, joinByUrl, saveSettings } from "./screen";
 
 const origin = "http://127.0.0.1:4173";
 
+// 画面の選択肢は60秒からのため、検証用クライアントで短い制限時間を保存してから画面で開始する。
 const shortSettings: BattleSettings = {
   difficulty: "easy",
   durationSeconds: 2,
@@ -22,49 +23,6 @@ test.beforeAll(async () => {
     "INSERT OR REPLACE INTO topic (id, difficulty, image_url) VALUES ('e2e-topic', 'easy', 'https://example.invalid/animic-topic.svg'); DELETE FROM rate_limit",
   );
 });
-
-// ルームを作れるのはログイン中だけ。ログインの画面は「ログイン」のテストで確認する。
-async function createFromTop(page: Page, name: string) {
-  await signIn(page.context());
-  await page.goto("/");
-  await page.getByRole("link", { name: "スタート" }).first().click();
-  await expect(page).toHaveURL("/start");
-  await page.getByRole("textbox", { name: "表示名" }).fill(name);
-  await page.getByRole("button", { name: "ルームを作る" }).click();
-  await expect(page).toHaveURL(/\/rooms\/[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{8}$/);
-  await expect(page.getByRole("heading", { name: "ルール" })).toBeVisible();
-  return new URL(page.url()).pathname.split("/").at(-1) ?? "";
-}
-
-async function joinByUrl(browser: Browser, code: string, name: string) {
-  const context = await browser.newContext({ reducedMotion: "reduce" });
-  const page = await context.newPage();
-  await page.goto(`/rooms/${code.toLowerCase()}`);
-  await expect(page).toHaveURL(`/rooms/${code}`);
-  await expect(page.getByText(`ルーム ${code} に参加します`)).toBeVisible();
-  await page.getByRole("button", { name: "ログインせずに進む" }).click();
-  await page.getByRole("textbox", { name: "表示名" }).fill(name);
-  await page.getByRole("button", { name: "ルームに参加" }).click();
-  await expect(page.getByRole("heading", { name: "ルール" })).toBeVisible();
-  return { context, page };
-}
-
-// 画面の選択肢は60秒からのため、検証用クライアントで短い制限時間を保存してから画面で開始する。
-async function saveShortSettings(page: Page, code: string, previousBattleId: string | null) {
-  await page.waitForFunction(() => Boolean(window.animicTest));
-  await page.evaluate((data) => window.animicTest.setRoomSettings({ data }), {
-    code,
-    settings: shortSettings,
-    previousBattleId,
-  });
-  // 開始時は画面に表示中の条件を送るため、保存した制限時間が画面に届くのを待つ。
-  // 候補にない値は、ロビーの選択肢に加えて選んだ状態で表示する。
-  await expect(
-    page
-      .getByRole("radiogroup", { name: "制限時間" })
-      .getByRole("radio", { name: `${shortSettings.durationSeconds}秒` }),
-  ).toBeChecked();
-}
 
 test("トップから作ったルームにURLから参加し、対戦の勝負不成立から再戦できる", async ({
   page,
@@ -85,11 +43,11 @@ test("トップから作ったルームにURLから参加し、対戦の勝負�
     await expect(guest.page.getByRole("button", { name: "準備完了を取り消す" })).toBeVisible();
     await expect(page.getByText("準備OK 2 / 2人")).toBeVisible();
 
-    await saveShortSettings(page, code, null);
+    await saveSettings(page, code, shortSettings, null);
     await page.getByRole("button", { name: "対戦をはじめる" }).click();
     for (const participant of [page, guest.page]) {
       await expect(participant.getByRole("timer")).toBeVisible();
-      await expect(participant.getByText("まだ画像がありません。")).toBeVisible();
+      await expect(participant.getByText("まだ画像がありません", { exact: true })).toBeVisible();
       await expect(participant.getByRole("button", { name: "この1枚で提出" })).toBeDisabled();
     }
     for (const participant of [page, guest.page]) {
@@ -110,7 +68,7 @@ test("トップから作ったルームにURLから参加し、対戦の勝負�
         (await window.animicTest.getRoomEntry({ data: { code: value } })).room?.battle?.id,
       code,
     );
-    await saveShortSettings(page, code, previousBattleId ?? null);
+    await saveSettings(page, code, shortSettings, previousBattleId ?? null);
     await page.getByRole("button", { name: "対戦をはじめる" }).click();
     // 全員の準備ができていなければ、開始前に確認する。
     await expect(page.getByRole("heading", { name: "全員の準備がまだです" })).toBeVisible();

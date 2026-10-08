@@ -1,0 +1,69 @@
+@layer recipes.slots.base {
+  .control {
+    background: var(--colors-border-default);
+    border-radius: var(--radii-control);
+    transition: background-color 0.2s;
+    flex: none;
+    height: 1.25rem;
+    position: relative;
+    width: 2.2rem;
+  }
+
+  .control[data-focus-visible] {
+    outline-color: var(--colors-focus-ring);
+    outline-offset: 2px;
+    outline-style: solid;
+    outline-width: 3px;
+  }
+
+  .control[data-state="checked"] {
+    background: var(--colors-accent-brand);
+  }
+
+  .label {
+    white-space: nowrap;
+  }
+
+  .root {
+    gap: 0.5rem;
+    align-items: center;
+    color: var(--colors-fg-muted);
+    cursor: pointer;
+    display: inline-flex;
+    font-size: 0.74rem;
+    font-weight: var(--font-weights-bold);
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  .root[data-disabled] {
+    cursor: default;
+    opacity: 0.5;
+  }
+
+  .thumb {
+    background: var(--colors-bg-surface);
+    border-radius: var(--radii-full);
+    box-shadow: 0 1px 3px rgb(11 27 43 / 0.3);
+    transition: translate 0.2s var(--easings-standard);
+    height: 0.95rem;
+    left: 0.15rem;
+    position: absolute;
+    top: 0.15rem;
+    width: 0.95rem;
+  }
+
+  .thumb[data-state="checked"] {
+    translate: 0.95rem 0;
+  }
+}
+
+@layer recipes.slots.variants {
+  .root--tone_accent[data-state="checked"] {
+    color: var(--colors-accent-default);
+  }
+
+  .root--tone_neutral[data-state="checked"] {
+    color: var(--colors-fg-default);
+  }
+}
