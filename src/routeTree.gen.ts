@@ -17,6 +17,7 @@ import { Route as TermsRouteImport } from './routes/terms'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminBackupRouteImport } from './routes/admin/backup'
 import { Route as AdminBattleOptionsRouteImport } from './routes/admin/battle-options'
+import { Route as AdminImageGenerationRouteImport } from './routes/admin/image-generation'
 import { Route as AdminPromptsRouteImport } from './routes/admin/prompts'
 import { Route as RoomsCodeRouteImport } from './routes/rooms.$code'
 import { Route as AdminScoringJobsRouteImport } from './routes/admin/scoring/jobs'
@@ -65,6 +66,11 @@ const AdminBackupRoute = AdminBackupRouteImport.update({
 const AdminBattleOptionsRoute = AdminBattleOptionsRouteImport.update({
   id: '/battle-options',
   path: '/battle-options',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminImageGenerationRoute = AdminImageGenerationRouteImport.update({
+  id: '/image-generation',
+  path: '/image-generation',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminPromptsRoute = AdminPromptsRouteImport.update({
@@ -122,6 +128,7 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/admin/backup': typeof AdminBackupRoute
   '/admin/battle-options': typeof AdminBattleOptionsRoute
+  '/admin/image-generation': typeof AdminImageGenerationRoute
   '/admin/prompts': typeof AdminPromptsRoute
   '/rooms/$code': typeof RoomsCodeRoute
   '/admin/': typeof AdminIndexRoute
@@ -140,6 +147,7 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/admin/backup': typeof AdminBackupRoute
   '/admin/battle-options': typeof AdminBattleOptionsRoute
+  '/admin/image-generation': typeof AdminImageGenerationRoute
   '/admin/prompts': typeof AdminPromptsRoute
   '/rooms/$code': typeof RoomsCodeRoute
   '/admin': typeof AdminIndexRoute
@@ -160,6 +168,7 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/admin/backup': typeof AdminBackupRoute
   '/admin/battle-options': typeof AdminBattleOptionsRoute
+  '/admin/image-generation': typeof AdminImageGenerationRoute
   '/admin/prompts': typeof AdminPromptsRoute
   '/rooms/$code': typeof RoomsCodeRoute
   '/admin/': typeof AdminIndexRoute
@@ -181,6 +190,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/admin/backup'
     | '/admin/battle-options'
+    | '/admin/image-generation'
     | '/admin/prompts'
     | '/rooms/$code'
     | '/admin/'
@@ -199,6 +209,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/admin/backup'
     | '/admin/battle-options'
+    | '/admin/image-generation'
     | '/admin/prompts'
     | '/rooms/$code'
     | '/admin'
@@ -218,6 +229,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/admin/backup'
     | '/admin/battle-options'
+    | '/admin/image-generation'
     | '/admin/prompts'
     | '/rooms/$code'
     | '/admin/'
@@ -299,6 +311,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminBattleOptionsRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/image-generation': {
+      id: '/admin/image-generation'
+      path: '/image-generation'
+      fullPath: '/admin/image-generation'
+      preLoaderRoute: typeof AdminImageGenerationRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/prompts': {
       id: '/admin/prompts'
       path: '/prompts'
@@ -368,6 +387,7 @@ declare module '@tanstack/react-router' {
 interface AdminRouteRouteChildren {
   AdminBackupRoute: typeof AdminBackupRoute
   AdminBattleOptionsRoute: typeof AdminBattleOptionsRoute
+  AdminImageGenerationRoute: typeof AdminImageGenerationRoute
   AdminPromptsRoute: typeof AdminPromptsRoute
   AdminIndexRoute: typeof AdminIndexRoute
   AdminScoringJobsRoute: typeof AdminScoringJobsRoute
@@ -380,6 +400,7 @@ interface AdminRouteRouteChildren {
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminBackupRoute: AdminBackupRoute,
   AdminBattleOptionsRoute: AdminBattleOptionsRoute,
+  AdminImageGenerationRoute: AdminImageGenerationRoute,
   AdminPromptsRoute: AdminPromptsRoute,
   AdminIndexRoute: AdminIndexRoute,
   AdminScoringJobsRoute: AdminScoringJobsRoute,
