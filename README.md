@@ -16,5 +16,6 @@
 - [アプリ構成の決定](docs/decisions/0002-application-foundation.md)
 - [採点の実行先とキュー方式の決定](docs/decisions/0004-scoring-workers.md)
 - [運営者の管理画面の認証方式の決定](docs/decisions/0005-operator-password.md)
+- [お題の画像の保存先とバックアップの方式の決定](docs/decisions/0007-topic-images-and-backup.md)
 
 文書の役割とテンプレートの使い方は[CONTRIBUTING.md](CONTRIBUTING.md#文書の管理)にまとめています。
