@@ -12,13 +12,7 @@ import { Text } from "../../components/text";
 import { toast } from "../../components/toast";
 import { TopBar, TopBarSide } from "../../components/top-bar";
 import { Entrance } from "../../components/transition";
-import {
-  DEFAULT_SETTINGS,
-  DIFFICULTIES,
-  DURATION_OPTIONS,
-  SELECTION_OPTIONS,
-  getDifficulty,
-} from "../battle/battle-labels";
+import { DIFFICULTIES, getDifficulty } from "../battle/battle-labels";
 import { startBattle } from "../battle/battle.functions";
 import type { BattleSettings } from "../battle/battle-state";
 import {
@@ -44,6 +38,8 @@ import {
   RulesList,
   WaitingList,
 } from "./lobby-parts";
+import { choicesWith, defaultBattleSettings } from "./battle-options";
+import type { BattleOptions } from "./battle-options";
 import { leaveRoom, setReady, setRoomSettings } from "./room.functions";
 import type { RoomSnapshot } from "./room-state";
 
@@ -69,6 +65,7 @@ export function RoomLobby({
   room,
   participantId,
   inviteUrl,
+  battleOptions,
   connection,
   previousBattleId,
   waitingForNext,
@@ -78,6 +75,8 @@ export function RoomLobby({
   room: RoomSnapshot;
   participantId: string;
   inviteUrl: string;
+  /** 運営者が管理画面で決めた制限時間・画像選択の猶予の候補と既定値 */
+  battleOptions: BattleOptions;
   connection: string;
   /** 直前の対戦のID（次の対戦の開始に使う） */
   previousBattleId: string | null;
@@ -111,7 +110,7 @@ export function RoomLobby({
   const settings =
     override && sameSettings(override.base, room.settings)
       ? override.value
-      : (room.settings ?? DEFAULT_SETTINGS);
+      : (room.settings ?? defaultBattleSettings(battleOptions));
   const [error, setError] = useState<string | null>(null);
 
   // 最初に既定の条件を共有し、ゲストにも同じ内容を見せる。
@@ -120,9 +119,9 @@ export function RoomLobby({
     if (!isHost || room.settings || pushedDefaults.current) return;
     pushedDefaults.current = true;
     void setRoomSettings({
-      data: { code: room.code, settings: DEFAULT_SETTINGS, previousBattleId },
+      data: { code: room.code, settings: defaultBattleSettings(battleOptions), previousBattleId },
     }).catch(() => undefined);
-  }, [isHost, room.settings, room.code, previousBattleId]);
+  }, [isHost, room.settings, room.code, previousBattleId, battleOptions]);
 
   function changeSettings(next: BattleSettings) {
     setOverride({ value: next, base: room.settings });
@@ -339,7 +338,10 @@ export function RoomLobby({
                   {isHost ? (
                     <SegmentedControl
                       label="制限時間"
-                      options={DURATION_OPTIONS.map((value) => ({
+                      options={choicesWith(
+                        battleOptions.duration.choices,
+                        settings.durationSeconds,
+                      ).map((value) => ({
                         value: String(value),
                         label: `${value}秒`,
                       }))}
@@ -356,7 +358,10 @@ export function RoomLobby({
                   {isHost ? (
                     <SegmentedControl
                       label="画像選択の猶予"
-                      options={SELECTION_OPTIONS.map((value) => ({
+                      options={choicesWith(
+                        battleOptions.selection.choices,
+                        settings.selectionSeconds,
+                      ).map((value) => ({
                         value: String(value),
                         label: `${value}秒`,
                       }))}

@@ -52,9 +52,12 @@ async function saveShortSettings(page: Page, code: string, previousBattleId: str
     previousBattleId,
   });
   // 開始時は画面に表示中の条件を送るため、保存した制限時間が画面に届くのを待つ。
+  // 候補にない値は、ロビーの選択肢に加えて選んだ状態で表示する。
   await expect(
-    page.getByRole("radiogroup", { name: "制限時間" }).getByRole("radio", { checked: true }),
-  ).toHaveCount(0);
+    page
+      .getByRole("radiogroup", { name: "制限時間" })
+      .getByRole("radio", { name: `${shortSettings.durationSeconds}秒` }),
+  ).toBeChecked();
 }
 
 test("トップから作ったルームにURLから参加し、対戦の勝負不成立から再戦できる", async ({
