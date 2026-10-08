@@ -17,6 +17,7 @@ type AdminHref =
   | "/admin/topics"
   | "/admin/battle-options"
   | "/admin/prompts"
+  | "/admin/image-generation"
   | "/admin/scoring/workers"
   | "/admin/scoring/jobs"
   | "/admin/backup";
@@ -26,6 +27,7 @@ const NAV: { href: AdminHref; label: string; icon: AdminNavItem["icon"] }[] = [
   { href: "/admin/topics", label: "お題", icon: "grid" },
   { href: "/admin/battle-options", label: "対戦条件", icon: "stopwatch" },
   { href: "/admin/prompts", label: "よく使う表現", icon: "tag" },
+  { href: "/admin/image-generation", label: "画像生成", icon: "sparkle" },
   { href: "/admin/scoring/workers", label: "採点ワーカー", icon: "server" },
   { href: "/admin/scoring/jobs", label: "採点ジョブ", icon: "target" },
   { href: "/admin/backup", label: "バックアップ", icon: "download" },

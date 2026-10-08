@@ -26,6 +26,10 @@ import {
   savePromptPhrase,
 } from "../../src/features/image-generation/prompt-phrases.functions";
 import {
+  getImageModel,
+  saveImageModel,
+} from "../../src/features/image-generation/image-generation-admin.functions";
+import {
   applyBackupChunk,
   getBackup,
   putBackupImage,
@@ -57,6 +61,8 @@ const api = {
   listPromptGroups,
   savePromptGroup,
   savePromptPhrase,
+  getImageModel,
+  saveImageModel,
   getBackup,
   putBackupImage,
   applyBackupChunk,
