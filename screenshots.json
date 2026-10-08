@@ -1,0 +1,846 @@
+{
+  "source_commit": "e30dd52281a444737c5c4780f9153c13511e1e2b",
+  "pull_request": "https://github.com/animic-works/animic/pull/33",
+  "shots": [
+    {
+      "id": "01-home",
+      "title": "ホーム",
+      "label": "desktop",
+      "path": "01-home-desktop.png",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "id": "01-home",
+      "title": "ホーム",
+      "label": "mobile",
+      "path": "01-home-mobile.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "01-home",
+      "title": "ホーム",
+      "label": "mobile-viewport",
+      "path": "01-home-mobile-viewport.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "02-how",
+      "title": "遊び方",
+      "label": "desktop",
+      "path": "02-how-desktop.png",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "id": "02-how",
+      "title": "遊び方",
+      "label": "mobile",
+      "path": "02-how-mobile.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "02-how",
+      "title": "遊び方",
+      "label": "mobile-viewport",
+      "path": "02-how-mobile-viewport.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "03-score",
+      "title": "採点方法",
+      "label": "desktop",
+      "path": "03-score-desktop.png",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "id": "03-score",
+      "title": "採点方法",
+      "label": "mobile",
+      "path": "03-score-mobile.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "03-score",
+      "title": "採点方法",
+      "label": "mobile-viewport",
+      "path": "03-score-mobile-viewport.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "04-gallery",
+      "title": "ギャラリー",
+      "label": "desktop",
+      "path": "04-gallery-desktop.png",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "id": "04-gallery",
+      "title": "ギャラリー",
+      "label": "mobile",
+      "path": "04-gallery-mobile.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "04-gallery",
+      "title": "ギャラリー",
+      "label": "mobile-viewport",
+      "path": "04-gallery-mobile-viewport.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "05-join-dialog",
+      "title": "ルームに参加",
+      "label": "desktop",
+      "path": "05-join-dialog-desktop.png",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "id": "05-join-dialog",
+      "title": "ルームに参加",
+      "label": "mobile",
+      "path": "05-join-dialog-mobile.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "05-join-dialog",
+      "title": "ルームに参加",
+      "label": "mobile-viewport",
+      "path": "05-join-dialog-mobile-viewport.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "06-login-dialog",
+      "title": "ログインモーダル",
+      "label": "desktop",
+      "path": "06-login-dialog-desktop.png",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "id": "06-login-dialog",
+      "title": "ログインモーダル",
+      "label": "mobile",
+      "path": "06-login-dialog-mobile.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "06-login-dialog",
+      "title": "ログインモーダル",
+      "label": "mobile-viewport",
+      "path": "06-login-dialog-mobile-viewport.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "07-login",
+      "title": "ルーム作成前のログイン",
+      "label": "desktop",
+      "path": "07-login-desktop.png",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "id": "07-login",
+      "title": "ルーム作成前のログイン",
+      "label": "mobile",
+      "path": "07-login-mobile.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "07-login",
+      "title": "ルーム作成前のログイン",
+      "label": "mobile-viewport",
+      "path": "07-login-mobile-viewport.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "08-name",
+      "title": "表示名入力",
+      "label": "desktop",
+      "path": "08-name-desktop.png",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "id": "08-name",
+      "title": "表示名入力",
+      "label": "mobile",
+      "path": "08-name-mobile.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "08-name",
+      "title": "表示名入力",
+      "label": "mobile-viewport",
+      "path": "08-name-mobile-viewport.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "09-guest-login",
+      "title": "招待URLからの参加",
+      "label": "desktop",
+      "path": "09-guest-login-desktop.png",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "id": "09-guest-login",
+      "title": "招待URLからの参加",
+      "label": "mobile",
+      "path": "09-guest-login-mobile.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "09-guest-login",
+      "title": "招待URLからの参加",
+      "label": "mobile-viewport",
+      "path": "09-guest-login-mobile-viewport.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "10-host-lobby",
+      "title": "ロビー（ホスト）",
+      "label": "desktop",
+      "path": "10-host-lobby-desktop.png",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "id": "10-host-lobby",
+      "title": "ロビー（ホスト）",
+      "label": "mobile",
+      "path": "10-host-lobby-mobile.png",
+      "width": 390,
+      "height": 1302
+    },
+    {
+      "id": "10-host-lobby",
+      "title": "ロビー（ホスト）",
+      "label": "mobile-viewport",
+      "path": "10-host-lobby-mobile-viewport.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "11-guest-lobby",
+      "title": "ロビー（参加者）",
+      "label": "desktop",
+      "path": "11-guest-lobby-desktop.png",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "id": "11-guest-lobby",
+      "title": "ロビー（参加者）",
+      "label": "mobile",
+      "path": "11-guest-lobby-mobile.png",
+      "width": 390,
+      "height": 1151
+    },
+    {
+      "id": "11-guest-lobby",
+      "title": "ロビー（参加者）",
+      "label": "mobile-viewport",
+      "path": "11-guest-lobby-mobile-viewport.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "12-invite-dialog",
+      "title": "友だちを招待",
+      "label": "desktop",
+      "path": "12-invite-dialog-desktop.png",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "id": "12-invite-dialog",
+      "title": "友だちを招待",
+      "label": "mobile",
+      "path": "12-invite-dialog-mobile.png",
+      "width": 390,
+      "height": 1302
+    },
+    {
+      "id": "12-invite-dialog",
+      "title": "友だちを招待",
+      "label": "mobile-viewport",
+      "path": "12-invite-dialog-mobile-viewport.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "13-exit-dialog",
+      "title": "退出確認",
+      "label": "desktop",
+      "path": "13-exit-dialog-desktop.png",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "id": "13-exit-dialog",
+      "title": "退出確認",
+      "label": "mobile",
+      "path": "13-exit-dialog-mobile.png",
+      "width": 390,
+      "height": 1302
+    },
+    {
+      "id": "13-exit-dialog",
+      "title": "退出確認",
+      "label": "mobile-viewport",
+      "path": "13-exit-dialog-mobile-viewport.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "14-rules",
+      "title": "難易度・ルール変更",
+      "label": "desktop",
+      "path": "14-rules-desktop.png",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "id": "14-rules",
+      "title": "難易度・ルール変更",
+      "label": "mobile",
+      "path": "14-rules-mobile.png",
+      "width": 390,
+      "height": 1302
+    },
+    {
+      "id": "14-rules",
+      "title": "難易度・ルール変更",
+      "label": "mobile-viewport",
+      "path": "14-rules-mobile-viewport.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15-battle",
+      "title": "対戦中",
+      "label": "desktop",
+      "path": "15-battle-desktop.png",
+      "width": 1440,
+      "height": 953
+    },
+    {
+      "id": "15-battle",
+      "title": "対戦中",
+      "label": "mobile",
+      "path": "15-battle-mobile.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15-battle",
+      "title": "対戦中",
+      "label": "mobile-viewport",
+      "path": "15-battle-mobile-viewport.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16-selection",
+      "title": "提出する画像の選択猶予",
+      "label": "desktop",
+      "path": "16-selection-desktop.png",
+      "width": 1440,
+      "height": 996
+    },
+    {
+      "id": "16-selection",
+      "title": "提出する画像の選択猶予",
+      "label": "mobile",
+      "path": "16-selection-mobile.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16-selection",
+      "title": "提出する画像の選択猶予",
+      "label": "mobile-viewport",
+      "path": "16-selection-mobile-viewport.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17-result",
+      "title": "結果（両者未提出）",
+      "label": "desktop",
+      "path": "17-result-desktop.png",
+      "width": 1440,
+      "height": 1097
+    },
+    {
+      "id": "17-result",
+      "title": "結果（両者未提出）",
+      "label": "mobile",
+      "path": "17-result-mobile.png",
+      "width": 390,
+      "height": 1129
+    },
+    {
+      "id": "17-result",
+      "title": "結果（両者未提出）",
+      "label": "mobile-viewport",
+      "path": "17-result-mobile-viewport.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18-terms",
+      "title": "利用規約",
+      "label": "desktop",
+      "path": "18-terms-desktop.png",
+      "width": 1440,
+      "height": 2881
+    },
+    {
+      "id": "18-terms",
+      "title": "利用規約",
+      "label": "mobile",
+      "path": "18-terms-mobile.png",
+      "width": 390,
+      "height": 4557
+    },
+    {
+      "id": "18-terms",
+      "title": "利用規約",
+      "label": "mobile-viewport",
+      "path": "18-terms-mobile-viewport.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19-privacy",
+      "title": "プライバシーポリシー",
+      "label": "desktop",
+      "path": "19-privacy-desktop.png",
+      "width": 1440,
+      "height": 2344
+    },
+    {
+      "id": "19-privacy",
+      "title": "プライバシーポリシー",
+      "label": "mobile",
+      "path": "19-privacy-mobile.png",
+      "width": 390,
+      "height": 3458
+    },
+    {
+      "id": "19-privacy",
+      "title": "プライバシーポリシー",
+      "label": "mobile-viewport",
+      "path": "19-privacy-mobile-viewport.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "20-admin-login",
+      "title": "管理画面ログイン",
+      "label": "desktop",
+      "path": "20-admin-login-desktop.png",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "id": "20-admin-login",
+      "title": "管理画面ログイン",
+      "label": "mobile",
+      "path": "20-admin-login-mobile.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "20-admin-login",
+      "title": "管理画面ログイン",
+      "label": "mobile-viewport",
+      "path": "20-admin-login-mobile-viewport.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "21-admin-topics",
+      "title": "管理・お題一覧",
+      "label": "desktop",
+      "path": "21-admin-topics-desktop.png",
+      "width": 1440,
+      "height": 2081
+    },
+    {
+      "id": "21-admin-topics",
+      "title": "管理・お題一覧",
+      "label": "mobile",
+      "path": "21-admin-topics-mobile.png",
+      "width": 390,
+      "height": 3318
+    },
+    {
+      "id": "21-admin-topics",
+      "title": "管理・お題一覧",
+      "label": "mobile-viewport",
+      "path": "21-admin-topics-mobile-viewport.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "22-admin-topic-new",
+      "title": "管理・お題登録",
+      "label": "desktop",
+      "path": "22-admin-topic-new-desktop.png",
+      "width": 1440,
+      "height": 931
+    },
+    {
+      "id": "22-admin-topic-new",
+      "title": "管理・お題登録",
+      "label": "mobile",
+      "path": "22-admin-topic-new-mobile.png",
+      "width": 390,
+      "height": 1487
+    },
+    {
+      "id": "22-admin-topic-new",
+      "title": "管理・お題登録",
+      "label": "mobile-viewport",
+      "path": "22-admin-topic-new-mobile-viewport.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "23-admin-battle-options",
+      "title": "管理・対戦条件",
+      "label": "desktop",
+      "path": "23-admin-battle-options-desktop.png",
+      "width": 1440,
+      "height": 1712
+    },
+    {
+      "id": "23-admin-battle-options",
+      "title": "管理・対戦条件",
+      "label": "mobile",
+      "path": "23-admin-battle-options-mobile.png",
+      "width": 390,
+      "height": 2197
+    },
+    {
+      "id": "23-admin-battle-options",
+      "title": "管理・対戦条件",
+      "label": "mobile-viewport",
+      "path": "23-admin-battle-options-mobile-viewport.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "24-admin-prompts",
+      "title": "管理・よく使う表現",
+      "label": "desktop",
+      "path": "24-admin-prompts-desktop.png",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "id": "24-admin-prompts",
+      "title": "管理・よく使う表現",
+      "label": "mobile",
+      "path": "24-admin-prompts-mobile.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "24-admin-prompts",
+      "title": "管理・よく使う表現",
+      "label": "mobile-viewport",
+      "path": "24-admin-prompts-mobile-viewport.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "25-admin-workers",
+      "title": "管理・採点ワーカー",
+      "label": "desktop",
+      "path": "25-admin-workers-desktop.png",
+      "width": 1440,
+      "height": 937
+    },
+    {
+      "id": "25-admin-workers",
+      "title": "管理・採点ワーカー",
+      "label": "mobile",
+      "path": "25-admin-workers-mobile.png",
+      "width": 390,
+      "height": 1395
+    },
+    {
+      "id": "25-admin-workers",
+      "title": "管理・採点ワーカー",
+      "label": "mobile-viewport",
+      "path": "25-admin-workers-mobile-viewport.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "26-admin-jobs",
+      "title": "管理・採点ジョブ",
+      "label": "desktop",
+      "path": "26-admin-jobs-desktop.png",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "id": "26-admin-jobs",
+      "title": "管理・採点ジョブ",
+      "label": "mobile",
+      "path": "26-admin-jobs-mobile.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "26-admin-jobs",
+      "title": "管理・採点ジョブ",
+      "label": "mobile-viewport",
+      "path": "26-admin-jobs-mobile-viewport.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "27-admin-backup",
+      "title": "管理・バックアップ",
+      "label": "desktop",
+      "path": "27-admin-backup-desktop.png",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "id": "27-admin-backup",
+      "title": "管理・バックアップ",
+      "label": "mobile",
+      "path": "27-admin-backup-mobile.png",
+      "width": 390,
+      "height": 1402
+    },
+    {
+      "id": "27-admin-backup",
+      "title": "管理・バックアップ",
+      "label": "mobile-viewport",
+      "path": "27-admin-backup-mobile-viewport.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "28-battle-images",
+      "title": "対戦中・生成済みサンプル画像",
+      "label": "desktop",
+      "path": "28-battle-images-desktop.png",
+      "width": 1440,
+      "height": 953
+    },
+    {
+      "id": "28-battle-images",
+      "title": "対戦中・生成済みサンプル画像",
+      "label": "mobile",
+      "path": "28-battle-images-mobile.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "28-battle-images",
+      "title": "対戦中・生成済みサンプル画像",
+      "label": "mobile-viewport",
+      "path": "28-battle-images-mobile-viewport.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "29-submit-confirm",
+      "title": "提出確認",
+      "label": "desktop",
+      "path": "29-submit-confirm-desktop.png",
+      "width": 1440,
+      "height": 953
+    },
+    {
+      "id": "29-submit-confirm",
+      "title": "提出確認",
+      "label": "mobile",
+      "path": "29-submit-confirm-mobile.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "29-submit-confirm",
+      "title": "提出確認",
+      "label": "mobile-viewport",
+      "path": "29-submit-confirm-mobile-viewport.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "30-submitted",
+      "title": "提出後・対戦相手を待機",
+      "label": "desktop",
+      "path": "30-submitted-desktop.png",
+      "width": 1440,
+      "height": 927
+    },
+    {
+      "id": "30-submitted",
+      "title": "提出後・対戦相手を待機",
+      "label": "mobile",
+      "path": "30-submitted-mobile.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "30-submitted",
+      "title": "提出後・対戦相手を待機",
+      "label": "mobile-viewport",
+      "path": "30-submitted-mobile-viewport.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "31-scoring",
+      "title": "採点中",
+      "label": "desktop",
+      "path": "31-scoring-desktop.png",
+      "width": 1440,
+      "height": 927
+    },
+    {
+      "id": "31-scoring",
+      "title": "採点中",
+      "label": "mobile",
+      "path": "31-scoring-mobile.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "31-scoring",
+      "title": "採点中",
+      "label": "mobile-viewport",
+      "path": "31-scoring-mobile-viewport.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "32-result-win",
+      "title": "結果・勝利（サンプル採点結果）",
+      "label": "desktop",
+      "path": "32-result-win-desktop.png",
+      "width": 1440,
+      "height": 1097
+    },
+    {
+      "id": "32-result-win",
+      "title": "結果・勝利（サンプル採点結果）",
+      "label": "mobile",
+      "path": "32-result-win-mobile.png",
+      "width": 390,
+      "height": 1149
+    },
+    {
+      "id": "32-result-win",
+      "title": "結果・勝利（サンプル採点結果）",
+      "label": "mobile-viewport",
+      "path": "32-result-win-mobile-viewport.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "33-result-opponent",
+      "title": "結果・対戦相手側（サンプル採点結果）",
+      "label": "desktop",
+      "path": "33-result-opponent-desktop.png",
+      "width": 1440,
+      "height": 1097
+    },
+    {
+      "id": "33-result-opponent",
+      "title": "結果・対戦相手側（サンプル採点結果）",
+      "label": "mobile",
+      "path": "33-result-opponent-mobile.png",
+      "width": 390,
+      "height": 1181
+    },
+    {
+      "id": "33-result-opponent",
+      "title": "結果・対戦相手側（サンプル採点結果）",
+      "label": "mobile-viewport",
+      "path": "33-result-opponent-mobile-viewport.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "34-admin-workers-populated",
+      "title": "管理・稼働中の採点ワーカー",
+      "label": "desktop",
+      "path": "34-admin-workers-populated-desktop.png",
+      "width": 1440,
+      "height": 937
+    },
+    {
+      "id": "34-admin-workers-populated",
+      "title": "管理・稼働中の採点ワーカー",
+      "label": "mobile",
+      "path": "34-admin-workers-populated-mobile.png",
+      "width": 390,
+      "height": 1395
+    },
+    {
+      "id": "34-admin-workers-populated",
+      "title": "管理・稼働中の採点ワーカー",
+      "label": "mobile-viewport",
+      "path": "34-admin-workers-populated-mobile-viewport.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "35-admin-jobs-completed",
+      "title": "管理・採点完了ジョブ",
+      "label": "desktop",
+      "path": "35-admin-jobs-completed-desktop.png",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "id": "35-admin-jobs-completed",
+      "title": "管理・採点完了ジョブ",
+      "label": "mobile",
+      "path": "35-admin-jobs-completed-mobile.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "35-admin-jobs-completed",
+      "title": "管理・採点完了ジョブ",
+      "label": "mobile-viewport",
+      "path": "35-admin-jobs-completed-mobile-viewport.png",
+      "width": 390,
+      "height": 844
+    }
+  ]
+}
