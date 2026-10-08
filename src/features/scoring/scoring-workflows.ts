@@ -1,6 +1,6 @@
 import * as v from "valibot";
 
-import illustSimilarityV1 from "./illust-similarity-v1.workflow.json";
+import illustSimilarityV2 from "./illust-similarity-v2.workflow.json";
 
 const imageUrlSchema = v.pipe(v.string(), v.url());
 export const scoringInputsSchema = v.array(
@@ -36,10 +36,10 @@ function topicAndSubmission(inputs: ScoringInputs) {
 }
 
 const workflows: Record<string, ScoringWorkflow> = {
-  "illust-similarity-v1": {
+  "illust-similarity-v2": {
     build(inputs) {
       topicAndSubmission(inputs);
-      return JSON.stringify(illustSimilarityV1);
+      return JSON.stringify(illustSimilarityV2);
     },
     readTotals(inputs, data) {
       const { submission } = topicAndSubmission(inputs);
@@ -65,7 +65,7 @@ const workflows: Record<string, ScoringWorkflow> = {
   },
 };
 
-export const scoringWorkflowVersion = "illust-similarity-v1";
+export const scoringWorkflowVersion = "illust-similarity-v2";
 
 function getWorkflow(version: string) {
   const workflow = workflows[version];

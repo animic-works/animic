@@ -20,7 +20,7 @@
 | ------------------------------------------------ | ----------------------------------------------------------------------------- |
 | `src/features/scoring/scoring-workers.server.ts` | 採点ワーカー向けAPI。desktop-comfyui-serverの通信仕様との変換、秘密情報の照合 |
 | `src/features/scoring/scoring-jobs.server.ts`    | 採点ジョブの登録・割り当て・完了・差し戻しと、ルームのDO向けの状態取得        |
-| `src/features/scoring/scoring-workflows.ts`      | ワークフロー定義。今は`illust-similarity-v1`だけを持つ                        |
+| `src/features/scoring/scoring-workflows.ts`      | ワークフロー定義。今は`illust-similarity-v2`だけを持つ                        |
 | `src/features/battle/battle-state.ts`            | 採点エントリーの追加、採点結果による勝敗の確定、配信・保存する内容            |
 | `src/features/room/room.server.ts`               | 採点待ちの間、Alarmで採点ジョブを登録し、状態と結果を取得して対戦へ反映する   |
 | `src/server.ts`                                  | 採点ワーカー向けAPIを、TanStack Startより前に`scoring`へ振り分ける            |
@@ -78,7 +78,7 @@ desktop-comfyui-serverの通信仕様で決まっているURLパスとキー名�
 ## 依存関係
 
 - desktop-comfyui-server 0.4.0の通信仕様: 採点ワーカーがジョブを取りに来る方式、画像のbase64での受け渡し、JSONを返すheartbeat、ジョブがないときの204。
-- comfyui-illust-similarityの`IllustSimilarityAll`ノード: `similarity`という出力ノードが、6指標と`total`をJSON文字列で出力します。平坦な画像でも厳密なJSONを出力する版を使います。
+- comfyui-illust-similarity 0.2.0以降の`IllustSimilarityAll`ノード: `similarity`という出力ノードが、5つの指標（CCIP・PixAI Tagger・SigLIP 2・DINOv2・Depth）と`total`をJSON文字列で出力します。指標と重みは[ゲーム仕様](product.md#対象範囲)のとおりです。
 - D1: 採点ジョブ・採点ワーカー・リンクコード・採点結果の保存。
 
 ## 制約と検証

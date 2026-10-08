@@ -51,7 +51,7 @@ async function addJob(id: string, submissionImageUrl = `${origin}/og-image.png`)
     { role: "submission", participantId: `participant-${id}`, imageUrl: submissionImageUrl },
   ]);
   await executeLocalD1(
-    `INSERT INTO scoring_job (id, battle_id, room_code, workflow_version, inputs, state, created_at) VALUES ('${id}', 'battle-${id}', 'E2EROOM2', 'illust-similarity-v1', '${inputs}', 'queued', ${Date.now()})`,
+    `INSERT INTO scoring_job (id, battle_id, room_code, workflow_version, inputs, state, created_at) VALUES ('${id}', 'battle-${id}', 'E2EROOM2', 'illust-similarity-v2', '${inputs}', 'queued', ${Date.now()})`,
   );
 }
 
@@ -143,7 +143,7 @@ test("Originのない要求も受け付け、待機中のジョブを1台だけ�
     "image/png",
     "image/png",
   ]);
-  expect(claimed.workflow.presetId).toBe("illust-similarity-v1");
+  expect(claimed.workflow.presetId).toBe("illust-similarity-v2");
   expect(JSON.parse(claimed.workflow.workflowJson)).toMatchObject({
     "1": { inputs: { image: "__INPUT_IMAGE__" } },
     "2": { inputs: { image: "__INPUT_IMAGE_2__" } },
