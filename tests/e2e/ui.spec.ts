@@ -254,7 +254,7 @@ test("対戦中に参加した人には、次の対戦を待つことを表示�
 });
 
 test.describe("ログイン", () => {
-  test("ルームを作る画面はログインの方法だけを出し、選ぶと接続中を表示して認証画面へ移動する", async ({
+  test("トップの「スタート」でログインのダイアログを開き、選ぶと接続中を表示して認証画面へ移動する", async ({
     page,
   }) => {
     // 実際のサービスへは通信せず、移動先のURLだけを確かめる。
@@ -266,15 +266,20 @@ test.describe("ログイン", () => {
       await new Promise((resolve) => setTimeout(resolve, 800));
       await route.continue();
     });
-    await page.goto("/start");
-    await expect(page.getByRole("heading", { name: "ログインしてはじめよう" })).toBeVisible();
-    await expect(page.getByText("ルームを作るには、ログインが必要です。")).toBeVisible();
-    await expect(page.getByRole("button", { name: "ログインせずに進む" })).toHaveCount(0);
-    await expect(page.getByRole("textbox", { name: "表示名" })).toHaveCount(0);
-    await expect(page.getByRole("link", { name: "利用規約" })).toHaveAttribute("href", "/terms");
-    await page.getByRole("button", { name: "Googleでログイン" }).click();
-    await expect(page.getByRole("button", { name: "Googleに接続中…" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Discordでログイン" })).toBeDisabled();
+    await page.goto("/");
+    await page.getByRole("link", { name: "スタート" }).first().click();
+    const dialog = page.getByRole("dialog", { name: "ログインしてはじめよう" });
+    await expect(dialog).toBeVisible();
+    await expect(page).toHaveURL("/");
+    await expect(dialog.getByText("ルームを作るには、ログインが必要です。")).toBeVisible();
+    await expect(dialog.getByRole("link", { name: "利用規約" })).toHaveAttribute("href", "/terms");
+    await dialog.getByRole("button", { name: "閉じる" }).click();
+    await expect(dialog).toHaveCount(0);
+    await page.getByRole("link", { name: "スタート" }).first().click();
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: "Googleでログイン" }).click();
+    await expect(dialog.getByRole("button", { name: "Googleに接続中…" })).toBeVisible();
+    await expect(dialog.getByRole("button", { name: "Discordでログイン" })).toBeDisabled();
     await page.waitForURL(/^https:\/\/accounts\.google\.com\//);
     const url = new URL(page.url());
     expect(url.searchParams.get("redirect_uri")).toBe(`${origin}/api/auth/callback/google`);
@@ -299,10 +304,16 @@ test.describe("ログイン", () => {
     }
   });
 
-  test("認証の失敗で戻ったら理由を表示し、URLから取り除く", async ({ page }) => {
+  test("認証の失敗で戻ったら理由とログインの方法だけを出し、URLから理由を取り除く", async ({
+    page,
+  }) => {
     await page.goto("/start?error=access_denied");
     await expect(page.getByRole("alert")).toHaveText("ログインを取り消しました。");
     await expect(page).toHaveURL("/start");
+    await expect(page.getByRole("heading", { name: "ログインしてはじめよう" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Googleでログイン" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "ログインせずに進む" })).toHaveCount(0);
+    await expect(page.getByRole("textbox", { name: "表示名" })).toHaveCount(0);
   });
 
   test("ログイン中は方法の選択を省いてアカウントの名前を入れておき、ログアウトで選択へ戻る", async ({
