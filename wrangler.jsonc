@@ -15,8 +15,23 @@
       "migrations_dir": "migrations",
     },
   ],
+  "r2_buckets": [
+    {
+      "binding": "TOPIC_IMAGES",
+      "bucket_name": "animic-topic-images",
+    },
+  ],
   "secrets": {
-    "required": ["BETTER_AUTH_SECRET", "BETTER_AUTH_URL", "NOVELAI_API_TOKEN", "ADMIN_PASSWORD"],
+    "required": [
+      "BETTER_AUTH_SECRET",
+      "BETTER_AUTH_URL",
+      "NOVELAI_API_TOKEN",
+      "ADMIN_PASSWORD",
+      "GOOGLE_CLIENT_ID",
+      "GOOGLE_CLIENT_SECRET",
+      "DISCORD_CLIENT_ID",
+      "DISCORD_CLIENT_SECRET",
+    ],
   },
   "durable_objects": {
     "bindings": [

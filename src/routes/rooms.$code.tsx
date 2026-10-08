@@ -4,7 +4,9 @@ import * as v from "valibot";
 
 import { useWipe } from "../components/transition";
 import { EntryFlow } from "../features/room/entry-flow";
+import { parseLoginSearch } from "../features/room/entry-login";
 import { RoomScreen } from "../features/room/room-screen";
+import { getBattleOptions } from "../features/room/battle-options.functions";
 import { getRoomEntry, joinRoom } from "../features/room/room.functions";
 import { ROOM_CODE_CHARS, roomCodeSchema } from "../features/room/room-state";
 import { ensureParticipant } from "../lib/auth.client";
@@ -14,19 +16,21 @@ import { getCurrentParticipant } from "../lib/auth.functions";
 const ensureParticipantOnClient = createClientOnlyFn(ensureParticipant);
 
 export const Route = createFileRoute("/rooms/$code")({
+  validateSearch: parseLoginSearch,
   loader: async ({ params }) => {
     const code = v.safeParse(roomCodeSchema, params.code);
     if (!code.success) throw notFound();
     // 小文字のコードは大文字に正規化したURLへそろえる。
     if (code.output !== params.code)
       throw redirect({ to: "/rooms/$code", params: { code: code.output }, replace: true });
-    const [entry, participant] = await Promise.all([
+    const [entry, participant, battleOptions] = await Promise.all([
       getRoomEntry({ data: { code: code.output } }),
       getCurrentParticipant(),
+      getBattleOptions(),
     ]);
     // 存在しない・終了したルームは、ほかの不明なURLと同じ404にする。
     if (!entry.exists) throw notFound();
-    return { ...entry, participant };
+    return { ...entry, participant, battleOptions };
   },
   head: ({ params }) => ({ meta: [{ title: `ルーム ${params.code} | Animic` }] }),
   component: RoomPage,
@@ -34,7 +38,8 @@ export const Route = createFileRoute("/rooms/$code")({
 
 function RoomPage() {
   const { code } = Route.useParams();
-  const { room, inviteUrl, participant } = Route.useLoaderData();
+  const { room, inviteUrl, participant, battleOptions } = Route.useLoaderData();
+  const { error } = Route.useSearch();
   const router = useRouter();
   const wipe = useWipe();
 
@@ -59,7 +64,11 @@ function RoomPage() {
       <EntryFlow
         mode="join"
         code={code}
+        account={participant?.account ?? null}
+        loginError={error}
+        returnTo={`/rooms/${code}`}
         onSubmit={join}
+        onSignedOut={() => router.invalidate()}
         back={{ href: "/", label: "トップへ戻る" }}
       />
     );
@@ -71,6 +80,7 @@ function RoomPage() {
       initial={room}
       participantId={participant.id}
       inviteUrl={inviteUrl}
+      battleOptions={battleOptions}
     />
   );
 }

@@ -8,6 +8,7 @@ import { BattleView } from "../battle/battle-view";
 import { getBattleScreen } from "../battle/battle-screen";
 import { ResultView } from "../battle/result-view";
 import { connectRoom } from "./room-connection";
+import type { BattleOptions } from "./battle-options";
 import { RoomLobby } from "./room-lobby";
 import type { RoomSnapshot } from "./room-state";
 
@@ -26,10 +27,12 @@ export function RoomScreen({
   initial,
   participantId,
   inviteUrl,
+  battleOptions,
 }: {
   initial: RoomSnapshot;
   participantId: string;
   inviteUrl: string;
+  battleOptions: BattleOptions;
 }) {
   const navigate = useNavigate();
   const wipe = useWipe();
@@ -88,6 +91,7 @@ export function RoomScreen({
           room={room}
           participantId={participantId}
           inviteUrl={inviteUrl}
+          battleOptions={battleOptions}
           connection={connection}
           previousBattleId={screen.previousBattleId}
           waitingForNext={screen.waitingForNext}

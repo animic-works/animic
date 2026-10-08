@@ -16,6 +16,8 @@ const layerOrder = [
 ].join("\n");
 
 export default defineConfig({
+  // E2E専用のログイン（src/lib/auth-e2e.server.ts）は、このフラグがtrueのビルドにだけ含める。
+  define: { ANIMIC_E2E_BUILD: JSON.stringify(process.env.ANIMIC_E2E === "true") },
   plugins: [
     cloudflare({
       viteEnvironment: { name: "ssr" },

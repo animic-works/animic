@@ -1,0 +1,90 @@
+@layer recipes.slots.base {
+  .actions {
+    gap: var(--spacing-3);
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .aside {
+    gap: var(--spacing-2);
+    display: inline-flex;
+    font-family: var(--fonts-body);
+  }
+
+  .crumbs {
+    margin: var(--spacing-0);
+    padding: var(--spacing-0);
+    gap: var(--spacing-2);
+    list-style: none;
+    color: var(--colors-fg-muted);
+    display: flex;
+    flex-wrap: wrap;
+    font-size: var(--font-sizes-xs);
+    font-weight: var(--font-weights-bold);
+  }
+
+  .crumbs [aria-current="page"] {
+    color: var(--colors-fg-default);
+  }
+
+  .crumbs a {
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .crumbs a:is(:hover, [data-hover]) {
+    color: var(--colors-fg-default);
+  }
+
+  .crumbs li + li::before {
+    color: var(--colors-fg-faint);
+    content: "/";
+    margin-right: var(--spacing-2);
+  }
+
+  .description {
+    margin: var(--spacing-0);
+    color: var(--colors-fg-muted);
+    flex-basis: 100%;
+    font-size: var(--font-sizes-sm);
+  }
+
+  .eyebrow {
+    margin: var(--spacing-0);
+    color: var(--colors-accent-default);
+    display: block;
+    font-family: var(--fonts-latin);
+    font-size: 0.65rem;
+    font-style: italic;
+    font-weight: var(--font-weights-heavy);
+    letter-spacing: var(--letter-spacings-widest);
+    text-transform: uppercase;
+  }
+
+  .root {
+    gap: var(--spacing-4);
+    align-items: flex-end;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+
+  .text {
+    gap: var(--spacing-1\.5);
+    display: grid;
+    min-width: var(--sizes-0);
+  }
+
+  .title {
+    margin: var(--spacing-0);
+    gap: var(--spacing-3);
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    font-family: var(--fonts-display);
+    font-size: clamp(1.4rem, 2.4vw, 1.75rem);
+    font-weight: var(--font-weights-regular);
+    line-height: 1.2;
+  }
+}

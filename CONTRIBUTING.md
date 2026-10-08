@@ -22,6 +22,8 @@ NovelAIで画像を生成する場合は、NovelAIのアカウント設定で発
 
 管理画面（`/admin`）を使う場合は、12文字以上のパスワードを`ADMIN_PASSWORD`に設定します。`#`や`$`を含む場合は`ADMIN_PASSWORD='...'`のように単一引用符で囲みます。囲まないと`#`以降がコメントとして扱われます。
 
+ルームを作るにはログインが必要なため、開発サーバーの画面でルームを作る場合も、[ログインのOAuthアプリ](#ログインのoauthアプリ)に従って`GOOGLE_CLIENT_ID`・`GOOGLE_CLIENT_SECRET`・`DISCORD_CLIENT_ID`・`DISCORD_CLIENT_SECRET`を設定します。
+
 初回は次の順序で実行します。
 
 ```sh
@@ -58,13 +60,13 @@ vp dev
 
 `vp run check`はフォーマット・lint・型チェック・Knipを実行します。`vp check`ではフォーマットと型情報を使うlintを実行し、プロジェクト全体の型チェックは`tsc --noEmit`、未使用コードの検査はKnipが担当します。コマンドの定義は[package.json](package.json)、lint・format・staged設定は[vite.config.ts](vite.config.ts)を参照してください。
 
-E2Eは[playwright.config.ts](playwright.config.ts)がビルド・DBの初期化・プレビュー起動を行います。テストごとではなく実行ごとに`.wrangler/e2e/`を初期化し、開発用の`.wrangler/state/`とは分けます。Wranglerによるテストデータ操作と他のテストが同じSQLiteを同時に更新しないよう、E2Eは1 workerで順に実行します。複数人の同時操作は各テスト内で複数のブラウザコンテキストを使って確認します。認証URLと鍵、NovelAIのトークン、管理画面のパスワードはテスト用の値を設定するため、E2Eだけなら`.env`の用意は不要です。E2Eのビルドには実際のNovelAIのトークンを含めず、ブラウザへ配信するファイルとトップページのHTMLにテスト用のトークンが含まれないことを確認します。
+E2Eは[playwright.config.ts](playwright.config.ts)がビルド・DBの初期化・プレビュー起動を行います。テストごとではなく実行ごとに`.wrangler/e2e/`を初期化し、開発用の`.wrangler/state/`とは分けます。Wranglerによるテストデータ操作と他のテストが同じSQLiteを同時に更新しないよう、E2Eは1 workerで順に実行します。複数人の同時操作は各テスト内で複数のブラウザコンテキストを使って確認します。認証URLと鍵、NovelAIのトークン、管理画面のパスワード、OAuthクライアントはテスト用の値を設定するため、E2Eだけなら`.env`の用意は不要です。E2Eのビルドには実際のNovelAIのトークンとOAuthクライアントを含めず、ブラウザへ配信するファイルとトップページのHTMLに、テスト用のNovelAIのトークンとOAuthの秘密情報が含まれないことを確認します。
 
-E2E専用クライアントは`ANIMIC_E2E=true`のビルドにだけ含め、共通ルートのクライアントコードから読み込みます。通常のビルドや開発サーバーにはこの読み込みを追加しません。E2Eのビルド成果物はデプロイせず、公開用にはこの環境変数を指定せずにビルドし直します。
+E2E専用クライアントは`ANIMIC_E2E=true`のビルドにだけ含め、共通ルートのクライアントコードから読み込みます。通常のビルドや開発サーバーにはこの読み込みを追加しません。ログインした状態は、同じビルドにだけ含めるBetter Authのプラグイン（`src/lib/auth-e2e.server.ts`の`/api/auth/sign-in/e2e`）で作り、実際のOAuthは通しません。ルームを作るテストでは、このプラグインでホストをログインさせてから作ります。このプラグインは、`BETTER_AUTH_URL`がローカルのURLでなければ拒否します。E2Eのビルド成果物はデプロイせず、公開用にはこの環境変数を指定せずにビルドし直します。
 
 `vp run test`はVite+内蔵のVitestで`src/**/*.test.ts`を実行します。期限やホストの引き継ぎなど、時刻を指定して確認する業務ルールを対象とします。Workersランタイムが必要な処理はE2Eで実際のD1・DOと組み合わせて確認します。
 
-E2Eでは、トップページのSSR表示・説明文・画像の読み込み・狭い画面での表示・404応答・検索対象の判定をブラウザで確認します。画面の操作は`tests/e2e/ui.spec.ts`で、ルームの作成・URLとルームコードからの参加・準備完了・対戦の条件の反映・開始できない理由・対戦の開始から勝負不成立と再戦・招待・退出とホストの引き継ぎ・別のタブでの退出・途中参加・画面遷移の演出のスキップ・遊び方の切り替え・利用規約とプライバシーポリシーを確認します。画面の選択肢より短い制限時間は、検証用クライアントで保存してから画面で開始します。対戦画面のプロンプト入力（語句・重み・入力候補・検索）、お題の拡大、確認なしですぐ提出の設定は`tests/e2e/battle-ui.spec.ts`で確認します。画像を生成する操作がまだ画面にないため、画像の生成・選択・提出は生成の処理が入るまで画面では確認せず、スコアで決まる結果の表示は単体テストで確認します。認証・ルーム・対戦の処理は、`tests/fixtures/api-client.ts`をブラウザで読み込んで実際のServer FunctionsとWebSocketを呼び出し、画面を経由せずに検証します。匿名セッションの復元・失効、CSRF対策、ルームへの参加と状態同期、複数タブ、ホストの退出・切断、WebSocketの認証、対戦開始・再戦・復帰・途中参加・提出期限による未提出・勝負不成立の確定と、D1への結果保存に失敗した場合の再試行を含めます。採点ワーカー向けAPIは、ブラウザを使わずPlaywrightの`request`から採点ワーカーとして要求を送り、リンク・heartbeat・採点ジョブの割り当て・完了・差し戻しと、D1に保存される状態を確認します。管理画面は、ログイン前の表示と管理用の操作の拒否、ログイン後のリンクコードの発行から採点ワーカーのリンク・一覧・失効、ログアウトまでを確認します。失敗時のtraceは`test-results/`に保存され、CIでは`e2e-failure-traces` artifactから7日間取得できます。展開したtraceは`vp exec playwright show-trace <trace.zipのパス>`で確認します。
+E2Eでは、トップページのSSR表示・説明文・画像の読み込み・狭い画面での表示・404応答・検索対象の判定をブラウザで確認します。画面の操作は`tests/e2e/ui.spec.ts`で、トップの「スタート」からのログインのダイアログと認証画面への移動・認証の失敗の表示・ログイン中の表示名の初期値とログアウト・ルームの作成・URLとルームコードからの参加・準備完了・対戦の条件の反映・開始できない理由・対戦の開始から勝負不成立と再戦・招待・退出とホストの引き継ぎ・別のタブでの退出・途中参加・画面遷移の演出のスキップ・遊び方の切り替え・利用規約とプライバシーポリシーを確認します。画面の選択肢より短い制限時間は、検証用クライアントで保存してから画面で開始します。対戦画面のプロンプト入力（語句・重み・入力候補・検索）、お題の拡大、確認なしですぐ提出の設定は`tests/e2e/battle-ui.spec.ts`で確認します。画像を生成する操作がまだ画面にないため、画像の生成・選択・提出は生成の処理が入るまで画面では確認せず、スコアで決まる結果の表示は単体テストで確認します。認証・ルーム・対戦の処理は、`tests/fixtures/api-client.ts`をブラウザで読み込んで実際のServer FunctionsとWebSocketを呼び出し、画面を経由せずに検証します。匿名セッションの復元・失効、ログインの開始で各サービスの認証URLを返すこと、ログイン中の参加者情報、匿名の参加者がログインしたときの参加者IDの切り替え、ログインしていない参加者のルームの作成の拒否、CSRF対策、ルームへの参加と状態同期、複数タブ、ホストの退出・切断、WebSocketの認証、対戦開始・再戦・復帰・途中参加・提出期限による未提出・勝負不成立の確定と、D1への結果保存に失敗した場合の再試行を含めます。採点ワーカー向けAPIは、ブラウザを使わずPlaywrightの`request`から採点ワーカーとして要求を送り、リンク・heartbeat・採点ジョブの割り当て・完了・差し戻しと、D1に保存される状態を確認します。管理画面は、ログイン前の表示と管理用の操作の拒否、ログイン後のリンクコードの発行から採点ワーカーのリンク・一覧・失効、採点ジョブの一覧、ログアウトまでを確認します。お題は、プロンプトを埋め込んだ半透明のPNGを追加して、配信される画像にメタデータと透過が残らないこと、非公開のお題を出題せず公開すると出題すること、削除後も画像の配信を続けることを確かめ、メタデータの残ったWebPをServer Functionへ直接送ると拒否されることも確認します。あわせて、対戦条件の候補の検証とロビーへの反映、よく使う表現の追加・並べ替え・削除、書き出したZIPを読み込むと消したお題と画像・対戦条件・表現が戻ることを確認します。失敗時のtraceは`test-results/`に保存され、CIでは`e2e-failure-traces` artifactから7日間取得できます。展開したtraceは`vp exec playwright show-trace <trace.zipのパス>`で確認します。
 
 Drizzleスキーマを変更したら`vp run db:generate --name <変更名>`でSQLを生成し、`migrations/`のSQLとスナップショットを確認して一緒に管理します。ローカルへの適用には`vp run db:migrate:local`を使います。適用済みのSQLは書き換えず、追加のmigrationで変更します。
 
@@ -94,7 +96,7 @@ Cloudflare Workers Buildsは次の設定で通常のアプリをビルド・デ�
 | ビルドコマンド     | `pnpm run build`            |
 | デプロイコマンド   | `pnpm exec wrangler deploy` |
 
-Node.jsは`.node-version`、pnpmは`package.json`の指定に合わせます。初回は本番D1を作成・確認し、`wrangler.jsonc`の`database_id`を設定してから`vp exec wrangler d1 migrations apply DB --remote`でSQLを適用します。Workerの秘密情報として`BETTER_AUTH_SECRET`に本番専用の鍵、`BETTER_AUTH_URL`に`https://animic.party`、`NOVELAI_API_TOKEN`にNovelAIの永続APIトークン、`ADMIN_PASSWORD`に管理画面のパスワード（ローカルとは別の12文字以上の値）を設定します。これらは`wrangler.jsonc`の`secrets.required`で必須にしているため、設定していないとデプロイが失敗します。DOのクラス登録は`wrangler.jsonc`のmigrationによってデプロイ時に行います。
+Node.jsは`.node-version`、pnpmは`package.json`の指定に合わせます。初回は本番D1を作成・確認し、`wrangler.jsonc`の`database_id`を設定してから`vp exec wrangler d1 migrations apply DB --remote`でSQLを適用します。お題の画像を保存するR2のバケットは、`vp exec wrangler r2 bucket create animic-topic-images`で作成します。Workerの秘密情報として`BETTER_AUTH_SECRET`に本番専用の鍵、`BETTER_AUTH_URL`に`https://animic.party`、`NOVELAI_API_TOKEN`にNovelAIの永続APIトークン、`ADMIN_PASSWORD`に管理画面のパスワード（ローカルとは別の12文字以上の値）、`GOOGLE_CLIENT_ID`・`GOOGLE_CLIENT_SECRET`・`DISCORD_CLIENT_ID`・`DISCORD_CLIENT_SECRET`に本番用のOAuthアプリの値を設定します。これらは`wrangler.jsonc`の`secrets.required`で必須にしているため、設定していないとデプロイが失敗します。DOのクラス登録は`wrangler.jsonc`のmigrationによってデプロイ時に行います。
 
 Custom Domainに`animic.party`を設定します。公開前に変更が`main`へ取り込まれていることと、Cloudflareがビルドするコミットを確認します。公開後はHTTPS、トップページ、アイコン・OGP画像、robots.txt、sitemap.xml、存在しないページの404を確認します。`www`を使う場合は正規ホストへ恒久リダイレクトします。開発環境を公開する場合は、Accessによる閲覧制限と、本番から独立したD1・DO・認証情報を設定します。
 
@@ -116,22 +118,15 @@ HTMLの参照は`src/routes/__root.tsx`、ホーム画面用アイコンの参�
 
 ## お題の登録
 
-自前で生成した画像を配信できるURLに配置し、D1の`topic`テーブルへID・難易度・画像URLを登録します。難易度は`easy`（かんたん）、`normal`（ふつう）、`hard`（むずかしい）です。画像のバイナリはD1に保存しません。
+お題は管理画面（`/admin`）の「お題」で登録します。「お題を追加」で画像（PNG・WebP・JPEG、10MB以下、1回に20件まで）と難易度を選んで追加します。画像はブラウザーでメタデータと透過のないWebPに変換してからR2へ保存するため、WebPを書き出せるブラウザー（Chromeなど）を使います。追加したお題は非公開です。一覧から開いて題名・備考を入力し、「公開する」で出題の対象にします。ロビーで選べる制限時間・画像選択の猶予の候補は「対戦条件」、プロンプト入力の選択肢は「よく使う表現」で登録します。
 
-登録用SQLの例です。画像URLは実際の配信先に置き換えます。
+ローカルのD1とR2は`vp dev`の保存先（`.wrangler/state/`）に入ります。E2Eは専用DBへテスト用のお題を登録するため、開発用データを必要としません。画像の配信先はテスト内で差し替えます。
 
-```sql
-INSERT INTO topic (id, difficulty, image_url)
-VALUES ('easy-001', 'easy', 'https://example.com/topics/easy-001.webp');
-```
+## 管理画面のバックアップ
 
-ローカルD1には、SQLを保存したファイルを指定して適用します。
+管理画面の「バックアップ」で「書き出す」を押すと、お題（画像を含む）・対戦条件の候補・よく使う表現を1つのZIP（`animic-backup-<日時>.zip`）に書き出します。採点ワーカー・採点ジョブ・対戦結果・参加者の情報・生成した画像は含みません。本番の内容を変えたら書き出し、ZIPはリポジトリの外に保管します。
 
-```sh
-vp exec wrangler d1 execute DB --local --file /path/to/topics.sql
-```
-
-E2Eは専用DBへテスト用のお題を登録するため、開発用データを必要としません。画像の配信先はテスト内で差し替えます。
+戻すときは、同じ画面でZIPを選び、追加・上書きされる件数を確かめてから「読み込む」を押します。同じIDのものは上書きし、ないものは追加します。ZIPにないものは削除しません。途中で失敗したら、同じZIPをもう一度読み込みます。ローカルと本番の間でデータを移すときも同じ手順を使い、画像は読み込んだ環境のR2に保存されます。
 
 ## 採点ワーカーの準備
 
@@ -139,10 +134,21 @@ E2Eは専用DBへテスト用のお題を登録するため、開発用データ
 
 1. PCにdesktop-comfyui-serverとComfyUIを用意し、ComfyUIの`custom_nodes`にcomfyui-illust-similarityを配置して依存パッケージを入れます。平坦な画像でも厳密なJSONを出力する版を使います。
 2. 初回の採点でモデル（約5GB）をダウンロードするため、登録の前に一度評価を実行しておきます。ダウンロード中はAnimicの割り当ての期限（2分）に間に合いません。
-3. 管理画面（`/admin`）に`ADMIN_PASSWORD`でログインし、「リンクコードの発行」で採点ワーカーの名前を入力して、リンクコードを発行します。コードは10分間有効で、1回だけ使えます。
+3. 管理画面（`/admin`）に`ADMIN_PASSWORD`でログインし、メニューの「採点ワーカー」の「リンクコードの発行」で採点ワーカーの名前を入力して、リンクコードを発行します。コードは10分間有効で、1回だけ使えます。
 4. desktop-comfyui-serverのサーバー設定にAnimicのURLを追加し、リンクコードを入力してリンクします。ローカルでは`vp dev`の`http://localhost:3000`を指定できます。
 
 採点ワーカーを止める場合は、管理画面の「採点ワーカー」で「失効させる」を押します。以後その採点ワーカーの要求は拒否されます。採点ジョブの状態は、管理画面の「採点ジョブ」で新しい順に最大100件を確認できます。
+
+## ログインのOAuthアプリ
+
+参加者のログイン（[アーキテクチャ](docs/architecture.md#参加者のログイン)）には、GoogleとDiscordのOAuthアプリを使います。開発用と本番用でアプリを分け、リダイレクトURIには`<BETTER_AUTH_URL>/api/auth/callback/google`と`<BETTER_AUTH_URL>/api/auth/callback/discord`を登録します。ローカルでは`http://localhost:3000/api/auth/callback/google`のようになります。
+
+| サービス | 作成する場所                                                              | 設定                                                                                                                                                            |
+| -------- | ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Google   | [Google Cloud Console](https://console.cloud.google.com/apis/credentials) | 種類が「ウェブ アプリケーション」のOAuthクライアントを作成し、リダイレクトURIを登録します。IDと秘密情報を`GOOGLE_CLIENT_ID`・`GOOGLE_CLIENT_SECRET`に設定します |
+| Discord  | [Discord Developer Portal](https://discord.com/developers/applications)   | アプリケーションを作成し、OAuth2のRedirectsにURIを登録します。Client IDとClient Secretを`DISCORD_CLIENT_ID`・`DISCORD_CLIENT_SECRET`に設定します                |
+
+ローカルでは`.env`、本番ではWorkerの秘密情報に設定します。IDと秘密情報のどちらかが未設定のサービスは無効になり、ログインを始めると`PROVIDER_NOT_FOUND`で失敗します。ほかの機能はそのまま使えます。Googleの同意画面の公開ステータスが「テスト」の間は、登録したテストユーザーだけがログインできます。
 
 ## 作業の流れ
 

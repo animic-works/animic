@@ -19,10 +19,18 @@ async function requireParticipant() {
   return current.user.id;
 }
 
+// ルームを作れるのは、GoogleかDiscordでログインした参加者だけ。
+async function requireAccount() {
+  const current = await identity();
+  if (!current || current.user.isAnonymous)
+    throw new Error("ルームを作るにはログインしてください。");
+  return current.user.id;
+}
+
 export const createRoom = createServerFn({ method: "POST" })
   .validator(v.object({ name: participantNameSchema, requestId: v.pipe(v.string(), v.uuid()) }))
   .handler(async ({ data }) => {
-    const participantId = await requireParticipant();
+    const participantId = await requireAccount();
     for (let attempt = 0; attempt < 8; attempt += 1) {
       const code = await createRoomCode(participantId, data.requestId, attempt);
       if (

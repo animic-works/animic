@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { connect, create, join, loadApi, snapshot } from "./api";
+import { connect, create, join, loadApi, signIn, snapshot } from "./api";
 
 const origin = "http://127.0.0.1:4173";
 
@@ -10,10 +10,10 @@ test("作成の同時要求と再送・招待・準備同期・複数タブ・�
   browser,
 }) => {
   test.setTimeout(45_000);
+  await signIn(context);
   await loadApi(page);
   const code = await page.evaluate(async () => {
     const api = window.animicTest;
-    await api.ensureParticipant();
     const data = { name: "ホスト", requestId: crypto.randomUUID() };
     const codes = await Promise.all([api.createRoom({ data }), api.createRoom({ data })]);
     const retried = await api.createRoom({ data });

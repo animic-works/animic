@@ -6,6 +6,8 @@ import { and, eq, gt } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import * as v from "valibot";
 
+import { parseTopicImageUrl } from "../battle/topic-images";
+import { readTopicImage } from "../battle/topic-images.server";
 import { claimScoringJob, completeScoringJob, releaseScoringJob } from "./scoring-jobs.server";
 import { scoringLinkCode, scoringWorker } from "./scoring.schema";
 import { buildScoringWorkflow, scoringInputsSchema } from "./scoring-workflows";
@@ -93,6 +95,14 @@ async function authenticate(request: Request, workerId: string) {
 }
 
 async function fetchImage(url: string) {
+  // このアプリが配信するお題の画像は、自分のURLへ通信せずR2から読む。
+  const topicImage = parseTopicImageUrl(url, env.BETTER_AUTH_URL);
+  if (topicImage) {
+    const object = await readTopicImage(topicImage);
+    if (!object) throw new Error(`画像を取得できませんでした（R2にありません）: ${url}`);
+    const body = await object.arrayBuffer();
+    return { base64: Buffer.from(body).toString("base64"), contentType: "image/webp" };
+  }
   const response = await fetch(url).catch((error: unknown) => {
     throw new Error(`画像を取得できませんでした: ${url}`, { cause: error });
   });
