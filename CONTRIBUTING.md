@@ -5,6 +5,7 @@
 - [ゲーム仕様](docs/product.md): プロダクトの要件
 - [アーキテクチャ](docs/architecture.md): 構成と各機能の役割
 - [実装規約](docs/conventions.md): コードを書く際の判断基準
+- [デザインシステムの設計資料](docs/design-system/README.md): 設計判断の事例・根拠と、再利用する判断材料
 
 ## セットアップと検証
 
@@ -64,7 +65,7 @@ vp run dev
 | 未使用コードの検査               | `vp run knip`                          |
 | コミットメッセージの検証         | `vp exec commitlint --edit <ファイル>` |
 
-`vp run check`はデザインシステムの生成とパッケージ依存の検査を行ってから、フォーマット・lint・型チェック・Knipを実行します。`vp check`ではフォーマットと型情報を使うlintを実行し、プロジェクト全体の型チェックは`tsc --noEmit`、未使用コードの検査はKnipが担当します。コマンドの定義は[package.json](package.json)、lint・format・staged設定は[vite.config.ts](vite.config.ts)を参照してください。
+`vp run check`はデザインシステムを生成してから、import境界・styling propsの検査、フォーマット・lint・型チェック・Knipを実行します。`vp check`ではフォーマットと型情報を使うlintを実行し、プロジェクト全体の型チェックは`tsc --noEmit`、未使用コードの検査はKnipが担当します。現在の設定とKnipの例外は[静的検査の設定](#静的検査の設定)を参照してください。
 
 E2Eは[playwright.config.ts](playwright.config.ts)がビルド・DBの初期化・プレビュー起動を行います。テストごとではなく実行ごとに`.wrangler/e2e/`を初期化し、開発用の`.wrangler/state/`とは分けます。Wranglerによるテストデータ操作と他のテストが同じSQLiteを同時に更新しないよう、E2Eは1 workerで順に実行します。複数人の同時操作は各テスト内で複数のブラウザコンテキストを使って確認します。認証URLと鍵、NovelAIのトークン、管理画面のパスワード、OAuthクライアントはテスト用の値を設定するため、E2Eだけなら`.env`の用意は不要です。E2Eのビルドには実際のNovelAIのトークンとOAuthクライアントを含めず、ブラウザへ配信するファイルとトップページのHTMLに、テスト用のNovelAIのトークンとOAuthの秘密情報が含まれないことを確認します。
 
@@ -72,7 +73,7 @@ E2E専用クライアントは`ANIMIC_E2E=true`のビルドにだけ含め、共
 
 `vp run test`はVite+内蔵のVitestで`src/**/*.test.ts`を実行します。期限やホストの引き継ぎなど、時刻を指定して確認する業務ルールを対象とします。Workersランタイムが必要な処理はE2Eで実際のD1・DOと組み合わせて確認します。
 
-E2Eでは、トップページのSSR表示・説明文・画像の読み込み・狭い画面での表示・404応答・検索対象の判定をブラウザで確認します。画面の操作は`tests/e2e/ui.spec.ts`で、トップの「スタート」からのログインのダイアログと認証画面への移動・認証の失敗の表示・ログイン中の表示名の初期値とログアウト・ルームの作成・URLとルームコードからの参加・準備完了・対戦の条件の反映・開始できない理由・対戦の開始から勝負不成立と再戦・招待・退出とホストの引き継ぎ・別のタブでの退出・途中参加・画面遷移の演出のスキップ・遊び方の切り替え・利用規約とプライバシーポリシーを確認します。画面の選択肢より短い制限時間は、検証用クライアントで保存してから画面で開始します。対戦画面のプロンプト入力（語句・重み・入力候補・検索）、お題の拡大、確認なしですぐ提出の設定は`tests/e2e/battle-ui.spec.ts`で確認します。`tests/e2e/battle-input.spec.ts`では、IMEの変換イベントを送って確定前の入力を保持することと、生成履歴の配信を差し替えて提出確認中の画像が変わらないことを確認します。これらは実際のIMEや画像生成サービスとの接続を確認するものではありません。画像生成の接続が未実装のため、実際の生成から選択・提出までを通す検証は接続後に行い、スコアで決まる結果の表示は単体テストで確認します。認証・ルーム・対戦の処理は、`tests/fixtures/api-client.ts`をブラウザで読み込んで実際のServer FunctionsとWebSocketを呼び出し、画面を経由せずに検証します。匿名セッションの復元・失効、ログインの開始で各サービスの認証URLを返すこと、ログイン中の参加者情報、匿名の参加者がログインしたときの参加者IDの切り替え、ログインしていない参加者のルームの作成の拒否、CSRF対策、ルームへの参加と状態同期、複数タブ、ホストの退出・切断、WebSocketの認証、対戦開始・再戦・復帰・途中参加・提出期限による未提出・勝負不成立の確定と、D1への結果保存に失敗した場合の再試行を含めます。採点ワーカー向けAPIは、ブラウザを使わずPlaywrightの`request`から採点ワーカーとして要求を送り、リンク・heartbeat・採点ジョブの割り当て・完了・差し戻しと、D1に保存される状態を確認します。管理画面は、ログイン前の表示と管理用の操作の拒否、ログイン後のリンクコードの発行から採点ワーカーのリンク・一覧・失効、採点ジョブの一覧、ログアウトまでを確認します。画像生成のモデルは、切り替えた後の表示と開き直したときの表示、対応していないモデルをServer Functionへ直接送ると拒否されることを確認します。お題は、プロンプトを埋め込んだ半透明のPNGを追加して、配信される画像にメタデータと透過が残らないこと、非公開のお題を出題せず公開すると出題すること、削除後も画像の配信を続けることを確かめ、メタデータの残ったWebPをServer Functionへ直接送ると拒否されることも確認します。あわせて、対戦条件の候補の検証とロビーへの反映、よく使う表現の追加・並べ替え・削除、書き出したZIPを読み込むと消したお題と画像・対戦条件・表現が戻ることを確認します。失敗時のtraceは`test-results/`に保存され、CIでは`e2e-failure-traces` artifactから7日間取得できます。展開したtraceは`vp exec playwright show-trace <trace.zipのパス>`で確認します。
+E2Eでは、トップページの説明・操作のSSR表示、画像の読み込み、狭い画面での表示、404応答をブラウザで確認します。対戦画面は`tests/e2e/battle-ui.spec.ts`で、プロンプトの語句・重み・入力候補・検索、お題の拡大、確認なしですぐ提出の設定を確認します。`tests/e2e/battle-input.spec.ts`ではIMEの変換イベントを送って確定前の入力を保持することと、生成履歴の配信を差し替えて提出確認中の画像が変わらないことを確認します。これらは実際のIMEや画像生成サービスとの接続を確認するものではありません。画像生成から選択・提出までを通す検証は、生成処理への接続後に行います。画面の操作テストは、ログイン・匿名参加・ルール変更・招待・開始条件・再接続・期限による結果確定・再戦への遷移を確認します。認証・ルーム・対戦は、`tests/fixtures/api-client.ts`をブラウザで読み込んでServer FunctionsとWebSocketを直接呼び出して検証します。匿名セッションの復元・失効、OAuth認証URLの発行、ログイン中の参加者情報、匿名からログインへの参加者IDの切り替え、未ログインでのルーム作成の拒否、CSRF対策、ルームへの参加と状態同期、複数タブ、ホストの退出・切断、WebSocketの認証、対戦開始・再戦・復帰・途中参加・提出期限による未提出・勝負不成立の確定と、D1への結果保存に失敗した場合の再試行を含めます。採点ワーカー向けAPIは、ブラウザを使わずPlaywrightの`request`から採点ワーカーとして要求を送り、リンク・heartbeat・採点ジョブの割り当て・完了・差し戻しと、D1に保存される状態を確認します。管理画面は、認証前の操作の拒否、リンクコードの発行、採点ワーカーの登録・一覧・失効、ログアウトを確認します。画像生成のモデルは、切り替えた後の表示と開き直したときの表示、対応していないモデルをServer Functionへ直接送ると拒否されることを確認します。お題画像のメタデータと透過の除去、公開・非公開による出題制御、削除後の画像配信、対戦条件とよく使う表現の編集、お題画像を含むZIPの書き出しと復元も確認します。失敗時のtraceは`test-results/`に保存され、CIでは`e2e-failure-traces` artifactから7日間取得できます。展開したtraceは`vp exec playwright show-trace <trace.zipのパス>`で確認します。
 
 Drizzleスキーマを変更したら`vp run db:generate --name <変更名>`でSQLを生成し、`migrations/`のSQLとスナップショットを確認して一緒に管理します。ローカルへの適用には`vp run db:migrate:local`を使います。適用済みのSQLは書き換えず、追加のmigrationで変更します。
 
@@ -114,7 +115,7 @@ Search Consoleは`animic.party`のドメインプロパティを追加し、指�
 
 Knipでは、デザインシステム用に次の例外とentryを設定しています。
 
-- 生成CSSの`@import`からフォント依存を追跡しないため、アプリのCSSで使うルートのFontsource依存と、生成CSSで使う`packages/styled-system`のFontsource依存を明示的に除外します。対応するCSSの解決はアプリのビルドと[フォント生成・Storybookのビルド](#デザインシステムの生成と検証)で検証します。
+- 生成CSSの`@import`からフォント依存を追跡しないため、`packages/styled-system`のFontsource依存だけを明示的に除外します。対応するCSSの解決は[フォント生成とStorybookのビルド](#デザインシステムの生成と検証)で検証します。
 - 検査・生成スクリプトのJSに対応する型宣言は、TypeScriptでの利用を解析するentryとして指定します。
 
 参考: [KnipのVite+対応](https://knip.dev/reference/plugins/vite-plus)。
@@ -126,7 +127,7 @@ Knipでは、デザインシステム用に次の例外とentryを設定して�
 1. [デザイン原則](docs/design.md)、[アーキテクチャ](docs/architecture.md#デザインシステム)、既存のデザイン定義を確認し、表現できない内容・状態・操作・利用条件を具体化します。
 2. Panda MCPで既存のToken・Style・Recipe・Patternを調べ、詳細は必要に応じて`packages/design-system/src/`を確認します。React Componentの公開APIと、その組み合わせも確認します。
 3. 不足しているものを、下表の責務に分けます。既存の公開APIの組み合わせで成立するなら、利用側の構成を変更し、デザインシステムは変更しません。
-4. デザインシステムを利用する通常UIの不足を、任意CSS、`style`、自由な`className`、styled-systemの低レベルAPI、Visual領域による迂回で解決しません。
+4. 通常UIの不足を、任意CSS、`style`、自由な`className`、styled-systemの低レベルAPI、Visual領域による迂回で解決しません。
 5. 新しいToken・Style・Recipe・Pattern・Component・variant・Responsive条件・公開API等が必要なら、既存定義で不足する理由、変更先、選択肢と影響を示し、新しいDesign判断として実装前に承認を得ます。
 6. 承認後、[各層の責務](docs/architecture.md#デザインシステム)に従って変更します。デザイン定義、DOM・操作、利用側の構成を混同しません。
 7. [生成と検証](#デザインシステムの生成と検証)から、変更に必要な生成結果・型・Guardrail・Storybook・ブラウザ操作・アクセシビリティ・画像比較等を選び、目的が成立したか確認します。
@@ -153,13 +154,13 @@ vp run design-system:analyze
 vp run check
 ```
 
-`design-system:generate`は`panda codegen --spec`、`panda cssgen`、`scripts/generate-fonts.mjs`を実行します。Native Specは`generated/specs/design-system.json`、Panda CSSは`generated/styles.css`、フォントCSSは`generated/fonts.css`です。必要なフォント・太さ・正体と斜体はText Styleから求め、styled-systemの依存からFontsource CSSを解決します。生成物を削除した後も同じコマンドで復元できます。直接値を持つSemantic TokenはNative Specの`semantic`フラグが省略されるため、分類はMCPのSemantic Token問い合わせとソースコードで確認します。`typecheck`・`check`・`test:design-system`・Storybookの起動とビルドも先に生成するため、初回チェックアウトの生成物に依存しません。アプリの起動とビルドはデザインシステムの生成を必要としません。`dev`・`build`・`preview`は`-C .`でルートパッケージを指定し、ワークスペース全体の選択と区別します。
+`design-system:generate`は`panda codegen --spec`、`panda cssgen`、`scripts/generate-fonts.mjs`を実行します。Native Specは`generated/specs/design-system.json`、Panda CSSは`generated/styles.css`、フォントCSSは`generated/fonts.css`です。必要なフォント・太さ・正体と斜体はText Styleから求め、styled-systemの依存からFontsource CSSを解決します。生成物を削除した後も同じコマンドで復元できます。直接値を持つSemantic TokenはNative Specの`semantic`フラグが省略されるため、分類はMCPのSemantic Token問い合わせとソースコードで確認します。アプリの`dev`・`build`・`preview`は`-C .`でルートパッケージを明示し、ワークスペース全体の選択と区別します。`dev`・`build`・`typecheck`・`check`・`test:design-system`も先に生成するため、初回チェックアウトの生成物に依存しません。
 
-`test:design-system`は生成されたSemantic Tokenの参照・CSS変数・非公開サブパスの解決失敗・色ペアのコントラスト・フォントCSSの導出と依存の解決・共通パッケージの依存方向を検証します。禁止する値を使った型検証は`tests/design-system/strict-types.ts`と`public-types.tsx`にあり、`check`に含まれる型チェックで確認します。`design-system:analyze`は使用状況を`generated/analysis.json`へ出力します。未使用という結果だけで承認済みの定義を削除しません。
+`test:design-system`は生成されたSemantic Tokenの参照・CSS変数・非公開サブパスの解決失敗・色ペアのコントラスト・フォントCSSの導出と依存の解決・JSX spreadの型を検証します。禁止する値を使った型検証は`tests/design-system/strict-types.ts`と`public-types.tsx`にあり、`check`に含まれる型チェックで確認します。`design-system:analyze`は使用状況を`generated/analysis.json`へ出力します。未使用という結果だけで承認済みの定義を削除しません。
 
 定義やReact内のスタイル指定を変更した場合は`vp run design-system:generate`を再実行してから表示を確認します。
 
-`design-system:guard`は`packages/design-system/src/`と`packages/react/src/`の依存方向を検査します。共通パッケージからアプリケーションへの依存、PresetからReact・生成SDKへの依存、React実装からPanda・Presetへの依存を禁止します。アプリケーションの`src/`はこの検査の対象ではありません。利用境界は[アーキテクチャ](docs/architecture.md#uiからの利用)を参照してください。
+別のReactアプリケーションを同じGuardrailで検査する場合は、`node scripts/design-guardrails.mjs --root /path/to/application`を実行します。指定先の`src/`と`tsconfig.json`を使用し、JSX spreadの型もそのアプリケーションの依存関係から解決します。共通CSSは`src/routes/__root.tsx`で読み込みます。通常UIに対するCSSの例外は設けません。
 
 生成物はGit管理せず、整形・lintの修正対象にも含めません。各パッケージの`package.json`、CSSエントリーポイント、生成設定・生成スクリプト・検証コードはGit管理します。
 
@@ -285,7 +286,7 @@ Issue・PRのタイトルとコミットの件名は`type(scope): 日本語の�
 
 ## CIとレビュー
 
-- [Checks](.github/workflows/checks.yml)はPRの作成・更新・再オープン時と手動実行時に起動します。pushを起点にした重複実行は行いません。`Quality`でデザインシステムの契約・Storybookブラウザ検証、Workers型生成、単体テスト、E2Eに含まれるビルドとローカルD1・DOでの検証、生成ルートの差分確認、静的検査を実行します。
+- [Checks](.github/workflows/checks.yml)はPRの作成・更新・再オープン時と手動実行時に起動します。pushを起点にした重複実行は行いません。`Quality`でWorkers型生成、業務ルールとデザインシステムの契約・ブラウザ・画像比較検証、E2Eに含まれるビルドとローカルD1・DOでの検証、生成ルートの差分確認、静的検査を実行します。
 - `Quality`ではワークフローの変更時にactionlint、依存関係の変更時に`vp pm audit -- --audit-level high`も実行します。手動実行では両方を検査します。脆弱性検査は開発用の依存関係も含め、High・Criticalを失敗条件にします。依存関係を変更しないPRでは実行しないため、新たに公表された脆弱性を継続監視するものではありません。actionlintはバージョンと配布バイナリのSHA-256を固定します。
 - [Commit policy](.github/workflows/commit-policy.yml)でPRのブランチ名・取り込み先・タイトル・コミット形式を検証します。
 - テスト・ビルド対象を追加する変更では、それに対応する検証もCIに組み込みます。

@@ -8,6 +8,7 @@ import { e2eOAuthClients } from "./tests/e2e/oauth-clients";
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  outputDir: "test-results/e2e",
   forbidOnly: Boolean(process.env.CI),
   retries: 0,
   // Wranglerからも同じローカルSQLiteを操作するため、テスト間のDB操作を競合させない。

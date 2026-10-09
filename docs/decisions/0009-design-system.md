@@ -11,7 +11,7 @@
 
 ## 決定
 
-Pandaを基盤とするUIフレームワーク非依存のデザインシステム、生成されるstyled-system、React実装をワークスペース内の独立したパッケージに分ける。Animic側でスロット名を定義し、React実装が対応するArk UIの要素へスタイルを適用する。デザインシステムを利用するReact UIは、`@animic/react`の公開Componentを組み合わせる。
+Pandaを基盤とするUIフレームワーク非依存のデザインシステム、生成されるstyled-system、React実装をワークスペース内の独立したパッケージに分ける。Animic側でスロット名を定義し、React実装が対応するArk UIの要素へスタイルを適用する。Animicの`src/routes/`・`src/features/`のUIは、`@animic/react`の公開Componentを組み合わせる。
 
 具体的なデザイン定義を`packages/design-system/src/`に置き、型付きSDK・CSS・Native Specを生成する。パッケージの配布方式はこの決定に含めない。
 

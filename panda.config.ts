@@ -6,7 +6,11 @@ export default defineConfig({
   strictTokens: true,
   strictPropertyValues: true,
   preflight: false,
-  include: ["packages/react/src/**/*.{ts,tsx}", "stories/**/*.{ts,tsx}"],
+  include: [
+    "packages/react/src/**/*.{ts,tsx}",
+    "stories/**/*.{ts,tsx}",
+    "src/features/*/visuals/**/*.{ts,tsx}",
+  ],
   staticCss: {
     recipes: "*",
     patterns: {

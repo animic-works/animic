@@ -2,8 +2,8 @@ import base from "@pandacss/preset-base";
 // 利用先ごとの成立条件。同じ値でも他のComponentへ自動適用しない。
 const twoColumnsMin = "30em";
 const wideLayoutMin = "54em";
-// アートワークの配置を切り替える条件。
-const artworkConditions = {
+// アートワークの配置を切り替える条件。Visualの検査もこの一覧を参照する。
+export const artworkConditions = {
   artworkNarrow: "@media (max-width: 900px)",
   artworkMedium: "@media (max-width: 1100px)",
   artworkVertical: "@media (orientation: portrait)",

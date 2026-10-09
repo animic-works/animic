@@ -1,18 +1,18 @@
-import { useState } from "react";
-import type { FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import * as v from "valibot";
-
-import { Badge } from "../../components/badge";
-import { Button } from "../../components/button";
-import { DataCell, DataRow, DataTable } from "../../components/data-table";
-import { Dialog, DialogClose } from "../../components/dialog";
-import { EmptyState } from "../../components/empty-state";
-import { TextField } from "../../components/field";
-import { Icon } from "../../components/icon";
-import { Stack } from "../../components/layout";
-import { Surface } from "../../components/surface";
-import { Heading, Text } from "../../components/text";
-import { toast } from "../../components/toast";
+import { ActionGroup } from "@animic/react/action-group";
+import { Badge } from "@animic/react/badge";
+import { Button } from "@animic/react/button";
+import { DataTable, type DataTableColumn } from "@animic/react/data-table";
+import { Dialog } from "@animic/react/dialog";
+import { Field } from "@animic/react/field";
+import { Heading } from "@animic/react/heading";
+import { Input } from "@animic/react/input";
+import { Split } from "@animic/react/split";
+import { Stack } from "@animic/react/stack";
+import { Surface } from "@animic/react/surface";
+import { Text } from "@animic/react/text";
+import { useToast } from "@animic/react/toast";
 import {
   issueScoringLinkCode,
   revokeScoringWorker,
@@ -20,8 +20,7 @@ import {
 } from "../scoring/scoring-admin.functions";
 import type { getScoringAdminData } from "../scoring/scoring-admin.functions";
 import { errorMessage, formatDateTime } from "./admin-format";
-import { AdminColumns, AdminGuide, AdminHead } from "./admin-parts";
-
+import { AdminError, AdminGuide, AdminHead } from "./admin-parts";
 type ScoringAdminData = Awaited<ReturnType<typeof getScoringAdminData>>;
 type ScoringWorker = ScoringAdminData["workers"][number];
 
@@ -43,6 +42,54 @@ const guideItems = [
   },
 ];
 
+function workerColumns(
+  onRevoke: (worker: ScoringWorker) => void,
+): DataTableColumn<ScoringWorker>[] {
+  return [
+    { id: "name", header: "名前", rowHeader: true, cell: (worker) => worker.name },
+    {
+      id: "created",
+      header: "登録日時",
+      cell: (worker) => formatDateTime(worker.createdAt),
+    },
+    {
+      id: "seen",
+      header: "最後のheartbeat",
+      cell: (worker) => formatDateTime(worker.lastSeenAt),
+    },
+    {
+      id: "comfy",
+      header: "ComfyUI",
+      cell: (worker) => worker.status?.comfyStatus ?? "—",
+    },
+    { id: "gpu", header: "GPU", cell: (worker) => gpuText(worker.status) },
+    {
+      id: "state",
+      header: "状態",
+      cell: (worker) =>
+        worker.revokedAt === null ? (
+          <Badge tone="success" size="sm">
+            有効
+          </Badge>
+        ) : (
+          <Text variant="caption" tone="muted">
+            失効（{formatDateTime(worker.revokedAt)}）
+          </Text>
+        ),
+    },
+    {
+      id: "action",
+      header: "操作",
+      cell: (worker) =>
+        worker.revokedAt === null ? (
+          <Button appearance="outlined" size="xs" onClick={() => onRevoke(worker)}>
+            失効させる
+          </Button>
+        ) : null,
+    },
+  ];
+}
+
 export function ScoringWorkersScreen({
   workers,
   onChanged,
@@ -50,6 +97,7 @@ export function ScoringWorkersScreen({
   workers: ScoringAdminData["workers"];
   onChanged: () => Promise<void>;
 }) {
+  const toast = useToast();
   const [name, setName] = useState("");
   const [nameError, setNameError] = useState<string | null>(null);
   const [issued, setIssued] = useState<Awaited<ReturnType<typeof issueScoringLinkCode>> | null>(
@@ -62,6 +110,12 @@ export function ScoringWorkersScreen({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [revokeError, setRevokeError] = useState<string | null>(null);
   const [revokingBusy, setRevokingBusy] = useState(false);
+
+  function openRevoke(worker: ScoringWorker) {
+    setRevoking(worker);
+    setRevokeError(null);
+    setConfirmOpen(true);
+  }
 
   async function issue(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -86,6 +140,8 @@ export function ScoringWorkersScreen({
     setRefreshing(true);
     try {
       await onChanged();
+    } catch (error) {
+      toast.show({ title: errorMessage(error) });
     } finally {
       setRefreshing(false);
     }
@@ -100,7 +156,7 @@ export function ScoringWorkersScreen({
       await revokeScoringWorker({ data: { id: target.id } });
       setConfirmOpen(false);
       await onChanged();
-      toast("失効させました");
+      toast.show({ title: "失効させました" });
     } catch (error) {
       setRevokeError(errorMessage(error));
     } finally {
@@ -114,127 +170,79 @@ export function ScoringWorkersScreen({
         eyebrow="Admin"
         title="採点ワーカー"
         actions={
-          <Button
-            variant="secondary"
-            leadingIcon={<Icon name="refresh" size="md" />}
-            loading={refreshing}
-            onClick={() => void refresh()}
-          >
+          <Button appearance="secondary" loading={refreshing} onClick={() => void refresh()}>
             最新の状態にする
           </Button>
         }
       />
-      <AdminColumns
-        layout="form"
-        primary={
-          <Stack gap="6">
-            <Surface as="section" variant="soft" padding="lg" aria-label="リンクコードの発行">
-              <Stack gap="4">
-                <Heading variant="heading-sm">リンクコードの発行</Heading>
+      <Split layout="main-aside" align="start">
+        <Stack space="section">
+          <section aria-label="リンクコードの発行">
+            <Surface appearance="subtle">
+              <Stack>
+                <Heading level={2} size="sm">
+                  リンクコードの発行
+                </Heading>
                 <form onSubmit={(event) => void issue(event)}>
-                  <Stack gap="3">
-                    <TextField
-                      label="採点ワーカーの名前"
-                      value={name}
-                      invalid={Boolean(nameError)}
-                      onChange={(event) => setName(event.target.value)}
-                    />
-                    {nameError ? (
-                      <Text variant="note" tone="danger" role="alert">
-                        {nameError}
-                      </Text>
-                    ) : null}
-                    <Stack direction="row" justify="end">
+                  <Stack>
+                    <Field label="採点ワーカーの名前" error={nameError ?? undefined}>
+                      <Input value={name} onChange={(event) => setName(event.target.value)} />
+                    </Field>
+                    <ActionGroup>
                       <Button type="submit" loading={issuing}>
                         発行する
                       </Button>
-                    </Stack>
+                    </ActionGroup>
                   </Stack>
                 </form>
-                {issued ? (
-                  <Stack gap="1">
-                    <Text as="output" variant="code">
-                      {issued.code}
-                    </Text>
-                    <Text variant="note" tone="muted">
+                {issued && (
+                  <Stack space="tight">
+                    <output aria-label="リンクコード">
+                      <Text variant="code">{issued.code}</Text>
+                    </output>
+                    <Text variant="caption" tone="muted">
                       {formatDateTime(issued.expiresAt)}まで、1回だけ使えます
                     </Text>
                   </Stack>
-                ) : null}
+                )}
               </Stack>
             </Surface>
-            {workers.length === 0 ? (
-              <EmptyState title="採点ワーカーはまだ登録されていません" />
-            ) : (
-              <DataTable
-                caption="採点ワーカー"
-                overflow="scroll"
-                columns={["名前", "登録日時", "最後のheartbeat", "ComfyUI", "GPU", "状態", "操作"]}
-              >
-                {workers.map((worker) => (
-                  <DataRow key={worker.id}>
-                    <DataCell header kind="strong">
-                      {worker.name}
-                    </DataCell>
-                    <DataCell>{formatDateTime(worker.createdAt)}</DataCell>
-                    <DataCell>{formatDateTime(worker.lastSeenAt)}</DataCell>
-                    <DataCell>{worker.status?.comfyStatus ?? "—"}</DataCell>
-                    <DataCell>{gpuText(worker.status)}</DataCell>
-                    <DataCell>
-                      {worker.revokedAt === null ? (
-                        <Badge tone="success" size="sm">
-                          有効
-                        </Badge>
-                      ) : (
-                        <Text as="span" variant="caption" tone="muted">
-                          失効（{formatDateTime(worker.revokedAt)}）
-                        </Text>
-                      )}
-                    </DataCell>
-                    <DataCell kind="actions">
-                      {worker.revokedAt === null ? (
-                        <Button
-                          variant="destructive"
-                          size="xs"
-                          onClick={() => {
-                            setRevoking(worker);
-                            setRevokeError(null);
-                            setConfirmOpen(true);
-                          }}
-                        >
-                          失効させる
-                        </Button>
-                      ) : null}
-                    </DataCell>
-                  </DataRow>
-                ))}
-              </DataTable>
-            )}
-          </Stack>
-        }
-        secondary={<AdminGuide items={guideItems} />}
-      />
+          </section>
+          <DataTable
+            label="採点ワーカー"
+            rows={workers}
+            getRowKey={(worker) => worker.id}
+            empty="採点ワーカーはまだ登録されていません"
+            columns={workerColumns(openRevoke)}
+          />
+        </Stack>
+        <AdminGuide items={guideItems} />
+      </Split>
       <Dialog
         open={confirmOpen}
-        onOpenChange={setConfirmOpen}
+        onOpenChange={(open) => {
+          if (!revokingBusy) setConfirmOpen(open);
+        }}
         title="採点ワーカーを失効させますか？"
         description={`「${revoking?.name ?? ""}」からの要求を以後すべて拒否します。`}
+        size="compact"
+        presentation="centered"
         footer={
-          <>
-            <DialogClose>
-              <Button variant="secondary">やめる</Button>
-            </DialogClose>
-            <Button variant="destructive" loading={revokingBusy} onClick={() => void revoke()}>
+          <ActionGroup>
+            <Button
+              appearance="secondary"
+              loading={revokingBusy}
+              onClick={() => setConfirmOpen(false)}
+            >
+              やめる
+            </Button>
+            <Button loading={revokingBusy} onClick={() => void revoke()}>
               失効させる
             </Button>
-          </>
+          </ActionGroup>
         }
       >
-        {revokeError ? (
-          <Text variant="note" tone="danger" role="alert">
-            {revokeError}
-          </Text>
-        ) : null}
+        <AdminError>{revokeError}</AdminError>
       </Dialog>
     </>
   );
