@@ -29,6 +29,7 @@ import {
   getImageModel,
   saveImageModel,
 } from "../../src/features/image-generation/image-generation-admin.functions";
+import { generateImage } from "../../src/features/image-generation/image-generation.functions";
 import {
   applyBackupChunk,
   getBackup,
@@ -50,6 +51,7 @@ const api = {
   setReady,
   setRoomSettings,
   startBattle,
+  generateImage,
   submitBattleImage,
   issueScoringLinkCode,
   getScoringAdminData,

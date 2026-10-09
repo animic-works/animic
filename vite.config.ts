@@ -22,6 +22,10 @@ export default defineConfig({
     cloudflare({
       viteEnvironment: { name: "ssr" },
       persistState: process.env.ANIMIC_E2E === "true" ? { path: ".wrangler/e2e" } : true,
+      // E2Eでは偽のNovelAIへ送る。`vars`はビルドした後に環境変数で上書きできないため、ビルドの設定に入れる。
+      ...(process.env.ANIMIC_E2E === "true" && process.env.NOVELAI_API_URL
+        ? { config: { vars: { NOVELAI_API_URL: process.env.NOVELAI_API_URL } } }
+        : {}),
     }),
     tanstackStart(),
     react(),

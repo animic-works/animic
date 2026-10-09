@@ -1,7 +1,10 @@
+import { setTimeout } from "node:timers/promises";
+
 import * as v from "valibot";
 import { expect, test } from "@playwright/test";
-import type { APIRequestContext } from "@playwright/test";
+import type { APIRequestContext, Page } from "@playwright/test";
 
+import { create, join, snapshot } from "./api";
 import { executeLocalD1 } from "./d1";
 
 const origin = "http://127.0.0.1:4173";
@@ -68,6 +71,22 @@ async function job(id: string) {
 
 function similarity(text: string) {
   return { data: [{ nodeId: "3", label: "similarity", values: { text: [text] } }] };
+}
+
+/** ルームのDOが採点ジョブを登録するまで、採点ワーカーとして要求を繰り返す。 */
+async function claimJob(request: APIRequestContext, worker: Worker) {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const response = await post(request, worker, "jobs/claim");
+    if (response.status() === 200) return v.parse(claimedSchema, await response.json());
+    await setTimeout(1000);
+  }
+  throw new Error("採点ジョブを受け取れませんでした。");
+}
+
+async function participantId(page: Page) {
+  const id = await page.evaluate(async () => (await window.animicTest.getCurrentParticipant())?.id);
+  if (!id) throw new Error("参加者IDを取得できませんでした。");
+  return id;
 }
 
 test.describe.configure({ mode: "serial", timeout: 60_000 });
@@ -207,4 +226,115 @@ test("失敗・読めない出力・期限切れ・画像の取得失敗は1回�
   const unavailable = await job("job-image");
   expect(unavailable).toMatchObject({ state: "queued", attempts: 1, worker_id: null });
   expect(unavailable.error).toContain("画像");
+});
+
+test("生成した画像を提出すると、採点ワーカーへR2の生成画像を渡し、採点の結果で勝敗が決まる", async ({
+  browser,
+  request,
+}) => {
+  test.setTimeout(90_000);
+  // 採点ワーカーが自分のURLから取得できるお題にする。ほかのテストのお題と重ならない難易度で出題する。
+  await executeLocalD1(
+    `INSERT OR REPLACE INTO topic (id, difficulty, image_url) VALUES ('e2e-scoring-topic', 'hard', '${origin}/og-image.png')`,
+  );
+  // 匿名参加の回数制限を、ほかのファイルのテストと分ける。
+  const hostContext = await browser.newContext({
+    extraHTTPHeaders: { "CF-Connecting-IP": "203.0.113.37" },
+  });
+  const guestContext = await browser.newContext({
+    extraHTTPHeaders: { "CF-Connecting-IP": "203.0.113.38" },
+  });
+  try {
+    const host = await hostContext.newPage();
+    const guest = await guestContext.newPage();
+    const code = await create(host, "採点ホスト");
+    await join(guest, code, "採点ゲスト");
+    await expect
+      .poll(async () => (await snapshot(host)).members.filter((member) => member.connected).length)
+      .toBe(2);
+    const started = await host.evaluate(
+      async (data) => {
+        await window.animicTest.setRoomSettings({ data });
+        return window.animicTest.startBattle({ data });
+      },
+      {
+        code,
+        settings: { difficulty: "hard" as const, durationSeconds: 600, selectionSeconds: 10 },
+        previousBattleId: null,
+      },
+    );
+    expect(started.error).toBeNull();
+    const battleId = (await snapshot(host)).battle?.id ?? "";
+    const imageUrls = new Map<string, string>();
+    for (const participant of [host, guest]) {
+      await expect.poll(async () => (await snapshot(participant)).battle?.id).toBe(battleId);
+      const generationId = crypto.randomUUID();
+      await participant.evaluate((data) => window.animicTest.generateImage({ data }), {
+        code,
+        battleId,
+        generationId,
+        prompt: "e2e scoring, 1girl",
+      });
+      await expect
+        .poll(async () => (await snapshot(participant)).battle?.myGenerations[0]?.status)
+        .toBe("succeeded");
+      await participant.evaluate((data) => window.animicTest.submitBattleImage({ data }), {
+        code,
+        battleId,
+        generationId,
+      });
+      imageUrls.set(
+        await participantId(participant),
+        `${origin}/generated-images/${battleId}/${generationId}`,
+      );
+    }
+
+    const hostId = await participantId(host);
+    const worker = await link(request, "E2EE-0001");
+    for (let count = 0; count < 2; count += 1) {
+      const claimed = await claimJob(request, worker);
+      const [inputs] = await executeLocalD1(
+        `SELECT battle_id, json_extract(inputs, '$[1].participantId') AS participant_id, json_extract(inputs, '$[1].imageUrl') AS image_url FROM scoring_job WHERE id = '${claimed.jobId}'`,
+      );
+      const submitter = String(inputs?.participant_id);
+      expect(inputs).toEqual({
+        battle_id: battleId,
+        participant_id: submitter,
+        image_url: imageUrls.get(submitter),
+      });
+      // お題は自分のURLから取得し、生成画像はR2から読んだWebPを渡す。
+      expect(claimed.sourceImages.map((image) => image.contentType)).toEqual([
+        "image/png",
+        "image/webp",
+      ]);
+      const submission = Buffer.from(claimed.sourceImages[1]?.base64 ?? "", "base64");
+      expect(submission.toString("latin1", 0, 4)).toBe("RIFF");
+      expect(submission.toString("latin1", 8, 12)).toBe("WEBP");
+      const total = submitter === hostId ? 71.4 : 60;
+      const reported = similarity(JSON.stringify({ total }));
+      expect(
+        (await post(request, worker, `jobs/${claimed.jobId}/complete`, reported)).status(),
+      ).toBe(200);
+    }
+
+    for (const participant of [host, guest]) {
+      await expect
+        .poll(async () => (await snapshot(participant)).battle?.result, { timeout: 30_000 })
+        .toMatchObject({ kind: "win", reason: "higher-score", winnerId: hostId });
+      // 結果の確定後は、両方の提出画像と採点結果を公開する。
+      expect(
+        (await snapshot(participant)).battle?.scores?.toSorted((a, b) => b.total - a.total),
+      ).toEqual(
+        [...imageUrls].map(([id, imageUrl]) => ({
+          participantId: id,
+          total: id === hostId ? 71.4 : 60,
+          imageUrl,
+        })),
+      );
+    }
+  } finally {
+    await hostContext.close();
+    await guestContext.close();
+    await executeLocalD1("DELETE FROM topic WHERE id = 'e2e-scoring-topic'");
+  }
 });
