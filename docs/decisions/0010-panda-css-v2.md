@@ -2,15 +2,15 @@
 
 - 状態: 承認済み
 - 決定日: 2026-10-04
-- 関連: [デザイン定義とUIの分離](0009-design-system.md)、[アーキテクチャ](../architecture.md#design-system)
+- 関連: [デザイン定義とUIの分離](0009-design-system.md)、[アーキテクチャ](../architecture.md#デザインシステム)
 
 ## 背景
 
-AnimicではDesign SystemのためにPanda CSSを新規導入する。維持する必要があるv1の実装・設定・独自拡張は存在しない。Token・Style・Recipe・Patternの定義と、型付きSDK・CSSの生成に使用するメジャーバージョンを決める必要がある。
+AnimicではデザインシステムのためにPanda CSSを新規導入する。維持する必要があるv1の実装・設定・独自拡張は存在しない。Token・Style・Recipe・Patternの定義と、型付きSDK・CSSの生成に使用するメジャーバージョンを決める必要がある。
 
 ## 判断基準
 
-現在のNode.js・ESM環境で動作し、Animicで必要なDesign Systemを定義できることを重視する。その定義から型付きSDKとCSSを生成でき、型検査とブラウザ表示まで検証できることを確認する。
+現在のNode.js・ESM環境で動作し、Animicで必要なデザインシステムを定義できることを重視する。その定義から型付きSDKとCSSを生成でき、型検査とブラウザ表示まで検証できることを確認する。
 
 ## 決定
 
@@ -26,7 +26,7 @@ v2が要求するNode.js 22以上・ESMに対し、AnimicはNode.js 24とESMを�
 
 ## 影響
 
-Panda関連パッケージのバージョンを揃え、更新時には生成物・型・CSS・ブラウザ表示を再検証する。生成・検証の手順は[CONTRIBUTING.md](../../CONTRIBUTING.md#design-systemの生成と検証)にまとめる。
+Panda関連パッケージのバージョンを揃え、更新時には生成物・型・CSS・ブラウザ表示を再検証する。生成・検証の手順は[CONTRIBUTING.md](../../CONTRIBUTING.md#デザインシステムの生成と検証)にまとめる。
 
 ## 見直す条件
 

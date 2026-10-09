@@ -1,6 +1,6 @@
 # デザイン原則
 
-Animicのデザインは、ここに定める原則に従います。具体的な値と視覚表現は`packages/design-system/src/`に定義します。パッケージの責務と利用境界は[アーキテクチャ](architecture.md#design-system)を参照してください。
+Animicのデザインは、ここに定める原則に従います。具体的な値と視覚表現は`packages/design-system/src/`に定義します。パッケージの責務と利用境界は[アーキテクチャ](architecture.md#デザインシステム)を参照してください。
 
 ## 作品を主役にする
 

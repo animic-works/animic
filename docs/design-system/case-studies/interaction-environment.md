@@ -32,7 +32,7 @@ ARIAの関連付けと操作も、見た目とは別に確かめた。現在の�
 
 ## 動きを抑える環境でも情報を残す
 
-共通のSpinnerはDesign System側のAnimation Styleで動きを定め、`prefers-reduced-motion`に応じて停止する。React側は処理中の意味と必須のラベルを維持する。回転がなくても文言と状態を失わない分担である。
+共通のSpinnerはデザインシステム側のAnimation Styleで動きを定め、`prefers-reduced-motion`に応じて停止する。React側は処理中の意味と必須のラベルを維持する。回転がなくても文言と状態を失わない分担である。
 
 ブラウザテストは通常のControlの反応を確認した後、reduced motion設定へ切り替え、トランジションやSpinnerのアニメーションが停止することを検査する。動く状態のスクリーンショットだけでは、この環境への応答は分からない。
 
@@ -48,7 +48,7 @@ CSSを読み込むだけで、ホストページ全体の文字・背景・`box-
 
 ## Toastは表示後の方向変更にも応答する
 
-ToastはCSSの論理方向に沿って配置し、Design Systemの余白とsafe-areaの大きい方を使う判断だった。物理方向の左右をinline-endへ対応付けるには、Portalのテキスト方向（LTR・RTL）を確認する必要があった。
+ToastはCSSの論理方向に沿って配置し、デザインシステムの余白とsafe-areaの大きい方を使う判断だった。物理方向の左右をinline-endへ対応付けるには、Portalのテキスト方向（LTR・RTL）を確認する必要があった。
 
 修正前の調査では、左右が異なるsafe-areaを設定し、Toastの表示後にLTRからRTLへ変更した。computed styleの`direction`はRTLになったが、safe-areaの参照は右側のまま残った。初回表示だけを確認するテストでは捉えられない不整合だった。
 
@@ -84,12 +84,12 @@ disabledとToastの修正を理由に新しいToken・公開APIを増やさず�
 - reduced motionやforced colorsで、動き・色以外の情報と操作が残るか確認する。
 - 基礎設定を限定した範囲の外側とPortalを、同じホストページで確認する。
 - テキスト方向の初期値だけでなく、表示後の変更も検査し、左右の違いが分かるsafe-areaを使う。
-- ライブラリ内部のインラインスタイルが、Design System側の状態・配置を上書きしていないか調べる。
+- ライブラリ内部のインラインスタイルが、デザインシステム側の状態・配置を上書きしていないか調べる。
 
 これらは後から整理したレビュー観点であり、すべての環境変更を監視する共通基盤の導入を勧めるものではない。
 
 ## 現行資料と記録上の限界
 
-現在の利用方法は[アーキテクチャ](../../architecture.md#design-system)と[検証手順](../../../CONTRIBUTING.md#design-systemの生成と検証)を確認する。具体的な定義は[共通Control Style](../../../packages/design-system/src/recipes/control.ts)、[SegmentedControl](../../../packages/design-system/src/recipes/slots/segmented-control.ts)、[基礎設定](../../../packages/design-system/src/global.ts)、[共通Animation Style](../../../packages/design-system/src/styles/animation.ts)、[Toast Recipe](../../../packages/design-system/src/recipes/slots/toast.ts)・[React実装](../../../packages/react/src/toast.tsx)が所有する。
+現在の利用方法は[アーキテクチャ](../../architecture.md#デザインシステム)と[検証手順](../../../CONTRIBUTING.md#デザインシステムの生成と検証)を確認する。具体的な定義は[共通Control Style](../../../packages/design-system/src/recipes/control.ts)、[SegmentedControl](../../../packages/design-system/src/recipes/slots/segmented-control.ts)、[基礎設定](../../../packages/design-system/src/global.ts)、[共通Animation Style](../../../packages/design-system/src/styles/animation.ts)、[Toast Recipe](../../../packages/design-system/src/recipes/slots/toast.ts)・[React実装](../../../packages/react/src/toast.tsx)が所有する。
 
 個別測定と修正後の検証結果は、検査した入力・環境の範囲を示す。現在の検査コードを過去の全動作の証拠にはしない。特にforced-colorsはブラウザの模擬環境であり、すべてのOS設定・支援技術での確認ではない。Toastの検査は横書きの方向変更で、任意のCSS変更や縦書きのすべてを保証しない。現在のリンク先が変わっても、この事例の当時の観測を書き換えない。

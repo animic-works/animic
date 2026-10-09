@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vite-plus/test";
 import { checkRepository, inspectSource } from "../../scripts/design-guardrails.mjs";
 
-describe("Design Systemのパッケージ依存", () => {
+describe("デザインシステムのパッケージ依存", () => {
   it.each([
     'import { Dialog } from "@ark-ui/react/dialog";',
     'export { Button } from "@animic/react/button";',

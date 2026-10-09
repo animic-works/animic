@@ -6,7 +6,7 @@ TanStack Startのフルスタック構成で、機能単位で関連するコー
 
 各機能の役割と依存関係に合わせてコードを配置します。ゲームUIは[画面の部品](#画面の部品)のとおり、Ark UIとCSS Modulesで構築します。Cloudflareにデプロイする構成とし、依存パッケージのバージョン管理は[CONTRIBUTING.md](../CONTRIBUTING.md#依存関係とgitで管理するファイル)に従います。
 
-## Design System
+## デザインシステム
 
 [デザイン原則](design.md)を基準に、具体的なデザイン定義を`packages/design-system/src/`に置きます。このパッケージを利用するReact UIは同じ定義を使います。現在は独立したパッケージとStorybookで提供し、アプリケーションの`src/`には組み込んでいません。デザインを変更する際は、このリポジトリの定義を変更してから各アプリケーションへ反映します。
 
@@ -14,12 +14,12 @@ TanStack Startのフルスタック構成で、機能単位で関連するコー
 
 ### パッケージと依存関係
 
-| 配置                            | 責務                                                                                        | 許可する依存                                                                          |
-| ------------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `packages/design-system/`       | Primitive・Semantic Tokens、Styles、Recipes、Patterns、Conditions、GlobalをPresetとして定義 | Panda。UIフレームワーク・Ark UIには依存しない                                         |
-| `packages/styled-system/`       | Pandaが生成する型付きスタイリングAPI、CSS、フォントアセットの配信                           | 生成結果とFontsource。Design System・UIフレームワーク・Ark UIへの実行時の依存関係なし |
-| `packages/react/`               | DOMの組み立て、キーボード操作、フォーカス管理、ARIAの関連付け                               | styled-system、React、Ark UI                                                          |
-| Design Systemを利用するReact UI | 業務状態の判断と、それに応じた画面の組み立て                                                | `@animic/react`の公開サブパス                                                         |
+| 配置                               | 責務                                                                                        | 許可する依存                                                                             |
+| ---------------------------------- | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `packages/design-system/`          | Primitive・Semantic Tokens、Styles、Recipes、Patterns、Conditions、GlobalをPresetとして定義 | Panda。UIフレームワーク・Ark UIには依存しない                                            |
+| `packages/styled-system/`          | Pandaが生成する型付きスタイリングAPI、CSS、フォントアセットの配信                           | 生成結果とFontsource。デザインシステム・UIフレームワーク・Ark UIへの実行時の依存関係なし |
+| `packages/react/`                  | DOMの組み立て、キーボード操作、フォーカス管理、ARIAの関連付け                               | styled-system、React、Ark UI                                                             |
+| デザインシステムを利用するReact UI | 業務状態の判断と、それに応じた画面の組み立て                                                | `@animic/react`の公開サブパス                                                            |
 
 `design-system`パッケージは`tokens/primitive/`と`tokens/semantic/`、`styles/text.ts`・`layer.ts`・`animation.ts`・`keyframes.ts`、`recipes/`とその配下の`slots/`、`patterns/`、`font-assets.ts`、`conditions.ts`、`global.ts`、`preset.ts`に責務を分けます。単なる集約用の`theme.ts`やトップレベルの`slot-recipes/`は設けません。
 
@@ -37,7 +37,7 @@ Recipeはスロット・variant・状態へ適用するスタイルを定義し�
 
 ### CSS・フォント・全体への適用
 
-CSSは`@animic/styled-system/styles.css`から一度読み込みます。このエントリーポイントで生成されたフォントCSSとPanda CSSを読み込み、React固有のCSSエントリーポイントは設けません。Storybookの`.storybook/preview.tsx`がCSSとUIProviderを組み込みます。採用フォント・フォールバックフォント・太さ・正体と斜体・用途はDesign SystemのTypography TokenとText Styleに定義します。非公開の`font-assets.ts`はフォントTokenとFontsourceパッケージだけを対応付けます。リポジトリの生成処理がText Styleから必要なフォント・太さ・`fontStyle`を導出し、styled-systemが依存するFontsource CSSへのimportを`generated/fonts.css`へ出力します。`fontStyle`の省略時は`normal`とし、斜体は実際のitalicアセットを使います。Fontsourceのface定義・`unicode-range`・`font-display: swap`をそのまま利用し、フォント取得中も代替書体で文字を表示します。日本語の代替書体は、採用書体に近い全角字幅を持つOS書体を明示し、汎用sans-serifの選択による折り返しの変化を抑えます。初回の遅い通信では書体の切り替えが起こり得ます。画面全体の表示をフォント読み込み待ちにせず、通常のブラウザキャッシュを利用します。フォントバイナリや文字の範囲を独自に再生成しません。
+CSSは`@animic/styled-system/styles.css`から一度読み込みます。このエントリーポイントで生成されたフォントCSSとPanda CSSを読み込み、React固有のCSSエントリーポイントは設けません。Storybookの`.storybook/preview.tsx`がCSSとUIProviderを組み込みます。採用フォント・フォールバックフォント・太さ・正体と斜体・用途はデザインシステムのTypography TokenとText Styleに定義します。非公開の`font-assets.ts`はフォントTokenとFontsourceパッケージだけを対応付けます。リポジトリの生成処理がText Styleから必要なフォント・太さ・`fontStyle`を導出し、styled-systemが依存するFontsource CSSへのimportを`generated/fonts.css`へ出力します。`fontStyle`の省略時は`normal`とし、斜体は実際のitalicアセットを使います。Fontsourceのface定義・`unicode-range`・`font-display: swap`をそのまま利用し、フォント取得中も代替書体で文字を表示します。日本語の代替書体は、採用書体に近い全角字幅を持つOS書体を明示し、汎用sans-serifの選択による折り返しの変化を抑えます。初回の遅い通信では書体の切り替えが起こり得ます。画面全体の表示をフォント読み込み待ちにせず、通常のブラウザキャッシュを利用します。フォントバイナリや文字の範囲を独自に再生成しません。
 
 フォントのデザイン判断・アセット解決・配信を分けた比較と判断変更は、[フォントの責務分割の設計事例](design-system/case-studies/font-ownership.md)を参照してください。
 
@@ -160,15 +160,15 @@ ArkのAnatomy・型・状態変更の詳細情報を公開APIにしません。T
 
 ### UIからの利用
 
-React UIは`@animic/react`の公開サブパスからComponentを組み合わせます。任意の`className`・`style`・`asChild`や低レベルのStyling APIはComponentのpropsとして公開しません。具体的な定義が不足する場合の判断は[CONTRIBUTING.md](../CONTRIBUTING.md#design-systemの変更判断)に従います。
+React UIは`@animic/react`の公開サブパスからComponentを組み合わせます。任意の`className`・`style`・`asChild`や低レベルのStyling APIはComponentのpropsとして公開しません。具体的な定義が不足する場合の判断は[CONTRIBUTING.md](../CONTRIBUTING.md#デザインシステムの変更判断)に従います。
 
-現在のアプリケーションは`src/components/`とCSS Modulesで構成され、Design Systemを利用していません。アプリケーションへの適用は、画面の移行・共通CSSの接続・利用境界の検査を一緒に行う変更として扱います。ファイルごとの例外や互換Componentは設けません。
+現在のアプリケーションは`src/components/`とCSS Modulesで構成され、デザインシステムを利用していません。アプリケーションへの適用は、画面の移行・共通CSSの接続・利用境界の検査を一緒に行う変更として扱います。ファイルごとの例外や互換Componentは設けません。
 
-`scripts/design-guardrails.mjs`は`packages/design-system/src/`と`packages/react/src/`の依存方向を検査します。Design SystemからReact・Ark・生成SDKへの依存、React実装からPreset・Pandaへの依存、両パッケージからアプリケーションへの依存を拒否します。共通MotionはDesign Systemに定義し、React実装で局所的にkeyframesを作りません。公開propsとパッケージのexportsは型・契約テストでも検証します。
+`scripts/design-guardrails.mjs`は`packages/design-system/src/`と`packages/react/src/`の依存方向を検査します。デザインシステムからReact・Ark・生成SDKへの依存、React実装からPreset・Pandaへの依存、両パッケージからアプリケーションへの依存を拒否します。共通Motionはデザインシステムに定義し、React実装で局所的にkeyframesを作りません。公開propsとパッケージのexportsは型・契約テストでも検証します。
 
 #### 機能固有のVisual
 
-アートワークやMotionなど、通常UIと異なる表現の責務をVisualとして区別します。業務状態に基づく文言・入力・操作・アクセシビリティは通常UIに置き、Visualへ移して公開APIの制約を迂回しません。共通の外観と操作はDesign System、固有の絵柄や演出は利用側が所有します。Layer・Overlayなどの公開APIは、この区別を保ちながら内容を組み合わせるためのものです。
+アートワークやMotionなど、通常UIと異なる表現の責務をVisualとして区別します。業務状態に基づく文言・入力・操作・アクセシビリティは通常UIに置き、Visualへ移して公開APIの制約を迂回しません。共通の外観と操作はデザインシステム、固有の絵柄や演出は利用側が所有します。Layer・Overlayなどの公開APIは、この区別を保ちながら内容を組み合わせるためのものです。
 
 ### レスポンシブと操作状態
 
@@ -218,9 +218,9 @@ Page内では1つのNavigationBarを配置します。headのUIScriptがナビ�
 
 Pandaのcodegenで型付きSDKとNative Specを、cssgenでCSSを生成します。
 
-`packages/styled-system/package.json`とCSSエントリーポイントの`styles.css`はGit管理し、`generated/`は管理しません。生成コードは手で編集せず、手順は[CONTRIBUTING.md](../CONTRIBUTING.md#design-systemの生成と検証)に従います。
+`packages/styled-system/package.json`とCSSエントリーポイントの`styles.css`はGit管理し、`generated/`は管理しません。生成コードは手で編集せず、手順は[CONTRIBUTING.md](../CONTRIBUTING.md#デザインシステムの生成と検証)に従います。
 
-Panda Native Specは、Design Systemの定義から生成する機械向けの一覧情報です。定義全体の再構築は要求せず、含まれない詳細は`packages/design-system/src/`を確認します。全体を別の独自スキーマ・JSONで再定義しません。Panda MCPは定義済みのToken・Recipe・Pattern等、Ark UI MCPは内部利用する操作APIを調べる開発支援です。AIはPanda MCPで既存の定義を調べ、不足する詳細をソースコードで確認します。`panda analyze`は実際の利用状況を調べます。MCPとanalyzeはUIの実行・ビルドに必要な依存ではありません。
+Panda Native Specは、デザインシステムの定義から生成する機械向けの一覧情報です。定義全体の再構築は要求せず、含まれない詳細は`packages/design-system/src/`を確認します。全体を別の独自スキーマ・JSONで再定義しません。Panda MCPは定義済みのToken・Recipe・Pattern等、Ark UI MCPは内部利用する操作APIを調べる開発支援です。AIはPanda MCPで既存の定義を調べ、不足する詳細をソースコードで確認します。`panda analyze`は実際の利用状況を調べます。MCPとanalyzeはUIの実行・ビルドに必要な依存ではありません。
 
 ## 検索とSNS共有
 
@@ -244,9 +244,9 @@ Panda Native Specは、Design Systemの定義から生成する機械向けの�
 
 #### 暫定対応と解消条件
 
-アプリケーションへDesign Systemを適用するまで、画面の見た目はデザイン（Figmaの`draft`ページ）に合わせたスタイルをCSS Modulesで持ちます。トークン名と`@layer`の構成はPanda CSSの出力と同じにしています。[ADR 0002](decisions/0002-application-foundation.md)のBase UIではなく、デザインシステムと同じArk UIを使います。
+アプリケーションへデザインシステムを適用するまで、画面の見た目はデザイン（Figmaの`draft`ページ）に合わせたスタイルをCSS Modulesで持ちます。トークン名と`@layer`の構成はPanda CSSの出力と同じにしています。[ADR 0002](decisions/0002-application-foundation.md)のBase UIではなく、デザインシステムと同じArk UIを使います。
 
-アプリケーションへDesign Systemを適用するときは、画面をデザインシステムの部品で作り直し、`src/components/`のうち置き換えた部品、`src/styles/tokens.css`、この節を削除します。
+アプリケーションへデザインシステムを適用するときは、画面をデザインシステムの部品で作り直し、`src/components/`のうち置き換えた部品、`src/styles/tokens.css`、この節を削除します。
 
 APIの結合検証は画面のレイアウトやフォームに依存させません。E2E専用クライアントからServer FunctionsとWebSocketを呼び出し、通常のビルドには検証用クライアントを含めません。検証手順は[CONTRIBUTING.md](../CONTRIBUTING.md#セットアップと検証)を参照してください。
 

@@ -61,7 +61,7 @@ vp run dev
 | 未使用コードの検査           | `vp run knip`                          |
 | コミットメッセージの検証     | `vp exec commitlint --edit <ファイル>` |
 
-`vp run check`はDesign Systemの生成とパッケージ依存の検査を行ってから、フォーマット・lint・型チェック・Knipを実行します。`vp check`ではフォーマットと型情報を使うlintを実行し、プロジェクト全体の型チェックは`tsc --noEmit`、未使用コードの検査はKnipが担当します。コマンドの定義は[package.json](package.json)、lint・format・staged設定は[vite.config.ts](vite.config.ts)を参照してください。
+`vp run check`はデザインシステムの生成とパッケージ依存の検査を行ってから、フォーマット・lint・型チェック・Knipを実行します。`vp check`ではフォーマットと型情報を使うlintを実行し、プロジェクト全体の型チェックは`tsc --noEmit`、未使用コードの検査はKnipが担当します。コマンドの定義は[package.json](package.json)、lint・format・staged設定は[vite.config.ts](vite.config.ts)を参照してください。
 
 E2Eは[playwright.config.ts](playwright.config.ts)がビルド・DBの初期化・プレビュー起動を行います。テストごとではなく実行ごとに`.wrangler/e2e/`を初期化し、開発用の`.wrangler/state/`とは分けます。Wranglerによるテストデータ操作と他のテストが同じSQLiteを同時に更新しないよう、E2Eは1 workerで順に実行します。複数人の同時操作は各テスト内で複数のブラウザコンテキストを使って確認します。認証URLと鍵、NovelAIのトークン、管理画面のパスワード、OAuthクライアントはテスト用の値を設定するため、E2Eだけなら`.env`の用意は不要です。E2Eのビルドには実際のNovelAIのトークンとOAuthクライアントを含めず、ブラウザへ配信するファイルとトップページのHTMLに、テスト用のNovelAIのトークンとOAuthの秘密情報が含まれないことを確認します。
 
@@ -109,36 +109,36 @@ Search Consoleは`animic.party`のドメインプロパティを追加し、指�
 
 コマンドとKnipの設定は[package.json](package.json)、lint・format・staged設定は[vite.config.ts](vite.config.ts)で管理します。検出結果への対応と例外の判断は[実装規約](docs/conventions.md#react-compilerと未使用コード)に従います。
 
-Knipでは、Design System用に次の例外とentryを設定しています。
+Knipでは、デザインシステム用に次の例外とentryを設定しています。
 
-- 生成CSSの`@import`からフォント依存を追跡しないため、アプリのCSSで使うルートのFontsource依存と、生成CSSで使う`packages/styled-system`のFontsource依存を明示的に除外します。対応するCSSの解決はアプリのビルドと[フォント生成・Storybookのビルド](#design-systemの生成と検証)で検証します。
+- 生成CSSの`@import`からフォント依存を追跡しないため、アプリのCSSで使うルートのFontsource依存と、生成CSSで使う`packages/styled-system`のFontsource依存を明示的に除外します。対応するCSSの解決はアプリのビルドと[フォント生成・Storybookのビルド](#デザインシステムの生成と検証)で検証します。
 - 検査・生成スクリプトのJSに対応する型宣言は、TypeScriptでの利用を解析するentryとして指定します。
 
 参考: [KnipのVite+対応](https://knip.dev/reference/plugins/vite-plus)。
 
-## Design Systemの変更判断
+## デザインシステムの変更判断
 
-必要なUIを既存のDesign Systemで表現できない場合も、拡張を前提にせず、次の順で判断します。
+必要なUIを既存のデザインシステムで表現できない場合も、拡張を前提にせず、次の順で判断します。
 
-1. [デザイン原則](docs/design.md)、[アーキテクチャ](docs/architecture.md#design-system)、既存のデザイン定義を確認し、表現できない内容・状態・操作・利用条件を具体化します。
+1. [デザイン原則](docs/design.md)、[アーキテクチャ](docs/architecture.md#デザインシステム)、既存のデザイン定義を確認し、表現できない内容・状態・操作・利用条件を具体化します。
 2. Panda MCPで既存のToken・Style・Recipe・Patternを調べ、詳細は必要に応じて`packages/design-system/src/`を確認します。React Componentの公開APIと、その組み合わせも確認します。
-3. 不足しているものを、下表の責務に分けます。既存の公開APIの組み合わせで成立するなら、利用側の構成を変更し、Design Systemは変更しません。
-4. Design Systemを利用する通常UIの不足を、任意CSS、`style`、自由な`className`、styled-systemの低レベルAPI、Visual領域による迂回で解決しません。
+3. 不足しているものを、下表の責務に分けます。既存の公開APIの組み合わせで成立するなら、利用側の構成を変更し、デザインシステムは変更しません。
+4. デザインシステムを利用する通常UIの不足を、任意CSS、`style`、自由な`className`、styled-systemの低レベルAPI、Visual領域による迂回で解決しません。
 5. 新しいToken・Style・Recipe・Pattern・Component・variant・Responsive条件・公開API等が必要なら、既存定義で不足する理由、変更先、選択肢と影響を示し、新しいDesign判断として実装前に承認を得ます。
-6. 承認後、[各層の責務](docs/architecture.md#design-system)に従って変更します。デザイン定義、DOM・操作、利用側の構成を混同しません。
-7. [生成と検証](#design-systemの生成と検証)から、変更に必要な生成結果・型・Guardrail・Storybook・ブラウザ操作・アクセシビリティ・画像比較等を選び、目的が成立したか確認します。
+6. 承認後、[各層の責務](docs/architecture.md#デザインシステム)に従って変更します。デザイン定義、DOM・操作、利用側の構成を混同しません。
+7. [生成と検証](#デザインシステムの生成と検証)から、変更に必要な生成結果・型・Guardrail・Storybook・ブラウザ操作・アクセシビリティ・画像比較等を選び、目的が成立したか確認します。
 8. 現在の仕様・構成・手順が変わった場合は、対応する現行文書も同じ変更で更新します。
 
 | 不足の種類                                                           | 判断すること                                                                                        |
 | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| 既存APIの組み合わせで表現できる                                      | 利用側の構成を変更し、Design Systemは維持する                                                       |
-| 通常UIに共通する意味・状態・操作・アクセシビリティ上の表現が足りない | Design Systemの変更候補として、共通の責務と影響範囲を確認する                                       |
+| 既存APIの組み合わせで表現できる                                      | 利用側の構成を変更し、デザインシステムは維持する                                                    |
+| 通常UIに共通する意味・状態・操作・アクセシビリティ上の表現が足りない | デザインシステムの変更候補として、共通の責務と影響範囲を確認する                                    |
 | 画面・機能固有の業務上の構成が必要                                   | アプリケーション側で既存のComponent・Patternを組み立てる                                            |
 | 固有のアートワーク・特殊な配置・演出・Motionが必要                   | [Visualの責務](docs/architecture.md#機能固有のvisual)に該当するか確認し、許可された範囲・形式で扱う |
 
-Design Systemを変更しないことも正式な選択肢です。責務の切り分けに迷う場合は、[設計ガイド](docs/design-system/design-guide.md#既存定義で表現できない場合の判断)を判断材料にします。
+デザインシステムを変更しないことも正式な選択肢です。責務の切り分けに迷う場合は、[設計ガイド](docs/design-system/design-guide.md#既存定義で表現できない場合の判断)を判断材料にします。
 
-## Design Systemの生成と検証
+## デザインシステムの生成と検証
 
 依存パッケージはリポジトリ全体のワークスペースとしてインストールします。`panda.config.ts`が`@animic/design-system/preset`を読み込み、`packages/styled-system/generated/`へSDK・Native Spec・CSSを生成します。
 
@@ -150,7 +150,7 @@ vp run design-system:analyze
 vp run check
 ```
 
-`design-system:generate`は`panda codegen --spec`、`panda cssgen`、`scripts/generate-fonts.mjs`を実行します。Native Specは`generated/specs/design-system.json`、Panda CSSは`generated/styles.css`、フォントCSSは`generated/fonts.css`です。必要なフォント・太さ・正体と斜体はText Styleから求め、styled-systemの依存からFontsource CSSを解決します。生成物を削除した後も同じコマンドで復元できます。直接値を持つSemantic TokenはNative Specの`semantic`フラグが省略されるため、分類はMCPのSemantic Token問い合わせとソースコードで確認します。`typecheck`・`check`・`test:design-system`・Storybookの起動とビルドも先に生成するため、初回チェックアウトの生成物に依存しません。アプリの起動とビルドはDesign Systemの生成を必要としません。`dev`・`build`・`preview`は`-C .`でルートパッケージを指定し、ワークスペース全体の選択と区別します。
+`design-system:generate`は`panda codegen --spec`、`panda cssgen`、`scripts/generate-fonts.mjs`を実行します。Native Specは`generated/specs/design-system.json`、Panda CSSは`generated/styles.css`、フォントCSSは`generated/fonts.css`です。必要なフォント・太さ・正体と斜体はText Styleから求め、styled-systemの依存からFontsource CSSを解決します。生成物を削除した後も同じコマンドで復元できます。直接値を持つSemantic TokenはNative Specの`semantic`フラグが省略されるため、分類はMCPのSemantic Token問い合わせとソースコードで確認します。`typecheck`・`check`・`test:design-system`・Storybookの起動とビルドも先に生成するため、初回チェックアウトの生成物に依存しません。アプリの起動とビルドはデザインシステムの生成を必要としません。`dev`・`build`・`preview`は`-C .`でルートパッケージを指定し、ワークスペース全体の選択と区別します。
 
 `test:design-system`は生成されたSemantic Tokenの参照・CSS変数・非公開サブパスの解決失敗・色ペアのコントラスト・フォントCSSの導出と依存の解決・共通パッケージの依存方向を検証します。禁止する値を使った型検証は`tests/design-system/strict-types.ts`と`public-types.tsx`にあり、`check`に含まれる型チェックで確認します。`design-system:analyze`は使用状況を`generated/analysis.json`へ出力します。未使用という結果だけで承認済みの定義を削除しません。
 
@@ -181,7 +181,7 @@ vp run test:design-system:browser --update-snapshots
 
 Panda MCPは既存のデザイン定義、Ark UI MCPは内部利用するUIのAPIを調べる開発支援です。固定した開発依存から起動するプロジェクト設定をリポジトリで管理しています。エージェントの接続方法は[AGENTS.md](AGENTS.md#mcpへの接続)を参照してください。
 
-MCPはDesign Systemの定義元ではありません。実際の定義は`packages/design-system/src/`、責務と利用境界は[アーキテクチャ](docs/architecture.md#design-system)で確認します。MCPへの接続はUIの実行・ビルドの要件ではありません。
+MCPはデザインシステムの定義元ではありません。実際の定義は`packages/design-system/src/`、責務と利用境界は[アーキテクチャ](docs/architecture.md#デザインシステム)で確認します。MCPへの接続はUIの実行・ビルドの要件ではありません。
 
 ## アイコンの更新
 
@@ -282,7 +282,7 @@ Issue・PRのタイトルとコミットの件名は`type(scope): 日本語の�
 
 ## CIとレビュー
 
-- [Checks](.github/workflows/checks.yml)はPRの作成・更新・再オープン時と手動実行時に起動します。pushを起点にした重複実行は行いません。`Quality`でDesign Systemの契約・Storybookブラウザ検証、Workers型生成、単体テスト、E2Eに含まれるビルドとローカルD1・DOでの検証、生成ルートの差分確認、静的検査を実行します。
+- [Checks](.github/workflows/checks.yml)はPRの作成・更新・再オープン時と手動実行時に起動します。pushを起点にした重複実行は行いません。`Quality`でデザインシステムの契約・Storybookブラウザ検証、Workers型生成、単体テスト、E2Eに含まれるビルドとローカルD1・DOでの検証、生成ルートの差分確認、静的検査を実行します。
 - `Quality`ではワークフローの変更時にactionlint、依存関係の変更時に`vp pm audit -- --audit-level high`も実行します。手動実行では両方を検査します。脆弱性検査は開発用の依存関係も含め、High・Criticalを失敗条件にします。依存関係を変更しないPRでは実行しないため、新たに公表された脆弱性を継続監視するものではありません。actionlintはバージョンと配布バイナリのSHA-256を固定します。
 - [Commit policy](.github/workflows/commit-policy.yml)でPRのブランチ名・取り込み先・タイトル・コミット形式を検証します。
 - テスト・ビルド対象を追加する変更では、それに対応する検証もCIに組み込みます。
@@ -303,26 +303,26 @@ main・developの保護要件は、PR経由、1名以上の承認、必須のCI�
 
 ## 文書の管理
 
-| 文書                                                                    | 所有するもの                                                             |
-| ----------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| README.md                                                               | 概要と開発・設計文書への入口                                             |
-| docs/product.md                                                         | 現在のプロダクト要件                                                     |
-| docs/design.md                                                          | 現在承認されているデザイン原則                                           |
-| docs/architecture.md                                                    | 現在の構成・責務・依存関係・公開境界・利用形式                           |
-| docs/conventions.md                                                     | 現在コードを書く際の配置・命名・分割・共通化の規則                       |
-| CONTRIBUTING.md                                                         | 現在の開発・生成・検証・Git運用と文書管理の手順                          |
-| AGENTS.md                                                               | 参照先とAIエージェントへの指示                                           |
-| ADR                                                                     | 重要な設計判断の背景・判断基準・決定・理由・影響・見直す条件             |
-| ソースコード / テスト                                                   | 現在の具体的なAPI・値・実装・自動検証                                    |
-| docs/design-system/README.md                                            | 設計資料の目的・読み方と、作成済みの文書への入口                         |
-| [Design Systemの設計ガイド](docs/design-system/design-guide.md)         | 再利用可能な問い・前提・選択肢・判断基準・トレードオフ・適用条件         |
-| Design Systemの設計事例                                                 | 実際の前提・比較・失敗・検証・判断変更・適用範囲                         |
-| Design Systemの検証記録                                                 | 設計事例を裏付ける入力・環境・観測結果と、証明できること・できないこと   |
-| [Design Systemの設計レビューガイド](docs/design-system/review-guide.md) | レビュー方法・証拠の扱い・判断と実装の区別・AI利用時の判断の偏りへの対処 |
+| 文書                                                                       | 所有するもの                                                             |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| README.md                                                                  | 概要と開発・設計文書への入口                                             |
+| docs/product.md                                                            | 現在のプロダクト要件                                                     |
+| docs/design.md                                                             | 現在承認されているデザイン原則                                           |
+| docs/architecture.md                                                       | 現在の構成・責務・依存関係・公開境界・利用形式                           |
+| docs/conventions.md                                                        | 現在コードを書く際の配置・命名・分割・共通化の規則                       |
+| CONTRIBUTING.md                                                            | 現在の開発・生成・検証・Git運用と文書管理の手順                          |
+| AGENTS.md                                                                  | 参照先とAIエージェントへの指示                                           |
+| ADR                                                                        | 重要な設計判断の背景・判断基準・決定・理由・影響・見直す条件             |
+| ソースコード / テスト                                                      | 現在の具体的なAPI・値・実装・自動検証                                    |
+| docs/design-system/README.md                                               | 設計資料の目的・読み方と、作成済みの文書への入口                         |
+| [デザインシステムの設計ガイド](docs/design-system/design-guide.md)         | 再利用可能な問い・前提・選択肢・判断基準・トレードオフ・適用条件         |
+| デザインシステムの設計事例                                                 | 実際の前提・比較・失敗・検証・判断変更・適用範囲                         |
+| デザインシステムの検証記録                                                 | 設計事例を裏付ける入力・環境・観測結果と、証明できること・できないこと   |
+| [デザインシステムの設計レビューガイド](docs/design-system/review-guide.md) | レビュー方法・証拠の扱い・判断と実装の区別・AI利用時の判断の偏りへの対処 |
 
 規則の本文を置く場所を一つに決め、他の文書からは参照します。現行資料にあたる要件・原則・構成・実装規則・手順とソースコード・テストは、現在の仕様・実装へ追従させます。仕様・設計・手順の変更時は、対応する現行資料も同じ変更で更新します。実装方法を知るために過去の設計事例を読むことは要求しません。
 
-[Design Systemの設計資料](docs/design-system/README.md)は、現在の仕様を複製せず、別のDesign Systemでも使える判断材料を残します。設計ガイドと設計レビューガイドは新しい知見に応じて更新できます。設計事例は当時の前提・比較・判断変更を、検証記録は当時の観測事実を保持します。現在の設計や推奨が変わっても過去を現行仕様へ書き換えず、事実誤認があれば訂正します。現在のAPI・Token値・利用規則は現行資料へリンクし、重要な決定と見直す条件はADRが所有します。
+[デザインシステムの設計資料](docs/design-system/README.md)は、現在の仕様を複製せず、別のデザインシステムでも使える判断材料を残します。設計ガイドと設計レビューガイドは新しい知見に応じて更新できます。設計事例は当時の前提・比較・判断変更を、検証記録は当時の観測事実を保持します。現在の設計や推奨が変わっても過去を現行仕様へ書き換えず、事実誤認があれば訂正します。現在のAPI・Token値・利用規則は現行資料へリンクし、重要な決定と見直す条件はADRが所有します。
 
 会話ログ、進捗メモ、検討中の案はリポジトリ外の一時ファイルに置きます。これらをそのまま保存することと、検証済みの事実・実際に比較した選択肢・承認された判断変更を検証記録や設計事例へ編集して残すことは区別します。不採用案は当時比較された案として扱い、決定と混同しません。観測事実・当時の提案・決定・後からの解釈を分け、何を入力し、どの環境で何を観測したかを記載します。
 

@@ -43,7 +43,7 @@ export function inspectSource(filename, source) {
       ) ||
         /^packages\/(react|styled-system)\//.test(resolved))
     )
-      report(node, "Design Systemの依存方向に反しています。");
+      report(node, "デザインシステムの依存方向に反しています。");
     if (
       react &&
       (/^(@pandacss\/|@animic\/design-system(?:\/|$))/.test(specifier) ||
@@ -59,7 +59,7 @@ export function inspectSource(filename, source) {
     )
       report(
         node,
-        "共通MotionはDesign Systemへ定義し、React実装でkeyframesを定義しないでください。",
+        "共通Motionはデザインシステムへ定義し、React実装でkeyframesを定義しないでください。",
       );
   }
   walk(ast, (node) => {
@@ -105,5 +105,5 @@ if (process.argv[1] && nodePath.resolve(process.argv[1]) === fileURLToPath(impor
   if (issues.length) {
     console.error(issues.join("\n"));
     process.exitCode = 1;
-  } else console.log("Design Systemのパッケージ依存を確認しました。");
+  } else console.log("デザインシステムのパッケージ依存を確認しました。");
 }
