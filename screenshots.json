@@ -1,5 +1,5 @@
 {
-  "source_commit": "7ce51627636ab9ddbdaaef94feb2ff0346ce4368",
+  "source_commit": "782b67aa1540d79d99d9a998b044b5f63af27a9e",
   "pull_request": "https://github.com/animic-works/animic/pull/33",
   "shots": [
     {
@@ -488,7 +488,7 @@
       "label": "desktop",
       "path": "21-admin-topics-desktop.png",
       "width": 1440,
-      "height": 2081
+      "height": 1470
     },
     {
       "id": "21-admin-topics",
@@ -496,7 +496,7 @@
       "label": "mobile",
       "path": "21-admin-topics-mobile.png",
       "width": 390,
-      "height": 3378
+      "height": 2765
     },
     {
       "id": "21-admin-topics",
@@ -584,7 +584,7 @@
       "label": "desktop",
       "path": "25-admin-workers-desktop.png",
       "width": 1440,
-      "height": 1354
+      "height": 902
     },
     {
       "id": "25-admin-workers",
@@ -592,7 +592,7 @@
       "label": "mobile",
       "path": "25-admin-workers-mobile.png",
       "width": 390,
-      "height": 1872
+      "height": 1421
     },
     {
       "id": "25-admin-workers",
@@ -616,7 +616,7 @@
       "label": "mobile",
       "path": "26-admin-jobs-mobile.png",
       "width": 390,
-      "height": 1175
+      "height": 850
     },
     {
       "id": "26-admin-jobs",
@@ -800,7 +800,7 @@
       "label": "desktop",
       "path": "34-admin-workers-populated-desktop.png",
       "width": 1440,
-      "height": 1415
+      "height": 907
     },
     {
       "id": "34-admin-workers-populated",
@@ -808,7 +808,7 @@
       "label": "mobile",
       "path": "34-admin-workers-populated-mobile.png",
       "width": 390,
-      "height": 1933
+      "height": 1425
     },
     {
       "id": "34-admin-workers-populated",
@@ -832,7 +832,7 @@
       "label": "mobile",
       "path": "35-admin-jobs-completed-mobile.png",
       "width": 390,
-      "height": 1257
+      "height": 876
     },
     {
       "id": "35-admin-jobs-completed",
