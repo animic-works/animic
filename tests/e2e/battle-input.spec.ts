@@ -4,10 +4,11 @@ import { create, join } from "./api";
 import { executeLocalD1 } from "./d1";
 
 test.use({ reducedMotion: "reduce" });
+// ほかのファイルと同じお題の行を使い、「かんたん」のお題を増やさない（battle.spec.tsが出題されたお題を確かめる）。
 test("日本語の変換中は区切りを含む入力を保持し、変換後に語句にする", async ({ page, browser }) => {
   test.setTimeout(60000);
   await executeLocalD1(
-    "INSERT OR REPLACE INTO topic (id, difficulty, image_url) VALUES ('e2e-input-topic', 'easy', 'https://example.invalid/topic.svg'); DELETE FROM rate_limit",
+    "INSERT OR REPLACE INTO topic (id, difficulty, image_url) VALUES ('e2e-topic', 'easy', 'https://example.invalid/animic-topic.svg'); DELETE FROM rate_limit",
   );
   const code = await create(page);
   const guest = await browser.newContext();
@@ -50,7 +51,7 @@ test("日本語の変換中は区切りを含む入力を保持し、変換後�
 test("提出確認中に生成が完成しても確認する画像を変えない", async ({ page, browser }) => {
   test.setTimeout(60000);
   await executeLocalD1(
-    "INSERT OR REPLACE INTO topic (id, difficulty, image_url) VALUES ('e2e-input-topic', 'easy', 'https://example.invalid/topic.svg'); DELETE FROM rate_limit",
+    "INSERT OR REPLACE INTO topic (id, difficulty, image_url) VALUES ('e2e-topic', 'easy', 'https://example.invalid/animic-topic.svg'); DELETE FROM rate_limit",
   );
   const code = await create(page);
   const guest = await browser.newContext();
