@@ -43,23 +43,26 @@ vp run dev
 
 開発サーバーは`http://localhost:3000`です。Cloudflare Vite pluginを通じてサーバー処理をローカルのWorkersランタイムで実行します。Linuxでブラウザのシステムライブラリが不足している場合は、Playwrightの[環境構築手順](https://playwright.dev/docs/browsers#install-system-dependencies)に従います。
 
-| 操作                         | コマンド                               |
-| ---------------------------- | -------------------------------------- |
-| 依存パッケージのインストール | `vp install --frozen-lockfile`         |
-| Git hooksの有効化            | `vp hooks enable`                      |
-| Git hooksの確認              | `vp hooks status`                      |
-| 開発サーバー                 | `vp run dev`                           |
-| DB変更のSQL生成              | `vp run db:generate --name <変更名>`   |
-| ローカルD1へのSQL適用        | `vp run db:migrate:local`              |
-| Workers型の生成              | `vp run typegen`                       |
-| クライアント・Workerのビルド | `vp run build`                         |
-| ビルド成果物のローカル起動   | `vp run preview`                       |
-| 業務ルールの単体テスト       | `vp run test`                          |
-| ブラウザでのE2E検証          | `vp run test:e2e`                      |
-| 静的検査                     | `vp run check`                         |
-| フォーマット修正             | `vp fmt`                               |
-| 未使用コードの検査           | `vp run knip`                          |
-| コミットメッセージの検証     | `vp exec commitlint --edit <ファイル>` |
+| 操作                             | コマンド                               |
+| -------------------------------- | -------------------------------------- |
+| 依存パッケージのインストール     | `vp install --frozen-lockfile`         |
+| Git hooksの有効化                | `vp hooks enable`                      |
+| Git hooksの確認                  | `vp hooks status`                      |
+| 開発サーバー                     | `vp run dev`                           |
+| DB変更のSQL生成                  | `vp run db:generate --name <変更名>`   |
+| ローカルD1へのSQL適用            | `vp run db:migrate:local`              |
+| Workers型の生成                  | `vp run typegen`                       |
+| クライアント・Workerのビルド     | `vp run build`                         |
+| ビルド成果物のローカル起動       | `vp run preview`                       |
+| 業務ルールの単体テスト           | `vp run test`                          |
+| デザインシステムの生成・契約検証 | `vp run test:design-system`            |
+| デザインシステムのブラウザ検証   | `vp run test:design-system:browser`    |
+| Storybookの起動                  | `vp run storybook`                     |
+| ブラウザでのE2E検証              | `vp run test:e2e`                      |
+| 静的検査                         | `vp run check`                         |
+| フォーマット修正                 | `vp fmt`                               |
+| 未使用コードの検査               | `vp run knip`                          |
+| コミットメッセージの検証         | `vp exec commitlint --edit <ファイル>` |
 
 `vp run check`はデザインシステムの生成とパッケージ依存の検査を行ってから、フォーマット・lint・型チェック・Knipを実行します。`vp check`ではフォーマットと型情報を使うlintを実行し、プロジェクト全体の型チェックは`tsc --noEmit`、未使用コードの検査はKnipが担当します。コマンドの定義は[package.json](package.json)、lint・format・staged設定は[vite.config.ts](vite.config.ts)を参照してください。
 
