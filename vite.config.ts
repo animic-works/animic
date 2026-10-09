@@ -85,13 +85,21 @@ export default defineConfig({
       "import/no-cycle": "error",
       "import/no-unassigned-import": "off",
     },
-    ignorePatterns: ["**/routeTree.gen.ts", "worker-configuration.d.ts"],
+    ignorePatterns: [
+      "**/routeTree.gen.ts",
+      "worker-configuration.d.ts",
+      "packages/styled-system/generated/**",
+    ],
   },
   fmt: {
     singleQuote: false,
     semi: true,
     sortPackageJson: true,
-    ignorePatterns: ["src/routeTree.gen.ts", "worker-configuration.d.ts"],
+    ignorePatterns: [
+      "src/routeTree.gen.ts",
+      "worker-configuration.d.ts",
+      "packages/styled-system/generated/**",
+    ],
   },
   staged: {
     "*.{js,ts,jsx,tsx,json,jsonc,css,md,yml,yaml}": "vp check --fix",

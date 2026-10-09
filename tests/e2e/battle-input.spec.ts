@@ -4,6 +4,10 @@ import { create, join } from "./api";
 import { executeLocalD1 } from "./d1";
 
 test.use({ reducedMotion: "reduce" });
+// 同じ難易度のお題を残すと、ほかのテストの出題が入れ替わるため片付ける。
+test.afterAll(async () => {
+  await executeLocalD1("DELETE FROM topic WHERE id = 'e2e-input-topic'");
+});
 test("日本語の変換中は区切りを含む入力を保持し、変換後に語句にする", async ({ page, browser }) => {
   test.setTimeout(60000);
   await executeLocalD1(

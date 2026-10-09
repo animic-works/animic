@@ -3,7 +3,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "vp check && vp exec tsc --noEmit && vp exec knip",
+    "check": "vp run design-system:generate && vp run design-system:guard && vp check && vp exec tsc --noEmit && vp exec knip",
+    "design-system:generate": "vp exec panda codegen --spec && vp exec panda cssgen --outfile packages/styled-system/generated/styles.css && node scripts/generate-fonts.mjs",
+    "design-system:analyze": "vp exec panda analyze --outfile packages/styled-system/generated/analysis.json",
+    "mcp:panda": "panda-mcp",
+    "mcp:ark-ui": "ark-ui-mcp",
     "format": "vp fmt",
     "hooks:setup": "vp hooks enable",
     "icons:generate": "node scripts/generate-icons.mjs",
@@ -11,15 +15,21 @@
     "lint": "vp lint",
     "format:check": "vp fmt --check",
     "knip": "vp exec knip",
-    "dev": "vp dev",
-    "build": "vp build",
-    "preview": "vp preview",
+    "dev": "vp -C . dev",
+    "build": "vp -C . build",
+    "preview": "vp -C . preview",
     "typegen": "wrangler types",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "vp run design-system:generate && vp exec tsc --noEmit",
+    "test:design-system": "vp run design-system:generate && vp test run --config vitest.design-system.config.ts",
     "test:e2e": "playwright test",
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
-    "test": "vp test run --config vitest.config.ts"
+    "test": "vp test run --config vitest.config.ts",
+    "storybook": "vp run design-system:generate && storybook dev -p 6006 --no-open --disable-telemetry",
+    "storybook:build": "vp run design-system:generate && storybook build --disable-telemetry",
+    "storybook:preview": "vp -C . preview --config .storybook/vite.config.ts --outDir storybook-static --port 6006 --strictPort",
+    "test:design-system:browser": "playwright test --config playwright.design-system.config.ts",
+    "design-system:guard": "node scripts/design-guardrails.mjs"
   },
   "dependencies": {
     "@ark-ui/react": "5.39.2",
@@ -39,12 +49,21 @@
     "valibot": "1.5.0"
   },
   "devDependencies": {
+    "@animic/design-system": "workspace:*",
+    "@animic/react": "workspace:*",
+    "@animic/styled-system": "workspace:*",
+    "@ark-ui/mcp": "1.3.0",
+    "@axe-core/playwright": "4.13.0",
     "@babel/core": "7.29.7",
     "@cloudflare/vite-plugin": "1.62.5",
     "@commitlint/cli": "21.2.3",
     "@commitlint/config-conventional": "21.2.3",
+    "@pandacss/dev": "2.0.1",
+    "@pandacss/mcp": "2.0.1",
     "@playwright/test": "1.63.0",
     "@rolldown/plugin-babel": "0.2.4",
+    "@storybook/addon-a11y": "10.6.1",
+    "@storybook/react-vite": "10.6.1",
     "@types/node": "24.13.6",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
@@ -53,6 +72,7 @@
     "drizzle-kit": "0.31.11",
     "knip": "6.37.0",
     "rolldown": "1.2.9",
+    "storybook": "10.6.1",
     "typescript": "7.0.2",
     "vite": "npm:@voidzero-dev/vite-plus-core@0.3.3",
     "vite-plus": "0.3.3",
@@ -70,6 +90,31 @@
       "@fontsource/montserrat",
       "@fontsource/zen-kaku-gothic-new",
       "@fontsource/zen-maru-gothic"
-    ]
+    ],
+    "workspaces": {
+      ".": {
+        "entry": [
+          "tests/design-system/strict-types.ts",
+          "tests/design-system/public-types.tsx",
+          "scripts/design-guardrails.d.mts",
+          "scripts/generate-fonts.d.mts"
+        ],
+        "vitest": {
+          "config": [
+            "vitest.config.ts",
+            "vitest.design-system.config.ts"
+          ]
+        }
+      },
+      "packages/styled-system": {
+        "ignoreDependencies": [
+          "@fontsource/dela-gothic-one",
+          "@fontsource/jetbrains-mono",
+          "@fontsource/zen-kaku-gothic-new",
+          "@fontsource/zen-maru-gothic",
+          "@fontsource/montserrat"
+        ]
+      }
+    }
   }
 }
