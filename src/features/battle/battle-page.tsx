@@ -513,9 +513,13 @@ export function BattlePage({
             </Text>
             {mySubmission?.status === "submitted" && opponentId && (
               <Text tone="inverse">
-                {battle.submissionsClosed
-                  ? `${opponent} さんも提出しました！`
-                  : `${opponent} さんの提出を待っています`}
+                {battle.participantIds.length > 2
+                  ? battle.submissionsClosed
+                    ? "全員の提出がそろいました！"
+                    : "ほかの人の提出を待っています"
+                  : battle.submissionsClosed
+                    ? `${opponent} さんも提出しました！`
+                    : `${opponent} さんの提出を待っています`}
               </Text>
             )}
           </Stack>

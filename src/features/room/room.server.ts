@@ -26,7 +26,13 @@ import {
 import { isRoomCreationRetry } from "./room-creation";
 import type { RoomCreation } from "./room-creation";
 import { session } from "../../lib/auth-schema";
-import { reconcileRoom, getRoomDeadline, roomStateSchema } from "./room-state";
+import {
+  canJoinRoom,
+  reconcileRoom,
+  getRoomDeadline,
+  roomCapacity,
+  roomStateSchema,
+} from "./room-state";
 import type { RoomSnapshot, RoomState } from "./room-state";
 
 const attachmentSchema = v.object({
@@ -299,6 +305,8 @@ export class Room extends DurableObject<Env> {
   async join(participantId: string, name: string) {
     const state = this.#reconcile();
     if (!state || state.closed) throw new Error("ルームが見つからないか、終了しています。");
+    if (!canJoinRoom(state, participantId))
+      throw new Error(`このルームは満員です（${roomCapacity}人まで）。`);
     if (!state.members.some((member) => member.id === participantId)) {
       state.members.push({ id: participantId, name, ready: false });
       this.#save(state);

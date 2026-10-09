@@ -168,13 +168,77 @@ describe("未提出による1対1の勝敗", () => {
   it("両方提出しても採点結果がそろうまで勝敗を決めない", () => {
     expect(reconcileBattle(bothSubmitted(), 20_000).result).toBeNull();
   });
-  it("複数人対戦へ未合意の順位ルールを適用しない", () => {
-    const state = battle();
-    state.participantIds.push("c");
-    expect(reconcileBattle(state, 20_000).result).toBeNull();
+});
+
+describe("3人以上の結果", () => {
+  it("全員未提出なら勝負不成立、1人だけ提出したら採点を待たずにその人を1位にする", () => {
+    expect(reconcileBattle(trio(), 20_000).result).toEqual({
+      kind: "no-contest",
+      reason: "no-submissions",
+      decidedAt: 15_000,
+    });
+    const single = trioSubmitted("b");
+    expect(reconcileBattle(single, 14_999).result).toBeNull();
+    expect(reconcileBattle(single, 15_000).result).toEqual({
+      kind: "win",
+      reason: "opponent-not-submitted",
+      winnerId: "b",
+      decidedAt: 15_000,
+    });
+  });
+  it("全員の採点がそろうまで決めず、最高点の人を1位、同点なら引き分けにする", () => {
+    const state = trioSubmitted("a", "b", "c");
+    expect(applyScoringJobs(state, jobs(state, { a: 70, b: 90 }), 5000).result).toBeNull();
+    expect(applyScoringJobs(state, jobs(state, { a: 70, b: 90, c: 80 }), 5000).result).toEqual({
+      kind: "win",
+      reason: "higher-score",
+      winnerId: "b",
+      decidedAt: 5000,
+    });
+    expect(applyScoringJobs(state, jobs(state, { a: 90, b: 90, c: 80 }), 5000).result).toEqual({
+      kind: "draw",
+      reason: "same-score",
+      decidedAt: 5000,
+    });
+  });
+  it("採点に失敗した人と期限までにそろわなかった人は順位なしにし、残りで決める", () => {
+    const state = trioSubmitted("a", "b", "c");
+    expect(
+      applyScoringJobs(state, jobs(state, { a: 70, b: "failed", c: 80 }), 5000).result,
+    ).toEqual({ kind: "win", reason: "higher-score", winnerId: "c", decidedAt: 5000 });
+    const endsAt = reconcileBattle(state, 5000).scoring.endsAt ?? 0;
+    const late = applyScoringJobs(state, jobs(state, { a: 70 }), endsAt - 1);
+    expect(late.result).toBeNull();
+    expect(reconcileBattle(late, endsAt).result).toEqual({
+      kind: "win",
+      reason: "higher-score",
+      winnerId: "a",
+      decidedAt: endsAt,
+    });
+    const failed = { a: "failed", b: "failed", c: "failed" } as const;
+    expect(applyScoringJobs(state, jobs(state, failed), 5000).result).toEqual({
+      kind: "no-contest",
+      reason: "scoring-failed",
+      decidedAt: 5000,
+    });
   });
 });
 
+function trio() {
+  return createBattle(
+    { difficulty: "easy", durationSeconds: 10, selectionSeconds: 5 },
+    { id: "topic", difficulty: "easy", imageUrl: "https://example.invalid/topic.png" },
+    ["a", "b", "c"],
+    0,
+  );
+}
+function trioSubmitted(...ids: string[]) {
+  let state = trio();
+  for (const id of ids) state = success(accept(state, `image-${id}`, id), `image-${id}`);
+  for (const [index, id] of ids.entries())
+    state = submitImage(state, id, `image-${id}`, 3000 + index);
+  return state;
+}
 function bothSubmitted() {
   const generated = success(success(accept(accept(battle(), "one"), "two", "b"), "one"), "two");
   return submitImage(submitImage(generated, "a", "one", 3000), "b", "two", 4000);

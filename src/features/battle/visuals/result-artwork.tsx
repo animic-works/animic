@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { css, keyframes } from "@animic/styled-system/css";
 
 const burstIn = keyframes({
@@ -92,4 +93,67 @@ export function ResultConfetti({ delayed = false }: { delayed?: boolean }) {
       })}
     </svg>
   );
+}
+
+const crownDrop = keyframes({
+  from: { opacity: 0, transform: "translateY(-2rem) rotate(-20deg) scale(0.6)" },
+  to: { opacity: 1, transform: "none" },
+});
+const crown = css({
+  "&[data-animate=false]": { animationName: "[none]" },
+  animationName: `[${crownDrop}]`,
+  animationDuration: "[1.2s]",
+  animationDelay: "[1.4s]",
+  animationTimingFunction: "[cubic-bezier(.3,1.6,.5,1)]",
+  animationFillMode: "both",
+  _motionReduce: { animationName: "[none]" },
+});
+export function Crown({ animate }: { animate: boolean }) {
+  return (
+    <svg
+      className={crown}
+      data-animate={animate}
+      width="56"
+      height="42"
+      viewBox="0 0 24 18"
+      aria-hidden="true"
+    >
+      <path
+        d="M2 5l5 4 5-7 5 7 5-4-2 11H4z"
+        fill="#fddb13"
+        stroke="#0b1b2b"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+const rankingSequence = css({
+  "& > ol > li": {
+    animationDelay: "[1600ms]",
+    "&:nth-child(2)": { animationDelay: "[1680ms]" },
+    "&:nth-child(3)": { animationDelay: "[1760ms]" },
+    "&:nth-child(4)": { animationDelay: "[1840ms]" },
+    "&:nth-child(5)": { animationDelay: "[1920ms]" },
+    "&:nth-child(6)": { animationDelay: "[2000ms]" },
+    "&:nth-child(7)": { animationDelay: "[2080ms]" },
+    "&:nth-child(8)": { animationDelay: "[2160ms]" },
+  },
+});
+export function ResultRankingReveal({ children }: { children: ReactNode }) {
+  return <div className={rankingSequence}>{children}</div>;
+}
+const slam = keyframes({
+  from: { opacity: 0, scale: "[1.8]", filter: "[blur(8px)]" },
+  to: { opacity: 1, scale: "[1]", filter: "[blur(0px)]" },
+});
+const verdict = css({
+  animationName: `[${slam}]`,
+  animationDuration: "[700ms]",
+  animationTimingFunction: "[cubic-bezier(.3,1.6,.5,1)]",
+  animationFillMode: "both",
+  _motionReduce: { animationName: "[none]" },
+});
+export function VerdictReveal({ children, animate }: { children: ReactNode; animate: boolean }) {
+  return animate ? <div className={verdict}>{children}</div> : children;
 }

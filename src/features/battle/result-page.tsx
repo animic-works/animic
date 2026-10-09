@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { ActionGroup } from "@animic/react/action-group";
 import { AppFrame } from "@animic/react/app-frame";
 import { Avatar } from "@animic/react/avatar";
@@ -17,6 +18,7 @@ import { GridBackdrop } from "../shared/visuals/grid-backdrop";
 import { levels, playerPalettes } from "../room/room-presentation";
 import { getResultEntries, getResultHeadline, type ResultEntry } from "./battle-outcome";
 import type { BattleSnapshot } from "./battle-state";
+import { RankingResult } from "./result-ranking";
 import { ResultBurst, ResultConfetti } from "./visuals/result-artwork";
 function ParticipantResult({
   entry,
@@ -85,6 +87,33 @@ export function ResultPage({
   onTop: () => void;
 }) {
   if (!battle.result) return null;
+  const frame = (content: ReactNode) => (
+    <AppFrame
+      brand={<AppBrand />}
+      context={
+        <Badge>
+          ルーム <CodeDisplay value={code} presentation="inline" />
+        </Badge>
+      }
+    >
+      {content}
+    </AppFrame>
+  );
+  // 3人以上は順位、2人は勝ち負けで表示する。
+  if (battle.participantIds.length > 2)
+    return (
+      <Page decoration={<GridBackdrop />}>
+        {frame(
+          <RankingResult
+            battle={battle}
+            participantId={participantId}
+            names={names}
+            onRematch={onRematch}
+            onTop={onTop}
+          />,
+        )}
+      </Page>
+    );
   const opponentId = battle.participantIds.find((id) => id !== participantId);
   const headline = getResultHeadline(
     battle.result,
@@ -115,14 +144,7 @@ export function ResultPage({
         </>
       }
     >
-      <AppFrame
-        brand={<AppBrand />}
-        context={
-          <Badge>
-            ルーム <CodeDisplay value={code} presentation="inline" />
-          </Badge>
-        }
-      >
+      {frame(
         <Stack space="section">
           <Stack align="center" space="compact">
             <Text variant="eyebrow.strong" tone="accent">
@@ -155,8 +177,8 @@ export function ResultPage({
               トップへ戻る
             </Button>
           </ActionGroup>
-        </Stack>
-      </AppFrame>
+        </Stack>,
+      )}
     </Page>
   );
 }

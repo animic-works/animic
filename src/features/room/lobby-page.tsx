@@ -28,7 +28,7 @@ import { AppBrand } from "../shared/app-brand";
 import { ExitIcon, InviteIcon } from "../shared/icons";
 import { GridBackdrop } from "../shared/visuals/grid-backdrop";
 import { levels, playerPalettes } from "./room-presentation";
-import type { RoomSnapshot } from "./room-state";
+import { roomCapacity, type RoomSnapshot } from "./room-state";
 import type { BattleSettings } from "../battle/battle-state";
 import { choicesWith, defaultBattleSettings, type BattleOptions } from "./battle-options";
 import { useRoomSettings } from "./use-room-settings";
@@ -191,12 +191,12 @@ export function LobbyPage({
                     プレイヤー {players.length}
                     <Text variant="numeric.remainder" tone="subtle">
                       {" "}
-                      / 8
+                      / {roomCapacity}
                     </Text>
                   </Heading>
                   <AppFrameWideContent>{readiness}</AppFrameWideContent>
                 </Cluster>
-                <TileCollection label="プレイヤー" capacity={8}>
+                <TileCollection label="プレイヤー" capacity={roomCapacity}>
                   {players.map((player) => (
                     <Tile
                       key={player.id}
@@ -238,7 +238,7 @@ export function LobbyPage({
                       </Text>
                     </Tile>
                   ))}
-                  {players.length < 8 && (
+                  {players.length < roomCapacity && (
                     <Tile
                       appearance="placeholder"
                       media={
@@ -376,15 +376,11 @@ export function LobbyPage({
                   <Text tone="danger">{error}</Text>
                 </div>
               )}
-              {waitingForNext ? (
+              {waitingForNext && (
                 <div role="status">
                   <Text>対戦中です。次の対戦から参加できます。</Text>
                 </div>
-              ) : isHost && connectedCount !== 2 ? (
-                <Text variant="caption" tone="muted">
-                  接続中の参加者が2人のときに開始できます
-                </Text>
-              ) : null}
+              )}
               <ActionBar
                 tone={allReady ? "success" : "neutral"}
                 summary={
@@ -403,7 +399,7 @@ export function LobbyPage({
                     shape="pill"
                     size="lg"
                     prominence="raised"
-                    disabled={connectedCount !== 2 || waitingForNext}
+                    disabled={connectedCount < 2 || waitingForNext}
                     loading={pending}
                     onClick={() => (waiting.length ? setDialog("start") : start())}
                   >

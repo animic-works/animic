@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { openBattle, openLobby } from "../fixtures/room-presentation";
+import { join, snapshot } from "./api";
 import { executeLocalD1 } from "./d1";
 import { signIn } from "./api";
 
@@ -38,10 +39,9 @@ test("ログインして作成・ルール変更・招待・退出確認を操�
   await expect(page.getByRole("heading", { name: "ルームコード", exact: true })).toBeVisible();
 });
 
-test("接続中の2人以外では開始できず、URL指定で役割や結果を変更できない", async ({ page }) => {
+test("1人では開始できず、URL指定で役割や結果を変更できない", async ({ page }) => {
   const code = await openLobby(page);
   await expect(page.getByRole("button", { name: "対戦をはじめる", exact: true })).toBeDisabled();
-  await expect(page.getByText("接続中の参加者が2人のときに開始できます")).toBeVisible();
   await page.goto(`/rooms/${code}?name=偽名&role=guest&stage=result`);
   await expect(page.getByRole("heading", { name: "ルームコード", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "対戦をはじめる", exact: true })).toBeDisabled();
@@ -86,6 +86,48 @@ test("再読み込み後も対戦の開始時刻を保ち、期限後は未提�
     expect(new URL(page.url()).search).toBe("");
   } finally {
     await context.close();
+  }
+});
+
+test("3人で開始し、全員未提出なら順位の結果画面で勝負不成立を表示する", async ({
+  page,
+  browser,
+}) => {
+  test.setTimeout(60000);
+  const contexts = [
+    await browser.newContext({ reducedMotion: "reduce" }),
+    await browser.newContext({ reducedMotion: "reduce" }),
+  ];
+  try {
+    const [second, third] = await Promise.all(contexts.map((context) => context.newPage()));
+    const code = await openLobby(page, second);
+    await join(third, code, "みけ");
+    await expect
+      .poll(
+        async () => (await snapshot(second)).members.filter((member) => member.connected).length,
+      )
+      .toBe(3);
+    await expect(page.getByRole("button", { name: "対戦をはじめる", exact: true })).toBeEnabled();
+    const result = await page.evaluate(
+      async (data) => {
+        await window.animicTest.setRoomSettings({ data });
+        return window.animicTest.startBattle({ data });
+      },
+      {
+        code,
+        settings: { difficulty: "easy" as const, durationSeconds: 5, selectionSeconds: 2 },
+        previousBattleId: null,
+      },
+    );
+    expect(result.error).toBeNull();
+    await expect(page.getByRole("heading", { name: "NO GAME", exact: true })).toBeVisible({
+      timeout: 20000,
+    });
+    await expect(page.getByText("FINAL RESULT", { exact: true })).toBeVisible();
+    await expect(page.getByText("誰も提出しなかったため、勝負不成立です")).toBeVisible();
+    await expect(page.getByRole("list", { name: "順位" }).getByRole("listitem")).toHaveCount(3);
+  } finally {
+    await Promise.all(contexts.map((context) => context.close()));
   }
 });
 
