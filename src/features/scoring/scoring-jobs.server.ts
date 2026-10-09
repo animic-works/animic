@@ -4,6 +4,7 @@ import * as v from "valibot";
 
 import { scoringJob, scoringResult } from "./scoring.schema";
 import {
+  readScoringMetrics,
   readScoringTotals,
   scoringInputsSchema,
   scoringWorkflowVersion,
@@ -202,4 +203,21 @@ export async function completeScoringJob(
       .where(assignedTo(workerId, jobId)),
   ]);
   return true;
+}
+
+/** 対戦で採点に成功した参加者の、指標ごとの点。採点されていなければ`null`。 */
+export async function getScoringMetrics(db: D1Database, battleId: string, participantId: string) {
+  const [row] = await drizzle(db)
+    .select({ workflowVersion: scoringJob.workflowVersion, rawResult: scoringJob.rawResult })
+    .from(scoringJob)
+    .innerJoin(scoringResult, eq(scoringResult.jobId, scoringJob.id))
+    .where(
+      and(
+        eq(scoringJob.battleId, battleId),
+        eq(scoringJob.state, "succeeded"),
+        eq(scoringResult.participantId, participantId),
+      ),
+    )
+    .limit(1);
+  return row?.rawResult ? readScoringMetrics(row.workflowVersion, JSON.parse(row.rawResult)) : null;
 }

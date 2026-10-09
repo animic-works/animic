@@ -9,6 +9,10 @@ import {
   setRoomSettings,
 } from "../../src/features/room/room.functions";
 import { startBattle, submitBattleImage } from "../../src/features/battle/battle.functions";
+import {
+  getMyBattleDetail,
+  getMyBattleHistory,
+} from "../../src/features/battle/battle-history.functions";
 import { connectRoom } from "../../src/features/room/room-connection";
 import {
   getScoringAdminData,
@@ -51,6 +55,8 @@ const api = {
   setRoomSettings,
   startBattle,
   submitBattleImage,
+  getMyBattleHistory,
+  getMyBattleDetail,
   issueScoringLinkCode,
   getScoringAdminData,
   revokeScoringWorker,

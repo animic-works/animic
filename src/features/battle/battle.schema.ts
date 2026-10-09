@@ -1,4 +1,4 @@
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, primaryKey, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 /**
  * お題。公開状態と日時の既定値は、管理画面より前にSQLで登録した行を今までどおり出題の対象にするためのもの。
@@ -31,3 +31,28 @@ export const battleResult = sqliteTable("battle_result", {
   roomCode: text("room_code").notNull(),
   data: text("data").notNull(),
 });
+
+/**
+ * 参加者ごとの戦績。マイページの一覧と成績を、`battle_result`のJSONを読まずに求めるためのもの。
+ * `battle_result`と同じ書き込みで、保存する結果から求める（src/features/battle/battle-history.ts）。
+ */
+export const battleRecord = sqliteTable(
+  "battle_record",
+  {
+    battleId: text("battle_id").notNull(),
+    participantId: text("participant_id").notNull(),
+    startedAt: integer("started_at").notNull(),
+    difficulty: text("difficulty", { enum: ["easy", "normal", "hard"] }).notNull(),
+    participantCount: integer("participant_count").notNull(),
+    // 順位のない人（未提出・採点できなかった人・勝負不成立）はnull。
+    rank: integer("rank"),
+    // 採点されなかった人はnull。
+    total: real("total"),
+    // 未提出はnull。
+    imageUrl: text("image_url"),
+  },
+  (table) => [
+    primaryKey({ columns: [table.battleId, table.participantId] }),
+    index("battle_record_participant_started_at_idx").on(table.participantId, table.startedAt),
+  ],
+);

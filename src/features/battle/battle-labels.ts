@@ -18,3 +18,15 @@ export function getDifficulty(value: Difficulty) {
   if (!found) throw new Error("未対応の難易度です。");
   return found;
 }
+
+/** 対戦した日時。サーバーとブラウザで同じ表示になるよう、日本時間で表す。 */
+export function playedAtLabel(at: number) {
+  return new Date(at).toLocaleString("ja-JP", {
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Tokyo",
+  });
+}

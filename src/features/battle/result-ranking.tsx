@@ -8,6 +8,7 @@ import { Podium } from "@animic/react/podium";
 import { RecordItem, RecordList } from "@animic/react/record-list";
 import { Stack } from "@animic/react/stack";
 import { Text } from "@animic/react/text";
+import { accountIconAvatar, type AccountIcon } from "../account/account-icon";
 import { playerPalettes } from "../room/room-presentation";
 import { getRanking, ordinal, type RankingEntry } from "./battle-outcome";
 import type { BattleSnapshot } from "./battle-state";
@@ -28,12 +29,14 @@ export function RankingResult({
   battle,
   participantId,
   names,
+  icons,
   onRematch,
   onTop,
 }: {
   battle: BattleSnapshot;
   participantId: string;
   names: Map<string, string>;
+  icons: Map<string, AccountIcon | null>;
   onRematch: () => void;
   onTop: () => void;
 }) {
@@ -48,7 +51,10 @@ export function RankingResult({
       size="small"
       name={name(entry)}
       fallback={Array.from(name(entry))[0]}
-      palette={playerPalettes[seat(entry) % playerPalettes.length]}
+      {...accountIconAvatar(
+        icons.get(entry.participantId) ?? null,
+        playerPalettes[seat(entry) % playerPalettes.length],
+      )}
     />
   );
   const submitted = battle.mySubmission?.status === "submitted";

@@ -16,9 +16,9 @@ function room(members: RoomSnapshot["members"]): RoomSnapshot {
 
 describe("ロビーの参加者", () => {
   const members = [
-    { id: "a", name: "A", ready: false, connected: true },
-    { id: "h", name: "H", ready: false, connected: true },
-    { id: "b", name: "B", ready: true, connected: false },
+    { id: "a", name: "A", ready: false, icon: null, connected: true },
+    { id: "h", name: "H", ready: false, icon: null, connected: true },
+    { id: "b", name: "B", ready: true, icon: null, connected: false },
   ];
   it("ホストを先頭に並べ、ホストを準備済みとして数え、入室順の位置を保つ", () => {
     const lobby = getLobbyPlayers(room(members), "a");

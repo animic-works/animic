@@ -36,7 +36,7 @@ const generationSchema = v.variant("status", [
   }),
   v.object({ ...generationBase, status: v.literal("failed"), finishedAt: v.number() }),
 ]);
-const submissionSchema = v.variant("status", [
+export const submissionSchema = v.variant("status", [
   v.object({
     participantId: v.string(),
     status: v.literal("submitted"),
@@ -51,7 +51,7 @@ const submissionSchema = v.variant("status", [
     decidedAt: v.number(),
   }),
 ]);
-const battleResultSchema = v.variant("kind", [
+export const battleResultSchema = v.variant("kind", [
   v.object({
     kind: v.literal("win"),
     reason: v.picklist(["opponent-not-submitted", "higher-score"]),
@@ -403,11 +403,23 @@ export function getBattleSnapshot(
   });
 }
 
-export function serializeBattleResult(battle: BattleState, roomCode: string): string {
+/** 確定した結果を、D1の`battle_result`へ保存するJSONにする。`names`は参加者IDごとの表示名。 */
+export function serializeBattleResult(
+  battle: BattleState,
+  roomCode: string,
+  names: ReadonlyMap<string, string>,
+): string {
   if (!battle.result) throw new Error("対戦結果が確定していません。");
   return JSON.stringify({
     battleId: battle.id,
     roomCode,
+    // 確定までにルームを退出した人の名前は残っていないため含めない。
+    names: Object.fromEntries(
+      battle.participantIds.flatMap((id) => {
+        const name = names.get(id);
+        return name === undefined ? [] : [[id, name]];
+      }),
+    ),
     topic: battle.topic,
     settings: battle.settings,
     participantIds: battle.participantIds,

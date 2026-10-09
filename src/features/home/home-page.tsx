@@ -7,13 +7,14 @@ import { ActionGroup } from "@animic/react/action-group";
 import { SectionNavigation } from "@animic/react/section-navigation";
 import { Heading } from "@animic/react/heading";
 import { Link } from "@animic/react/link";
-import { NavigationBar } from "@animic/react/navigation-bar";
+import { NavigationBar, NavigationBarLabel } from "@animic/react/navigation-bar";
 import { Page } from "@animic/react/page";
 import { Section } from "@animic/react/section";
 import { Layer, LayerItem } from "@animic/react/layer";
 import { Stack } from "@animic/react/stack";
 import { Lead } from "@animic/react/lead";
 import { usePageTransition } from "../navigation/page-transition-provider";
+import { AccountIcon } from "../shared/icons";
 import { steps } from "./home-content";
 import { matches } from "./home-samples";
 import { Gallery, HowToPlay, Scoring } from "./home-sections";
@@ -152,6 +153,12 @@ export function HomePage() {
               ルームに参加
             </Button>
           </>
+        }
+        actions={
+          <Link appearance="subtle" href="/mypage" aria-label="マイページ">
+            <AccountIcon />
+            <NavigationBarLabel>マイページ</NavigationBarLabel>
+          </Link>
         }
       >
         {sections.map((section) => (
