@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { playerColor } from "../../components/avatar";
 import { Button } from "../../components/button";
@@ -6,6 +6,7 @@ import { Dialog, DialogClose } from "../../components/dialog";
 import { PanelHead } from "../../components/panel-head";
 import { Switch } from "../../components/switch";
 import { toast } from "../../components/toast";
+import { generateImage } from "../image-generation/image-generation.functions";
 import { PromptComposer } from "../image-generation/prompt-composer";
 import {
   ArtFrame,
@@ -185,6 +186,19 @@ export function BattleView({
     return () => clearTimeout(timer);
   }, [kickoff]);
 
+  // 送れなかった要求を同じ入力で送り直すときは同じ処理IDを使い、サーバーが受け付け済みなら二重に生成させない。
+  const unsent = useRef<{ battleId: string; prompt: string; generationId: string } | null>(null);
+  async function generate(prompt: string) {
+    const previous = unsent.current;
+    const generationId =
+      previous?.battleId === battle.id && previous.prompt === prompt
+        ? previous.generationId
+        : crypto.randomUUID();
+    unsent.current = { battleId: battle.id, prompt, generationId };
+    await generateImage({ data: { code, battleId: battle.id, generationId, prompt } });
+    unsent.current = null;
+  }
+
   async function submit(generationId: string) {
     if (submitted || submitting) return;
     setSubmitting(true);
@@ -295,10 +309,7 @@ export function BattleView({
               <ComposePhase />
             ) : null
           }
-          // 生成の処理（Issue #12の残り）をつなぐまでは渡さず、「生成する」を押せない理由を出す。
-          // つなぐときは次の関数を渡すだけで動く:
-          // async (prompt) => { await generateImage({ data: { code, battleId: battle.id, generationId: crypto.randomUUID(), prompt } }); }
-          onGenerate={undefined}
+          onGenerate={generate}
           modifierKey={modifierKey}
         />
 

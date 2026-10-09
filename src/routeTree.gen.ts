@@ -26,6 +26,7 @@ import { Route as AdminTopicsIndexRouteImport } from './routes/admin/topics/inde
 import { Route as AdminTopicsTopicIdRouteImport } from './routes/admin/topics/$topicId'
 import { Route as AdminTopicsNewRouteImport } from './routes/admin/topics/new'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as GeneratedImagesBattleIdGenerationIdRouteImport } from './routes/generated-images.$battleId.$generationId'
 import { Route as TopicImagesTopicIdImageIdRouteImport } from './routes/topic-images.$topicId.$imageId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -113,6 +114,12 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GeneratedImagesBattleIdGenerationIdRoute =
+  GeneratedImagesBattleIdGenerationIdRouteImport.update({
+    id: '/generated-images/$battleId/$generationId',
+    path: '/generated-images/$battleId/$generationId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const TopicImagesTopicIdImageIdRoute =
   TopicImagesTopicIdImageIdRouteImport.update({
     id: '/topic-images/$topicId/$imageId',
@@ -137,6 +144,7 @@ export interface FileRoutesByFullPath {
   '/admin/topics/$topicId': typeof AdminTopicsTopicIdRoute
   '/admin/topics/new': typeof AdminTopicsNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/generated-images/$battleId/$generationId': typeof GeneratedImagesBattleIdGenerationIdRoute
   '/topic-images/$topicId/$imageId': typeof TopicImagesTopicIdImageIdRoute
   '/admin/topics/': typeof AdminTopicsIndexRoute
 }
@@ -156,6 +164,7 @@ export interface FileRoutesByTo {
   '/admin/topics/$topicId': typeof AdminTopicsTopicIdRoute
   '/admin/topics/new': typeof AdminTopicsNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/generated-images/$battleId/$generationId': typeof GeneratedImagesBattleIdGenerationIdRoute
   '/topic-images/$topicId/$imageId': typeof TopicImagesTopicIdImageIdRoute
   '/admin/topics': typeof AdminTopicsIndexRoute
 }
@@ -177,6 +186,7 @@ export interface FileRoutesById {
   '/admin/topics/$topicId': typeof AdminTopicsTopicIdRoute
   '/admin/topics/new': typeof AdminTopicsNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/generated-images/$battleId/$generationId': typeof GeneratedImagesBattleIdGenerationIdRoute
   '/topic-images/$topicId/$imageId': typeof TopicImagesTopicIdImageIdRoute
   '/admin/topics/': typeof AdminTopicsIndexRoute
 }
@@ -199,6 +209,7 @@ export interface FileRouteTypes {
     | '/admin/topics/$topicId'
     | '/admin/topics/new'
     | '/api/auth/$'
+    | '/generated-images/$battleId/$generationId'
     | '/topic-images/$topicId/$imageId'
     | '/admin/topics/'
   fileRoutesByTo: FileRoutesByTo
@@ -218,6 +229,7 @@ export interface FileRouteTypes {
     | '/admin/topics/$topicId'
     | '/admin/topics/new'
     | '/api/auth/$'
+    | '/generated-images/$battleId/$generationId'
     | '/topic-images/$topicId/$imageId'
     | '/admin/topics'
   id:
@@ -238,6 +250,7 @@ export interface FileRouteTypes {
     | '/admin/topics/$topicId'
     | '/admin/topics/new'
     | '/api/auth/$'
+    | '/generated-images/$battleId/$generationId'
     | '/topic-images/$topicId/$imageId'
     | '/admin/topics/'
   fileRoutesById: FileRoutesById
@@ -250,6 +263,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   RoomsCodeRoute: typeof RoomsCodeRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  GeneratedImagesBattleIdGenerationIdRoute: typeof GeneratedImagesBattleIdGenerationIdRoute
   TopicImagesTopicIdImageIdRoute: typeof TopicImagesTopicIdImageIdRoute
 }
 
@@ -374,6 +388,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/generated-images/$battleId/$generationId': {
+      id: '/generated-images/$battleId/$generationId'
+      path: '/generated-images/$battleId/$generationId'
+      fullPath: '/generated-images/$battleId/$generationId'
+      preLoaderRoute: typeof GeneratedImagesBattleIdGenerationIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/topic-images/$topicId/$imageId': {
       id: '/topic-images/$topicId/$imageId'
       path: '/topic-images/$topicId/$imageId'
@@ -422,6 +443,8 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   RoomsCodeRoute: RoomsCodeRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  GeneratedImagesBattleIdGenerationIdRoute:
+    GeneratedImagesBattleIdGenerationIdRoute,
   TopicImagesTopicIdImageIdRoute: TopicImagesTopicIdImageIdRoute,
 }
 export const routeTree = rootRouteImport

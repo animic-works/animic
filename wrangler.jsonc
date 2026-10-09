@@ -20,7 +20,14 @@
       "binding": "TOPIC_IMAGES",
       "bucket_name": "animic-topic-images",
     },
+    {
+      "binding": "GENERATED_IMAGES",
+      "bucket_name": "animic-generated-images",
+    },
   ],
+  "vars": {
+    "NOVELAI_API_URL": "https://image.novelai.net",
+  },
   "secrets": {
     "required": [
       "BETTER_AUTH_SECRET",

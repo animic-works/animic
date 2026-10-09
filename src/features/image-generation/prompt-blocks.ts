@@ -1,6 +1,8 @@
 // 対戦画面のプロンプト入力の操作（語句の確定・出し入れ・重み・組み立て）。
 // 画面の状態は持たず、渡された語句の並びから次の並びを返す純粋な関数だけを置く
 
+import { maxPromptLength } from "./generation-input";
+
 /** 入力方法。文章は日本語の表記、タグはDanbooruのタグで語句を入れる */
 export type PromptMode = "text" | "tag";
 /** 1つの語句。weightは0.1〜2.0（0.1刻み）、既定は1 */
@@ -10,8 +12,6 @@ export type PromptBlocks = PromptToken[][];
 
 export const MIN_WEIGHT = 0.1;
 export const MAX_WEIGHT = 2;
-/** 組み立てたプロンプトの文字数の上限（画面側だけで判定する） */
-const MAX_PROMPT_LENGTH = 1000;
 
 const SEPARATORS = /[、,，]/;
 
@@ -144,22 +144,19 @@ export function previewBlocks(blocks: PromptBlocks, active: number, draft: strin
 
 /** 「生成する」を押せない理由。nullなら押せる */
 export function getGenerateBlocker(input: {
-  /** 生成の関数が渡されているか */
-  available: boolean;
   /** 受付終了・提出済み（理由は出さない） */
   locked: boolean;
   /** 自分の生成が未完了 */
   pending: boolean;
   prompt: string;
 }): { disabled: true; reason: string | null } | { disabled: false; reason: null } {
-  if (!input.available) return { disabled: true, reason: "画像の生成は準備中です" };
   if (input.locked) return { disabled: true, reason: null };
   if (input.pending) return { disabled: true, reason: "生成が終わるまでお待ちください" };
   if (!input.prompt) return { disabled: true, reason: "プロンプトを入力してください" };
-  if (input.prompt.length > MAX_PROMPT_LENGTH) {
+  if (input.prompt.length > maxPromptLength) {
     return {
       disabled: true,
-      reason: `プロンプトが${MAX_PROMPT_LENGTH}文字を超えています（${input.prompt.length}文字）`,
+      reason: `プロンプトが${maxPromptLength}文字を超えています（${input.prompt.length}文字）`,
     };
   }
   return { disabled: false, reason: null };
