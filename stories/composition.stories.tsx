@@ -486,7 +486,7 @@ export const IntrinsicMedia: Story = {
               <Meter label="一致率" value={92} />
             </Stack>
           </Surface>
-          <Surface appearance="card" padding="compact">
+          <Surface appearance="card" padding="md">
             <ImagePair sizing="intrinsic">
               <ImagePairItem label="お題">
                 <svg width="208" height="304" viewBox="0 0 208 304" aria-hidden="true">
@@ -503,7 +503,7 @@ export const IntrinsicMedia: Story = {
             </ImagePair>
           </Surface>
         </Split>
-        <Surface appearance="adaptive" padding="compact" data-testid="adaptive-surface">
+        <Surface appearance="adaptive" padding="md" data-testid="adaptive-surface">
           <Cluster justify="center">
             <Text variant="label.fluid">画像と説明を確認してください。</Text>
           </Cluster>

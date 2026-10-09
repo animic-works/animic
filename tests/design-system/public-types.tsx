@@ -166,7 +166,7 @@ grid({ columns: "2", gridTemplateColumns: "1fr 2fr" });
 </Overlay>;
 <Stack fill justify="between" space="fluid" />;
 <Surface appearance="illustrated" padding="inset" />;
-<Surface appearance="adaptive" padding="compact" />;
+<Surface appearance="adaptive" padding="md" />;
 <Text variant="label.fluid">合計</Text>;
 <Split layout="content-intrinsic" collapseOrder="reverse" />;
 <ImagePair sizing="intrinsic" />;

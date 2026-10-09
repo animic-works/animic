@@ -79,20 +79,20 @@ export const surface = defineRecipe({
         _surfaceCompact: { padding: "1rem 1rem 1rem 1.1rem" },
       },
       frame: { padding: "5", _surfaceCompact: { padding: "0.6rem" } },
-      "compact-only": { padding: "0", _surfaceNarrow: { padding: "5" } },
+      "narrow-only": { padding: "0", _surfaceNarrow: { padding: "5" } },
       fluid: {
         padding: "clamp(1.75rem, 5vw, 2.5rem)",
         _surfaceNarrow: { padding: "1.9rem 1rem max(1rem, env(safe-area-inset-bottom, 0px))" },
       },
-      tight: { padding: "3" },
-      small: { padding: "4" },
+      xs: { padding: "3" },
+      sm: { padding: "4" },
       inset: {
         padding: "clamp(0.6rem, 1.8vw, 1.75rem)",
         _surfaceCompact: { padding: "0.4rem 0.8rem 0.8rem" },
       },
-      compact: { padding: "5" },
-      normal: { padding: "6" },
-      spacious: { padding: "7" },
+      md: { padding: "5" },
+      lg: { padding: "6" },
+      xl: { padding: "7" },
     },
   },
   compoundVariants: [
@@ -118,5 +118,5 @@ export const surface = defineRecipe({
       },
     },
   ],
-  defaultVariants: { appearance: "plain", padding: "normal" },
+  defaultVariants: { appearance: "plain", padding: "lg" },
 });

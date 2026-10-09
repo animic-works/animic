@@ -14,7 +14,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 function Card({ name }: { name: string }) {
   return (
-    <Surface appearance="raised" padding="compact" data-testid="boundary-card">
+    <Surface appearance="raised" padding="md" data-testid="boundary-card">
       <Stack>
         <Heading level={2} size="sm">
           {name}を見比べる

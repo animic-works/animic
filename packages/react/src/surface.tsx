@@ -21,13 +21,13 @@ export interface SurfaceProps extends CommonProps {
     | "content"
     | "section"
     | "frame"
-    | "compact-only"
-    | "tight"
-    | "small"
+    | "narrow-only"
+    | "xs"
+    | "sm"
     | "inset"
-    | "compact"
-    | "normal"
-    | "spacious"
+    | "md"
+    | "lg"
+    | "xl"
     | "fluid";
 }
 export function Surface({ ref, ...props }: SurfaceProps) {

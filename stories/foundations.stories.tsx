@@ -80,10 +80,10 @@ export const Surfaces: Story = {
           ))}
         </Grid>
         <Separator />
-        <Surface padding="compact">
+        <Surface padding="md">
           <Text>compact</Text>
         </Surface>
-        <Surface padding="spacious">
+        <Surface padding="xl">
           <Text>spacious</Text>
         </Surface>
       </Stack>
