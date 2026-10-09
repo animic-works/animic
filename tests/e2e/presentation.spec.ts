@@ -70,6 +70,8 @@ test("再読み込み後も対戦の開始時刻を保ち、期限後は未提�
     );
     await page.reload();
     await expect(page.getByRole("button", { name: "この1枚で提出", exact: true })).toBeDisabled();
+    // 再読み込みの後は、検証用クライアントの読み込みを待ってから状態を取得する。
+    await page.waitForFunction(() => Boolean(window.animicTest));
     const restored = await page.evaluate(
       async (value) =>
         (await window.animicTest.getRoomEntry({ data: { code: value } })).room?.battle,
