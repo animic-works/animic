@@ -18,5 +18,6 @@
 - [運営者の管理画面の認証方式の決定](docs/decisions/0005-operator-password.md)
 - [お題の画像の保存先とバックアップの方式の決定](docs/decisions/0007-topic-images-and-backup.md)
 - [生成画像のメタデータと透過を消す方式の決定](docs/decisions/0008-generated-image-webp.md)
+- [生成画像の保存先と配信方法の決定](docs/decisions/0009-generated-image-storage.md)
 
 文書の役割とテンプレートの使い方は[CONTRIBUTING.md](CONTRIBUTING.md#文書の管理)にまとめています。
