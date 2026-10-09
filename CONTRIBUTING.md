@@ -18,7 +18,7 @@ node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
 
 `BETTER_AUTH_URL`は利用するアプリのURLに合わせます。`.env`はGitに含めません。環境変数で値を上書きできるよう、ローカル設定は`.env`に統一し、優先して読み込まれる`.dev.vars`とは併用しません。
 
-NovelAIで画像を生成する場合は、NovelAIのアカウント設定で発行した永続APIトークン（`pst-`で始まる値）を`NOVELAI_API_TOKEN`に設定します。未設定でも起動できますが、画像の生成は失敗します。トークンはサーバー側の生成キューのDOだけで読み、ブラウザへのレスポンスやログには含めません。
+NovelAIで画像を生成する場合は、NovelAIのアカウント設定で発行した永続APIトークン（`pst-`で始まる値）を`NOVELAI_API_TOKEN`に設定します。未設定でも起動できますが、画像の生成は失敗します。複数のアカウントのトークンを`NOVELAI_API_TOKEN=pst-…,pst-…`のようにカンマで区切って並べると、トークンの数だけ並列に生成します。アカウントのプランによっては生成でAnlasを消費するため、各アカウントのプランを確かめてから登録します。トークンはサーバー側の生成キューのDOだけで読み、ブラウザへのレスポンスやログには含めません。
 
 全員の生成に付ける規定の絵柄は、運営が決めたタグ（アーティストタグなど）を`NOVELAI_STYLE_PROMPT`に設定します。値はリポジトリに含めません。未設定でも起動でき、Wranglerが未設定の警告を出して、絵柄を付けずに生成します。
 
@@ -98,7 +98,7 @@ Cloudflare Workers Buildsは次の設定で通常のアプリをビルド・デ�
 | ビルドコマンド     | `pnpm run build`            |
 | デプロイコマンド   | `pnpm exec wrangler deploy` |
 
-Node.jsは`.node-version`、pnpmは`package.json`の指定に合わせます。初回は本番D1を作成・確認し、`wrangler.jsonc`の`database_id`を設定してから`vp exec wrangler d1 migrations apply DB --remote`でSQLを適用します。お題の画像を保存するR2のバケットは、`vp exec wrangler r2 bucket create animic-topic-images`で作成します。Workerの秘密情報として`BETTER_AUTH_SECRET`に本番専用の鍵、`BETTER_AUTH_URL`に`https://animic.party`、`NOVELAI_API_TOKEN`にNovelAIの永続APIトークン、`NOVELAI_STYLE_PROMPT`に規定の絵柄のタグ、`ADMIN_PASSWORD`に管理画面のパスワード（ローカルとは別の12文字以上の値）、`GOOGLE_CLIENT_ID`・`GOOGLE_CLIENT_SECRET`・`DISCORD_CLIENT_ID`・`DISCORD_CLIENT_SECRET`に本番用のOAuthアプリの値を設定します。これらは`wrangler.jsonc`の`secrets.required`で必須にしているため、設定していないとデプロイが失敗します。DOのクラス登録は`wrangler.jsonc`のmigrationによってデプロイ時に行います。
+Node.jsは`.node-version`、pnpmは`package.json`の指定に合わせます。初回は本番D1を作成・確認し、`wrangler.jsonc`の`database_id`を設定してから`vp exec wrangler d1 migrations apply DB --remote`でSQLを適用します。お題の画像を保存するR2のバケットは、`vp exec wrangler r2 bucket create animic-topic-images`で作成します。Workerの秘密情報として`BETTER_AUTH_SECRET`に本番専用の鍵、`BETTER_AUTH_URL`に`https://animic.party`、`NOVELAI_API_TOKEN`にNovelAIの永続APIトークン（複数ならカンマ区切り）、`NOVELAI_STYLE_PROMPT`に規定の絵柄のタグ、`ADMIN_PASSWORD`に管理画面のパスワード（ローカルとは別の12文字以上の値）、`GOOGLE_CLIENT_ID`・`GOOGLE_CLIENT_SECRET`・`DISCORD_CLIENT_ID`・`DISCORD_CLIENT_SECRET`に本番用のOAuthアプリの値を設定します。これらは`wrangler.jsonc`の`secrets.required`で必須にしているため、設定していないとデプロイが失敗します。DOのクラス登録は`wrangler.jsonc`のmigrationによってデプロイ時に行います。
 
 Custom Domainに`animic.party`を設定します。公開前に変更が`main`へ取り込まれていることと、Cloudflareがビルドするコミットを確認します。公開後はHTTPS、トップページ、アイコン・OGP画像、robots.txt、sitemap.xml、存在しないページの404を確認します。`www`を使う場合は正規ホストへ恒久リダイレクトします。開発環境を公開する場合は、Accessによる閲覧制限と、本番から独立したD1・DO・認証情報を設定します。
 

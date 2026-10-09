@@ -118,7 +118,7 @@ DOの状態はSQLiteストレージに永続化し、再起動・再接続後に
 
 画像生成サービスは`image-generation`のサーバー専用処理から呼び出します。Animicが管理する認証情報はサーバー側の秘密情報として保管し、クライアントのコード・レスポンス・ログには含めません。参加者の識別情報と生成サービスの認証情報を分けて扱います。
 
-NovelAIは1アカウントで同時に1件しか生成できないため、生成キューのDO（`NovelAiQueue`、`src/features/image-generation/novelai.server.ts`）の1つのインスタンスが、全ルームの生成を受付順に1件ずつ送ります。順番が来たら、運営者が選んだモデルをこのDOのストレージから読み、Workerの環境変数`NOVELAI_STYLE_PROMPT`の規定の絵柄を参加者のプロンプトと品質タグの間に加えます。絵柄と品質タグはNovelAIの`v4_prompt`にだけ入れ、`input`には参加者のプロンプトをそのまま送ります。モデルをこのDOに置くのは、生成のたびにD1を読まないためです。モデルごとの品質タグ・ネガティブプロンプト・パラメーターは`src/features/image-generation/novelai.ts`にあります。
+NovelAIは1アカウントで同時に1件しか生成できないため、生成キューのDO（`NovelAiQueue`、`src/features/image-generation/novelai.server.ts`）の1つのインスタンスが、全ルームの生成を受付順の1つの待ち行列に並べ、`NOVELAI_API_TOKEN`にカンマ区切りで登録したトークンごとに同時1件までNovelAIへ送ります。順番が来た生成は、空いているトークンのうち最も長く使っていないものに割り当てます（`src/features/image-generation/novelai-tokens.ts`）。トークンが1つなら全ルームの生成を1件ずつ送り、トークンの数だけ同時に生成できる件数が増えます。429は同じトークンで送り直します。401・402を返したトークンは、生成キューのDOが再起動する（デプロイや設定の変更）まで使いません。使えるトークンがなくなった場合は、トークンがない場合と同じく生成を失敗にします。ログにはトークンそのものではなく、1始まりの番号を残します。順番が来たら、運営者が選んだモデルをこのDOのストレージから読み、Workerの環境変数`NOVELAI_STYLE_PROMPT`の規定の絵柄を参加者のプロンプトと品質タグの間に加えます。絵柄と品質タグはNovelAIの`v4_prompt`にだけ入れ、`input`には参加者のプロンプトをそのまま送ります。モデルをこのDOに置くのは、生成のたびにD1を読まないためです。モデルごとの品質タグ・ネガティブプロンプト・パラメーターは`src/features/image-generation/novelai.ts`にあります。
 
 NovelAIはPNGのtEXtチャンクと、アルファ値の最下位ビット（`stealth_pngcomp`）に生成の条件を埋め込みます。生成キューのDOは、受け取ったPNGの画素を`src/features/image-generation/generated-image.ts`で取り出してアルファを捨て、libwebpのWASM（`@jsquash/webp`）で品質90の非可逆のWebPに書き出します。Workersは実行時にWASMをコンパイルできないため、`.wasm`はCloudflare Vite pluginでコンパイル済みのモジュールとして読み込みます。変換は1枚あたり約0.4秒のCPU時間を使うため、Workers Freeでも1リクエストあたり30秒まで使えるDOで行い、NovelAIの順番待ちの外に置いて次の生成の通信と重ねます。選定理由は[ADR 0008](decisions/0008-generated-image-webp.md)を参照してください。
 
