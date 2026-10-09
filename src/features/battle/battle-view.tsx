@@ -46,6 +46,7 @@ import type { HudTone, RosterState, TopicReveal } from "./battle-parts";
 import { submitBattleImage } from "./battle.functions";
 import { getDifficulty } from "./battle-labels";
 import { useModifierKey, useQuickSubmit, useReducedMotion } from "./battle-preferences";
+import { hasNoImageToSubmit } from "./battle-screen";
 import type { BattleStage } from "./battle-screen";
 import type { BattleSnapshot } from "./battle-state";
 import { useRemainingMs } from "./use-remaining-ms";
@@ -130,6 +131,8 @@ export function BattleView({
 
   const submitted = stage === "waiting" || stage === "scoring";
   const generationOpen = stage === "generating";
+  // 時間切れで提出できる画像がなければ、生成や提出を促さずにそのことを伝える
+  const noImage = hasNoImageToSubmit(stage, battle.myGenerations);
   const mySubmission = battle.mySubmission;
   const submittedImage =
     mySubmission?.status === "submitted"
@@ -203,7 +206,9 @@ export function BattleView({
       ? `#${numberOf(submittedImage.id)} を提出しました`
       : selected && !submitted
         ? `#${numberOf(selected.id)} を提出候補にしています`
-        : "画像を1枚選んでください";
+        : noImage
+          ? "時間切れのため提出できません"
+          : "画像を1枚選んでください";
 
   const newestPending = pendings.at(-1);
   const mineView = selected ? (
@@ -223,6 +228,8 @@ export function BattleView({
     </>
   ) : newestPending ? (
     <StageGenerating number={numberOf(newestPending.id)} />
+  ) : noImage ? (
+    <StageEmpty title="提出できる画像がありません" sub="時間内に完成した画像はありませんでした" />
   ) : (
     <StageEmpty title="まだ画像がありません" sub="プロンプトを書いて「生成する」を押そう" />
   );
@@ -289,7 +296,9 @@ export function BattleView({
           pending={pendings.length > 0}
           locked={!generationOpen || submitted}
           cover={
-            stage === "selecting" ? (
+            noImage ? (
+              <ComposePhase empty />
+            ) : stage === "selecting" ? (
               <ComposePhase seconds={Math.max(0, Math.ceil((remainingMs ?? 0) / 1000))} />
             ) : stage === "finishing" ? (
               <ComposePhase />
@@ -335,17 +344,19 @@ export function BattleView({
           <HistoryRail
             empty={ordered.length === 0}
             submit={
-              <SubmitBox
-                quick={quick}
-                onQuickChange={setQuick}
-                disabled={!selected || submitted}
-                loading={submitting}
-                onSubmit={() => {
-                  if (!selected) return;
-                  if (quick) void submit(selected.id);
-                  else setConfirmId(selected.id);
-                }}
-              />
+              noImage ? null : (
+                <SubmitBox
+                  quick={quick}
+                  onQuickChange={setQuick}
+                  disabled={!selected || submitted}
+                  loading={submitting}
+                  onSubmit={() => {
+                    if (!selected) return;
+                    if (quick) void submit(selected.id);
+                    else setConfirmId(selected.id);
+                  }}
+                />
+              )
             }
           >
             {ordered.toReversed().map((generation) => {

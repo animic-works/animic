@@ -492,13 +492,15 @@ export function ConfirmOption({ children }: { children: ReactNode }) {
 }
 
 // 生成終了後の案内: もう使わないプロンプトのパネルを、注意テープ柄の黄色いカードで覆う。
-// seconds を省くと、生成中の画像の完成を待つ間の表示にする
-export function ComposePhase({ seconds }: { seconds?: number }) {
+// seconds を省くと、生成中の画像の完成を待つ間の表示にする。empty は提出できる画像がないときの表示
+export function ComposePhase({ seconds, empty = false }: { seconds?: number; empty?: boolean }) {
   return (
     <div className={composePhaseStyles.root} role="status">
       <span className={composePhaseStyles.eyebrow}>Time up</span>
-      <span className={composePhaseStyles.title}>生成終了！</span>
-      {seconds === undefined ? (
+      <span className={composePhaseStyles.title}>{empty ? "時間切れ" : "生成終了！"}</span>
+      {empty ? (
+        <span className={composePhaseStyles.note}>提出できる画像がありません</span>
+      ) : seconds === undefined ? (
         <span className={composePhaseStyles.note}>生成中の画像の完成を待っています</span>
       ) : (
         <>
