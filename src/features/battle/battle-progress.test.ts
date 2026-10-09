@@ -7,6 +7,7 @@ import {
   createBattle,
   finishGeneration,
   getBattleSnapshot,
+  generationTimeoutMs,
   getScoringRequests,
   reconcileBattle,
   submitImage,
@@ -15,9 +16,9 @@ import {
 } from "./battle-state";
 import type { BattleState, ScoringJobOutcome } from "./battle-state";
 
-function battle() {
+function battle(durationSeconds = 10) {
   return createBattle(
-    { difficulty: "easy", durationSeconds: 10, selectionSeconds: 5 },
+    { difficulty: "easy", durationSeconds, selectionSeconds: 5 },
     { id: "topic", difficulty: "easy", imageUrl: "https://example.invalid/topic.png" },
     ["a", "b"],
     0,
@@ -80,11 +81,84 @@ describe("生成受付と完了", () => {
   });
 });
 
+describe("生成のタイムアウトと生成中の上限", () => {
+  it("本人の生成が終わるまで次の生成を受け付けず、同じIDの再送には受付時刻を返す", () => {
+    const first = acceptGeneration(
+      battle(),
+      { id: "one", participantId: "a", inputHash: "prompt-one" },
+      1000,
+    );
+    expect(first).toMatchObject({ accepted: true, acceptedAt: 1000 });
+    expect(() => accept(first.battle, "two", "a", 2000)).toThrow("生成が終わるまで");
+    expect(accept(first.battle, "other", "b", 2000).generations).toHaveLength(2);
+    expect(
+      acceptGeneration(
+        first.battle,
+        { id: "one", participantId: "a", inputHash: "prompt-one" },
+        3000,
+      ),
+    ).toMatchObject({ accepted: false, acceptedAt: 1000 });
+    expect(accept(success(first.battle, "one", 2000), "two", "a", 3000).generations).toHaveLength(
+      2,
+    );
+  });
+  it("受付から1分で失敗にし、タイムアウトした生成は次の受付を塞がない", () => {
+    const state = accept(battle(120), "one", "a", 1000);
+    const expiresAt = 1000 + generationTimeoutMs;
+    expect(reconcileBattle(state, expiresAt - 1).generations[0]?.status).toBe("pending");
+    expect(reconcileBattle(state, expiresAt).generations[0]).toMatchObject({
+      status: "failed",
+      finishedAt: expiresAt,
+    });
+    expect(accept(state, "two", "a", expiresAt).generations.map((item) => item.status)).toEqual([
+      "failed",
+      "pending",
+    ]);
+  });
+  it("タイムアウトの後に届いた完了を無視する", () => {
+    const state = accept(battle(120), "one", "a", 1000);
+    const expiresAt = 1000 + generationTimeoutMs;
+    expect(success(state, "one", expiresAt - 1).generations[0]?.status).toBe("succeeded");
+    expect(success(state, "one", expiresAt).generations[0]).toMatchObject({
+      status: "failed",
+      finishedAt: expiresAt,
+    });
+    expect(success(state, "one", expiresAt + 5000).generations[0]).toMatchObject({
+      status: "failed",
+      finishedAt: expiresAt,
+    });
+  });
+  it("生成終了後のタイムアウトを最後の完了として画像選択の期限を決め、Alarmの遅れで延ばさない", () => {
+    const state = accept(battle(), "one", "a", 9000);
+    const expiresAt = 9000 + generationTimeoutMs;
+    expect(reconcileBattle(state, 30_000).selectionEndsAt).toBeNull();
+    expect(reconcileBattle(state, expiresAt).selectionEndsAt).toBe(expiresAt + 5000);
+    expect(reconcileBattle(state, expiresAt + 30_000)).toMatchObject({
+      selectionEndsAt: expiresAt + 5000,
+      result: { kind: "no-contest", reason: "no-submissions", decidedAt: expiresAt + 5000 },
+    });
+  });
+  it("結果の確定後もタイムアウトを反映し、結果は変えない", () => {
+    let state = success(success(accept(accept(battle(), "one"), "other", "b"), "one"), "other");
+    state = accept(state, "two", "a", 3000);
+    state = submitImage(submitImage(state, "a", "one", 4000), "b", "other", 4000);
+    const scored = applyScoringJobs(state, jobs(state, { a: 71.4, b: 60 }), 5000);
+    expect(scored.result?.kind).toBe("win");
+    const expired = reconcileBattle(scored, 3000 + generationTimeoutMs);
+    expect(expired.generations.find((item) => item.id === "two")).toMatchObject({
+      status: "failed",
+      finishedAt: 3000 + generationTimeoutMs,
+    });
+    expect(expired.result).toEqual(scored.result);
+    expect(expired.submissions).toEqual(scored.submissions);
+  });
+});
+
 describe("提出と期限", () => {
   it("他人・未完成・失敗・存在しない画像は提出できない", () => {
-    let state = accept(accept(accept(battle(), "other", "b"), "pending"), "failed");
-    state = success(state, "other");
+    let state = accept(accept(battle(), "other", "b"), "failed");
     state = finishGeneration(state, "failed", { status: "failed" }, 2000);
+    state = success(accept(state, "pending", "a", 2000), "other");
     for (const id of ["other", "pending", "failed", "unknown"]) {
       expect(() => submitImage(state, "a", id, 3000)).toThrow();
     }
@@ -93,8 +167,8 @@ describe("提出と期限", () => {
   it("選んだ画像の順番ではなく提出までの成功回数を固定する", () => {
     let state = battle();
     for (let i = 1; i <= 5; i += 1) state = success(accept(state, `image-${i}`), `image-${i}`);
-    state = accept(state, "late");
     state = finishGeneration(accept(state, "failed"), "failed", { status: "failed" }, 2000);
+    state = accept(state, "late", "a", 2000);
     const submitted = submitImage(state, "a", "image-2", 3000);
     expect(submitted.submissions[0]).toMatchObject({
       generationId: "image-2",
@@ -280,7 +354,7 @@ describe("採点による1対1の勝敗", () => {
 
 it("結果保存には提出画像だけを含め、入力ハッシュや未提出の履歴を含めない", () => {
   let state = success(
-    success(accept(accept(battle(), "selected"), "unused"), "selected"),
+    accept(success(accept(battle(), "selected"), "selected"), "unused"),
     "unused",
   );
   expect(() => serializeBattleResult(state, "ABCDEFGH")).toThrow();
