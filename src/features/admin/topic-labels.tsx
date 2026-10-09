@@ -1,4 +1,4 @@
-import { Badge } from "../../components/badge";
+import { Badge } from "@animic/react/badge";
 import { DIFFICULTIES, getDifficulty } from "../battle/battle-labels";
 import { TOPIC_STATUS_LABELS } from "../battle/topic-admin";
 import type { TopicStatus } from "../battle/topic-admin";
@@ -7,28 +7,20 @@ import type { TopicStatus } from "../battle/topic-admin";
 
 export type Difficulty = (typeof DIFFICULTIES)[number]["value"];
 
-// 状態の札。公開中は緑の塗り、非公開は枠線
+// 公開状態を共通の成功色と中立色で区別する
 export function StatusBadge({ status }: { status: TopicStatus }) {
   if (status === "published")
     return (
-      <Badge tone="success" variant="solid" size="sm">
+      <Badge tone="success" size="sm">
         {TOPIC_STATUS_LABELS.published}
       </Badge>
     );
-  return (
-    <Badge variant="outline" size="sm">
-      {TOPIC_STATUS_LABELS.unpublished}
-    </Badge>
-  );
+  return <Badge size="sm">{TOPIC_STATUS_LABELS.unpublished}</Badge>;
 }
 
 // 難易度の札
 export function DifficultyBadge({ difficulty }: { difficulty: Difficulty }) {
-  return (
-    <Badge variant="solid" size="sm">
-      {getDifficulty(difficulty).label}
-    </Badge>
-  );
+  return <Badge size="sm">{getDifficulty(difficulty).label}</Badge>;
 }
 
 // 難易度のSegmentedControlの選択肢

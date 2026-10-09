@@ -1,66 +1,74 @@
 import { useState } from "react";
-import type { ReactNode } from "react";
-
-import { Badge } from "../../components/badge";
-import { Button } from "../../components/button";
-import { DataCell, DataCode, DataRow, DataTable } from "../../components/data-table";
-import { FileField } from "../../components/file-upload";
-import { Icon } from "../../components/icon";
-import { Stack } from "../../components/layout";
-import { SegmentedControl } from "../../components/segmented-control";
-import { Surface } from "../../components/surface";
-import { Text } from "../../components/text";
-import { toast } from "../../components/toast";
-import { createTopic } from "../battle/topic-admin.functions";
-import { topicSourceImageTypes } from "../battle/topic-admin";
-import { toTopicWebp } from "../battle/topic-image-file";
+import { Button } from "@animic/react/button";
+import { DataTable, type DataTableColumn } from "@animic/react/data-table";
+import { FileButton } from "@animic/react/file-button";
+import { SegmentedControl } from "@animic/react/segmented-control";
+import { Split } from "@animic/react/split";
+import { Stack } from "@animic/react/stack";
+import { Surface } from "@animic/react/surface";
+import { Text } from "@animic/react/text";
+import { useToast } from "@animic/react/toast";
 import { errorMessage } from "./admin-format";
-import { AdminColumns, AdminGuide, AdminHead } from "./admin-parts";
-import { DIFFICULTY_OPTIONS, difficultyOf } from "./topic-labels";
-import type { Difficulty } from "./topic-labels";
-
-const MAX_FILES = 20;
-
-type ResultState = "waiting" | "running" | "done" | "failed";
-
+import { AdminGuide, AdminHead, AdminError } from "./admin-parts";
+import { DIFFICULTY_OPTIONS, difficultyOf, type Difficulty } from "./topic-labels";
+import { toTopicWebp } from "../battle/topic-image-file";
+import { topicSourceImageTypes } from "../battle/topic-admin";
+import { Badge } from "@animic/react/badge";
+import { ActionGroup } from "@animic/react/action-group";
+import { createTopic } from "../battle/topic-admin.functions";
 type ResultRow = {
-  /** お題のID（ファイルごとに1つ発行する） */
   id: string;
   name: string;
-  state: ResultState;
+  state: "waiting" | "running" | "done" | "failed";
   result: string;
 };
+const labels = { waiting: "待機", running: "追加中", done: "完了", failed: "失敗" };
+export type TopicNewScreenProps = { onOpen: (id: string) => void; onBack: () => void };
+function resultColumns(onOpen: (id: string) => void): DataTableColumn<ResultRow>[] {
+  return [
+    {
+      id: "name",
+      header: "ファイル名",
+      rowHeader: true,
+      cell: (row) => <Text variant="code.compact">{row.name}</Text>,
+    },
+    {
+      id: "state",
+      header: "状態",
+      cell: (row) => (
+        <Badge
+          tone={row.state === "done" ? "success" : row.state === "failed" ? "danger" : "neutral"}
+        >
+          {labels[row.state]}
+        </Badge>
+      ),
+    },
+    {
+      id: "result",
+      header: "結果",
+      cell: (row) => <Text tone={row.state === "failed" ? "danger" : "default"}>{row.result}</Text>,
+    },
+    {
+      id: "open",
+      header: "開く",
+      cell: (row) =>
+        row.state === "done" ? (
+          <Button
+            size="xs"
+            appearance="secondary"
+            onClick={() => onOpen(row.id)}
+            aria-label={`${row.name}を開く`}
+          >
+            開く
+          </Button>
+        ) : null,
+    },
+  ];
+}
 
-const STATE_BADGES: Record<ResultState, ReactNode> = {
-  waiting: (
-    <Badge variant="outline" size="sm">
-      待機
-    </Badge>
-  ),
-  running: (
-    <Badge tone="info" size="sm">
-      追加中
-    </Badge>
-  ),
-  done: (
-    <Badge tone="success" variant="solid" size="sm">
-      完了
-    </Badge>
-  ),
-  failed: (
-    <Badge tone="danger" size="sm">
-      失敗
-    </Badge>
-  ),
-};
-
-export type TopicNewScreenProps = {
-  onOpen: (topicId: string) => void;
-  onBack: () => void;
-};
-
-// お題の追加: 画像を選び、ブラウザーでWebPに変換して非公開のお題を作る
 export function TopicNewScreen({ onOpen, onBack }: TopicNewScreenProps) {
+  const toast = useToast();
+  const [fileError, setFileError] = useState<string | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [difficulty, setDifficulty] = useState<Difficulty>("normal");
   const [rows, setRows] = useState<ResultRow[]>([]);
@@ -68,7 +76,7 @@ export function TopicNewScreen({ onOpen, onBack }: TopicNewScreenProps) {
 
   async function submit() {
     if (!files.length) {
-      toast("追加する画像を選んでください");
+      toast.show({ title: "追加する画像を選んでください" });
       return;
     }
     // ファイルごとにIDを決め、1件ずつ順に送る（失敗しても続ける）
@@ -99,117 +107,95 @@ export function TopicNewScreen({ onOpen, onBack }: TopicNewScreenProps) {
     }
     setBusy(false);
     setFiles([]);
-    toast(`${added}件を追加しました`);
+    toast.show({ title: `${added}件を追加しました` });
   }
 
   return (
-    <>
+    <Stack space="section">
       <AdminHead
+        eyebrow="Admin"
+        title="お題を追加"
         crumbs={[{ label: "お題", href: "/admin/topics" }, { label: "お題を追加" }]}
         onCrumbClick={(_href, event) => {
           event.preventDefault();
           onBack();
         }}
-        eyebrow="Admin"
-        title="お題を追加"
       />
-      <AdminColumns
-        layout="form"
-        primary={
-          <Surface variant="soft" padding="lg">
-            <Stack gap="5">
-              <FileField
-                label="画像"
-                dropText="画像をここにドロップ"
-                multiple
-                maxFiles={MAX_FILES}
-                accept={topicSourceImageTypes.join(",")}
-                helperText="PNG・WebP・JPEG（10MB以下）・20件まで。メタデータを消したWebPに変換して保存します"
-                files={files}
-                onFilesChange={setFiles}
-                disabled={busy}
-              />
-              <Stack gap="2">
-                <Text variant="label" as="p" aria-hidden="true">
-                  難易度（全ファイルに適用）
-                </Text>
-                <Stack direction="row">
-                  <SegmentedControl
-                    label="難易度（全ファイルに適用）"
-                    tone="accent"
-                    options={DIFFICULTY_OPTIONS}
-                    value={difficulty}
-                    disabled={busy}
-                    onValueChange={(value) => setDifficulty(difficultyOf(value))}
-                  />
-                </Stack>
-              </Stack>
-              <Stack direction="row" justify="end">
+      <Split layout="main-aside" align="start">
+        <Surface appearance="card">
+          <Stack>
+            <FileButton
+              label="画像"
+              accept={topicSourceImageTypes.join(",")}
+              multiple
+              loading={busy}
+              onFiles={(next) => {
+                if (next.length > 20) {
+                  setFileError("画像は20件まで選べます。");
+                  return;
+                }
+                setFileError(null);
+                setFiles(next);
+              }}
+            />
+            <Text variant="caption">
+              PNG・WebP・JPEG（10MB以下）・20件まで。メタデータを消したWebPに変換して保存します
+            </Text>
+            <AdminError>{fileError}</AdminError>
+            {files.map((file, index) => (
+              <ActionGroup key={`${file.name}-${index}`}>
+                <Text variant="code.compact">{file.name}</Text>
                 <Button
-                  size="lg"
-                  leadingIcon={<Icon name="upload" size="lg" />}
+                  size="xs"
+                  appearance="quiet"
                   loading={busy}
-                  loadingText="追加しています…"
-                  onClick={() => void submit()}
+                  onClick={() => setFiles((current) => current.filter((_, i) => i !== index))}
+                  aria-label={`${file.name}を外す`}
                 >
-                  追加する
+                  外す
                 </Button>
-              </Stack>
-              {rows.length ? (
-                <DataTable caption="追加の結果" columns={["ファイル名", "状態", "結果", "開く"]}>
-                  {rows.map((row) => (
-                    <DataRow key={row.id}>
-                      <DataCell header>
-                        <DataCode>{row.name}</DataCode>
-                      </DataCell>
-                      <DataCell>{STATE_BADGES[row.state]}</DataCell>
-                      <DataCell>
-                        <Text
-                          variant="body-sm"
-                          tone={row.state === "failed" ? "danger" : "default"}
-                          as="span"
-                        >
-                          {row.result}
-                        </Text>
-                      </DataCell>
-                      <DataCell kind="actions">
-                        {row.state === "done" ? (
-                          <Button
-                            size="xs"
-                            variant="secondary"
-                            onClick={() => onOpen(row.id)}
-                            aria-label={`${row.name}を開く`}
-                          >
-                            開く
-                          </Button>
-                        ) : null}
-                      </DataCell>
-                    </DataRow>
-                  ))}
-                </DataTable>
-              ) : null}
-            </Stack>
-          </Surface>
-        }
-        secondary={
-          <AdminGuide
-            items={[
-              {
-                term: "状態",
-                body: "追加したお題は非公開で登録されます。公開するまで出題されません。",
-              },
-              {
-                term: "画像",
-                body: "ブラウザーでWebPに変換し、メタデータと透過を消してから保存します。NovelAIの画像に残ったプロンプトも消えます。",
-              },
-              {
-                term: "複数のファイル",
-                body: "1件ずつ順に追加します。失敗したファイルがあっても、ほかは追加します。",
-              },
-            ]}
-          />
-        }
-      />
-    </>
+              </ActionGroup>
+            ))}
+            <SegmentedControl
+              label="難易度（全ファイルに適用）"
+              labelVisibility="visible"
+              tone="accent"
+              options={DIFFICULTY_OPTIONS}
+              value={difficulty}
+              disabled={busy}
+              onValueChange={(value) => setDifficulty(difficultyOf(value))}
+            />
+            <Button size="lg" loading={busy} onClick={() => void submit()}>
+              追加する
+            </Button>
+            {rows.length > 0 && (
+              <DataTable
+                label="追加の結果"
+                rows={rows}
+                getRowKey={(row) => row.id}
+                empty="追加した画像はありません"
+                columns={resultColumns(onOpen)}
+              />
+            )}
+          </Stack>
+        </Surface>
+        <AdminGuide
+          items={[
+            {
+              term: "状態",
+              body: "追加したお題は非公開で登録されます。公開するまで出題されません。",
+            },
+            {
+              term: "画像",
+              body: "ブラウザーでWebPに変換し、メタデータと透過を消してから保存します。NovelAIの画像に残ったプロンプトも消えます。",
+            },
+            {
+              term: "複数のファイル",
+              body: "1件ずつ順に追加します。失敗したファイルがあっても、ほかは追加します。",
+            },
+          ]}
+        />
+      </Split>
+    </Stack>
   );
 }

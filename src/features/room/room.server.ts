@@ -322,6 +322,7 @@ export class Room extends DurableObject<Env> {
     state.settings = settings;
     this.#save(state);
     await this.#publish();
+    return state.version;
   }
 
   canStart(participantId: string, previousBattleId: string | null) {

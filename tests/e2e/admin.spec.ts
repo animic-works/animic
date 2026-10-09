@@ -86,7 +86,8 @@ test("ログインしてリンクコードを発行し、リンクした採点�
   await openAdminMenu(page, "採点ワーカー");
 
   await page.getByRole("button", { name: "発行する" }).click();
-  await expect(page.getByRole("alert")).toHaveText("名前を入力してください。");
+  await expect(page.getByLabel("採点ワーカーの名前")).toHaveAttribute("aria-invalid", "true");
+  await expect(page.getByText("名前を入力してください。", { exact: true })).toBeVisible();
   const name = `e2e-admin-${Date.now()}`;
   await page.getByLabel("採点ワーカーの名前").fill(name);
   await page.getByRole("button", { name: "発行する" }).click();
@@ -119,11 +120,20 @@ test("ログインしてリンクコードを発行し、リンクした採点�
 
   await row.getByRole("button", { name: "失効させる" }).click();
   const dialog = page.getByRole("dialog", { name: "採点ワーカーを失効させますか？" });
+  await expect(dialog).toContainText(name);
+  await dialog.getByRole("button", { name: "やめる", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(row).toContainText("有効");
+  await row.getByRole("button", { name: "失効させる" }).click();
   await dialog.getByRole("button", { name: "失効させる" }).click();
   await expect(dialog).toHaveCount(0);
   await expect(row).toContainText("失効（");
   await expect(row.getByRole("button", { name: "失効させる" })).toHaveCount(0);
   expect((await heartbeat()).status()).toBe(401);
+  const revoked = page.getByRole("status", { name: "失効させました", exact: true });
+  await expect(revoked).toBeVisible();
+  // 通知は時間で閉じる。
+  await expect(revoked).toHaveCount(0);
 
   await openAdminMenu(page, "採点ジョブ");
   await expect(page.getByRole("row", { name: new RegExp(`battle-${jobId}`) })).toContainText(
@@ -141,7 +151,7 @@ test("画像生成のモデルを切り替えると表示と保存先が変わ�
 }) => {
   await loginAdmin(page);
   await openAdminMenu(page, "画像生成");
-  const current = page.locator("dl").filter({ hasText: "使用中のモデル" });
+  const current = page.getByRole("table", { name: "モデルの情報" });
   const models = page.getByRole("radiogroup", { name: "切り替えるモデル" });
   await expect(current).toContainText("V5 Curated");
   await expect(current).toContainText("nai-diffusion-5-curated");
