@@ -10,11 +10,12 @@ export const globalCss = defineGlobalStyles({
         "&::-webkit-scrollbar": { display: "block" },
       },
     },
-  ":where([data-animic-scroll-dragging])": { scrollSnapType: "none !important" },
   ":where(body:has([data-animic-page]))": { margin: "0" },
   ':where(html:has([data-animic-page-scroll="sections"]))': {
     scrollSnapType: "y mandatory",
   },
+  // スクロールバーをドラッグしている間はスナップを止める。同じ優先度のため、スナップの指定より後に置く。
+  ":where([data-animic-scroll-dragging])": { scrollSnapType: "none" },
   // Pointer focus must not inherit the browser outline when focus is restored.
   ":where([data-animic-input=pointer]) :where(:focus)": { outlineStyle: "none", outlineWidth: "0" },
   ":where([data-animic-root])": {
