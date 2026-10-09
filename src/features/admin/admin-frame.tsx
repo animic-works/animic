@@ -1,46 +1,38 @@
-import { useState } from "react";
-import type { FormEvent, ReactNode } from "react";
-
-import { Badge } from "../../components/badge";
-import { Button } from "../../components/button";
-import { EntryCard, EntryPage } from "../../components/entry";
-import { TextField } from "../../components/field";
-import { Icon } from "../../components/icon";
-import { Stack } from "../../components/layout";
-import { Text } from "../../components/text";
+import { useState, type FormEvent, type ReactNode } from "react";
+import { AppFrame } from "@animic/react/app-frame";
+import { Badge } from "@animic/react/badge";
+import { Button } from "@animic/react/button";
+import { Container } from "@animic/react/container";
+import { Field } from "@animic/react/field";
+import { Heading } from "@animic/react/heading";
+import { Input } from "@animic/react/input";
+import { Link } from "@animic/react/link";
+import { Page } from "@animic/react/page";
+import { Split } from "@animic/react/split";
+import { Stack } from "@animic/react/stack";
+import { Surface } from "@animic/react/surface";
+import { Text } from "@animic/react/text";
+import { useToast } from "@animic/react/toast";
 import { loginAdmin, logoutAdmin } from "../../lib/admin.functions";
-import { AdminShell } from "./admin-parts";
-import type { AdminNavItem } from "./admin-parts";
-
-// 管理画面の遷移先。左のナビとルートのパスに1対1で対応する。
-type AdminHref =
-  | "/admin/topics"
-  | "/admin/battle-options"
-  | "/admin/prompts"
-  | "/admin/image-generation"
-  | "/admin/scoring/workers"
-  | "/admin/scoring/jobs"
-  | "/admin/backup";
-
-// 左のナビの並び（件数は出さない）
-const NAV: { href: AdminHref; label: string; icon: AdminNavItem["icon"] }[] = [
-  { href: "/admin/topics", label: "お題", icon: "grid" },
-  { href: "/admin/battle-options", label: "対戦条件", icon: "stopwatch" },
-  { href: "/admin/prompts", label: "よく使う表現", icon: "tag" },
-  { href: "/admin/image-generation", label: "画像生成", icon: "sparkle" },
-  { href: "/admin/scoring/workers", label: "採点ワーカー", icon: "server" },
-  { href: "/admin/scoring/jobs", label: "採点ジョブ", icon: "target" },
-  { href: "/admin/backup", label: "バックアップ", icon: "download" },
-];
-
-// パスワードを入力してログインする画面。ログインするまで中身は読み込まない
+import { AppBrand } from "../shared/app-brand";
+import { AdminError } from "./admin-parts";
+const NAV = [
+  { href: "/admin/topics", label: "お題" },
+  { href: "/admin/battle-options", label: "対戦条件" },
+  { href: "/admin/prompts", label: "よく使う表現" },
+  { href: "/admin/image-generation", label: "画像生成" },
+  { href: "/admin/scoring/workers", label: "採点ワーカー" },
+  { href: "/admin/scoring/jobs", label: "採点ジョブ" },
+  { href: "/admin/backup", label: "バックアップ" },
+] as const;
+type AdminHref = (typeof NAV)[number]["href"];
 export function AdminLogin({ onLoggedIn }: { onLoggedIn: () => Promise<void> }) {
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [sending, setSending] = useState(false);
-
+  const [password, setPassword] = useState(""),
+    [error, setError] = useState<string | null>(null),
+    [sending, setSending] = useState(false);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (sending) return;
     setSending(true);
     setError(null);
     try {
@@ -57,93 +49,107 @@ export function AdminLogin({ onLoggedIn }: { onLoggedIn: () => Promise<void> }) 
       setSending(false);
     }
   }
-
   return (
-    <EntryPage>
-      <EntryCard
-        logoSrc="/animic-logo.svg"
-        title="管理画面"
-        titleId="admin-login-title"
-        sub="パスワードでログインしてください。"
-      >
-        <form onSubmit={(event) => void submit(event)}>
-          <Stack gap="4">
-            <TextField
-              label="パスワード"
-              type="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-            {error ? (
-              <Text variant="note" tone="danger" role="alert">
-                {error}
-              </Text>
-            ) : null}
-            <Button type="submit" fullWidth size="lg" loading={sending}>
-              ログイン
-            </Button>
-          </Stack>
-        </form>
-        <Button variant="link" asChild>
-          <a href="/">トップへ戻る</a>
-        </Button>
-      </EntryCard>
-    </EntryPage>
+    <Page>
+      <AppFrame brand={<AppBrand />}>
+        <Container size="narrow">
+          <Surface appearance="card">
+            <form onSubmit={(event) => void submit(event)}>
+              <Stack>
+                <Heading level={1} size="panel">
+                  管理画面
+                </Heading>
+                <Text>パスワードでログインしてください。</Text>
+                <Field label="パスワード">
+                  <Input
+                    type="password"
+                    autoComplete="current-password"
+                    required
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                  />
+                </Field>
+                <AdminError>{error}</AdminError>
+                <Button type="submit" loading={sending}>
+                  ログイン
+                </Button>
+                <Link href="/">トップへ戻る</Link>
+              </Stack>
+            </form>
+          </Surface>
+        </Container>
+      </AppFrame>
+    </Page>
   );
 }
-
-export type AdminFrameProps = {
+export function AdminFrame({
+  pathname,
+  onNavigate,
+  onLoggedOut,
+  children,
+}: {
   pathname: string;
   onNavigate: (href: AdminHref) => void;
   onLoggedOut: () => Promise<void>;
   children: ReactNode;
-};
-
-// ログイン後の枠。上のバー・左のナビ・右の中身。ナビのクリックはルーターに渡す
-export function AdminFrame({ pathname, onNavigate, onLoggedOut, children }: AdminFrameProps) {
+}) {
+  const [busy, setBusy] = useState(false);
+  const toast = useToast();
   async function logout() {
-    await logoutAdmin();
-    await onLoggedOut();
+    setBusy(true);
+    try {
+      await logoutAdmin();
+      await onLoggedOut();
+    } catch {
+      toast.show({ title: "ログアウトできませんでした。" });
+    } finally {
+      setBusy(false);
+    }
   }
-
-  const nav: AdminNavItem[] = NAV.map((item) => ({
-    ...item,
-    current: pathname.startsWith(item.href),
-  }));
-
   return (
-    <AdminShell
-      logoSrc="/animic-logo.svg"
-      logoHref="/"
-      badge={
-        <Badge tone="accent" size="sm">
-          管理
-        </Badge>
-      }
-      end={
-        <Button
-          variant="secondary"
-          size="sm"
-          leadingIcon={<Icon name="exit" size="md" />}
-          onClick={() => void logout()}
-        >
-          ログアウト
-        </Button>
-      }
-      nav={nav}
-      onNavigate={(href, event) => {
-        // 修飾キー・左以外のクリックは、別タブで開くなどの既定の動きに任せる。
-        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0)
-          return;
-        const item = NAV.find((entry) => entry.href === href);
-        if (!item) return;
-        event.preventDefault();
-        onNavigate(item.href);
-      }}
-    >
-      {children}
-    </AdminShell>
+    <Page>
+      <AppFrame
+        brand={<AppBrand />}
+        context={<Badge>管理</Badge>}
+        actions={
+          <Button appearance="secondary" size="sm" loading={busy} onClick={() => void logout()}>
+            ログアウト
+          </Button>
+        }
+      >
+        <Split layout="aside-main" align="start">
+          <nav aria-label="管理メニュー">
+            <Surface appearance="card">
+              <Stack>
+                <Text variant="eyebrow">Admin</Text>
+                {NAV.map((item) => (
+                  <Link
+                    key={item.href}
+                    appearance="navigation"
+                    href={item.href}
+                    aria-current={pathname.startsWith(item.href) ? "page" : undefined}
+                    onClick={(event) => {
+                      if (
+                        event.metaKey ||
+                        event.ctrlKey ||
+                        event.shiftKey ||
+                        event.altKey ||
+                        event.button !== 0
+                      )
+                        return;
+                      event.preventDefault();
+                      onNavigate(item.href);
+                    }}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+              </Stack>
+            </Surface>
+          </nav>
+          <Stack space="section">{children}</Stack>
+        </Split>
+      </AppFrame>
+    </Page>
   );
 }

@@ -13,6 +13,15 @@ export const roomCodeSchema = v.pipe(
   v.toUpperCase(),
   v.regex(new RegExp(`^[${ROOM_CODE_CHARS}]{8}$`)),
 );
+/** ルームに参加できる人数。退出していない参加者（切断中を含む）を数える。 */
+export const roomCapacity = 8;
+/** 参加済みの人の再参加は人数に関係なく受け付け、新しい人は定員に達していない場合だけ受け付ける。 */
+export function canJoinRoom(state: Pick<RoomState, "members">, participantId: string) {
+  return (
+    state.members.some((member) => member.id === participantId) ||
+    state.members.length < roomCapacity
+  );
+}
 export const participantNameSchema = v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(20));
 const memberSchema = v.object({ id: v.string(), name: participantNameSchema, ready: v.boolean() });
 export const roomStateSchema = v.object({

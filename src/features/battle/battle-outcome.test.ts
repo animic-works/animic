@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { getResultEntries, getResultHeadline } from "./battle-outcome";
+import { getRanking, getResultEntries, getResultHeadline, ordinal } from "./battle-outcome";
 import type { BattleSnapshot } from "./battle-state";
 
 const base: BattleSnapshot = {
@@ -166,5 +166,53 @@ describe("参加者ごとの結果", () => {
       { participantId: "a", winner: false, submitted: false, imageUrl: null, total: null },
       { participantId: "b", winner: false, submitted: false, imageUrl: null, total: null },
     ]);
+  });
+});
+
+function score(participantId: string, total: number) {
+  return { participantId, total, imageUrl: `https://example.invalid/${participantId}.png` };
+}
+
+describe("3人以上の順位", () => {
+  const trio: BattleSnapshot = { ...base, participantIds: ["b", "a", "c", "d"] };
+  it("最終スコアの高い順に並べ、同点は同じ順位、順位のない人は最後にする", () => {
+    const ranking = getRanking(
+      {
+        ...trio,
+        result: { kind: "draw", reason: "same-score", decidedAt: 90_000 },
+        scores: [score("a", 80), score("b", 90), score("c", 90)],
+      },
+      "a",
+    );
+    expect(ranking.map((item) => [item.participantId, item.rank, item.total])).toEqual([
+      ["b", 1, 90],
+      ["c", 1, 90],
+      ["a", 3, 80],
+      ["d", null, null],
+    ]);
+  });
+  it("1人だけ提出したら、採点を待たずにその人を1位にする", () => {
+    const ranking = getRanking(
+      {
+        ...trio,
+        result: {
+          kind: "win",
+          reason: "opponent-not-submitted",
+          winnerId: "a",
+          decidedAt: 75_000,
+        },
+      },
+      "a",
+    );
+    expect(ranking[0]).toEqual({
+      participantId: "a",
+      rank: 1,
+      imageUrl: "https://example.invalid/a-2.png",
+      total: null,
+    });
+    expect(ranking.slice(1).every((item) => item.rank === null)).toBe(true);
+  });
+  it("順位を英語の序数で表す", () => {
+    expect([1, 2, 3, 4, 11].map(ordinal)).toEqual(["1st", "2nd", "3rd", "4th", "11th"]);
   });
 });
