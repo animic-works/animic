@@ -2,6 +2,7 @@ import { surface } from "@animic/styled-system/recipes";
 import type { CommonProps } from "./dom";
 import { domProps } from "./dom";
 export interface SurfaceProps extends CommonProps {
+  fill?: boolean;
   accent?: "primary" | "secondary" | "highlight";
   appearance?:
     | "inverse"
@@ -39,6 +40,7 @@ export function Surface({ ref, ...props }: SurfaceProps) {
         appearance: props.appearance,
         padding: props.padding,
         accent: props.accent,
+        fill: props.fill,
       })}
     >
       {props.children}
