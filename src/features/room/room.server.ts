@@ -15,6 +15,7 @@ import {
   serializeBattleResult,
   getScoringRequests,
   applyScoringJobs,
+  generationTimeoutMs,
 } from "../battle/battle-state";
 import type { BattleSettings, Topic, GenerationOutcome } from "../battle/battle-state";
 import { persistBattleResult } from "../battle/battle-results.server";
@@ -136,6 +137,9 @@ export class Room extends DurableObject<Env> {
     if (pending) deadlines.push(Math.max(now, pending.retry_at));
     const battle = state.battle;
     if (battle) {
+      for (const item of battle.generations)
+        if (item.status === "pending")
+          deadlines.push(Math.max(now, item.acceptedAt + generationTimeoutMs));
       if (now < battle.generationEndsAt) deadlines.push(battle.generationEndsAt);
       else if (
         battle.selectionEndsAt === null &&
@@ -388,7 +392,8 @@ export class Room extends DurableObject<Env> {
     state.battle = result.battle;
     this.#save(state);
     await this.#publish();
-    return result.accepted;
+    // 生成の期限は、呼び出し側の時計ではなくこのDOが記録した受付時刻から数える。
+    return { accepted: result.accepted, acceptedAt: result.acceptedAt };
   }
 
   async finishGeneration(battleId: string, id: string, outcome: GenerationOutcome) {

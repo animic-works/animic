@@ -133,13 +133,9 @@ describe("previewBlocks", () => {
 });
 
 describe("getGenerateBlocker", () => {
-  const ready = { available: true, locked: false, pending: false, prompt: "笑顔" };
+  const ready = { locked: false, pending: false, prompt: "笑顔" };
 
   it("押せない理由を優先順に返す", () => {
-    expect(getGenerateBlocker({ ...ready, available: false, locked: true })).toEqual({
-      disabled: true,
-      reason: "画像の生成は準備中です",
-    });
     expect(getGenerateBlocker({ ...ready, locked: true, pending: true })).toEqual({
       disabled: true,
       reason: null,

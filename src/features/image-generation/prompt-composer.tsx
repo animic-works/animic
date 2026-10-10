@@ -48,8 +48,8 @@ export type PromptComposerProps = {
   pending: boolean;
   /** 受付終了・提出済み（入力・切り替え・検索も止める） */
   locked: boolean;
-  /** 生成の要求。未定義なら「生成する」と⌘/Ctrl+Enterは動かず、理由を表示する */
-  onGenerate?: (prompt: string) => Promise<void>;
+  /** 生成の要求。受付を拒否されたか通信に失敗したら例外を投げる（入力は残してエラーを表示する） */
+  onGenerate: (prompt: string) => Promise<void>;
   /** ショートカットの案内に出す修飾キー */
   modifierKey: "⌘" | "Ctrl";
 };
@@ -138,7 +138,6 @@ export function PromptComposer({
   const preview = previewBlocks(blocks, active, draft);
   const prompt = assemblePrompt(preview, mode);
   const blocker = getGenerateBlocker({
-    available: Boolean(onGenerate),
     locked,
     pending: pending || requesting,
     prompt,
@@ -199,7 +198,7 @@ export function PromptComposer({
   }
 
   async function generate() {
-    if (blocker.disabled || !onGenerate) {
+    if (blocker.disabled) {
       toast.show({ title: blocker.reason ?? "いまは画像を生成できません" });
       return;
     }
