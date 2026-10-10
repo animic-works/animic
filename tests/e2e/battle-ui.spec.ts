@@ -51,13 +51,13 @@ test("対戦画面でプロンプトを入力し、候補・重み・検索・�
         .getByRole("listitem", { name: /^ホスト: ?$/ }),
     ).toBeVisible();
 
-    // 生成の処理をつなぐまでは「生成する」を押せず、理由を出す。
+    // プロンプトが空の間は「生成する」を押せず、理由を出す。
     await expect(page.getByRole("button", { name: "生成する", exact: true })).toBeDisabled();
-    await expect(page.getByText("画像の生成は準備中です")).toBeVisible();
+    await expect(page.getByText("プロンプトを入力してください")).toBeVisible();
     const input = page.getByRole("combobox", { name: "プロンプト（キャラ）" });
     await input.press("ControlOrMeta+Enter");
     await expect(
-      page.getByRole("status").filter({ hasText: "画像の生成は準備中です" }),
+      page.getByRole("status").filter({ hasText: "プロンプトを入力してください" }),
     ).toBeVisible();
 
     // 区切りを書くと語句になる。

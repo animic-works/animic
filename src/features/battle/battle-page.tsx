@@ -23,6 +23,7 @@ import { hasNoImageToSubmit } from "./battle-screen";
 import type { BattleStage } from "./battle-screen";
 import { SubmissionWaitDialog, SubmitConfirmDialog, TopicZoomDialog } from "./submission-dialogs";
 import { useBattleEntrance } from "./use-battle-entrance";
+import { useBattleGeneration } from "./use-battle-generation";
 import { useBattleSubmission } from "./use-battle-submission";
 import { useImageArrival } from "./use-image-arrival";
 import { useRemainingMs } from "./use-remaining-ms";
@@ -110,6 +111,7 @@ export function BattlePage({
   const noImage = hasNoImageToSubmit(stage, battle.myGenerations);
   const remaining = useRemainingMs(battle.serverTime, getBattleDeadline(battle, stage), receivedAt);
   const clock = getBattleClock(battle, stage, remaining);
+  const generate = useBattleGeneration({ code, battleId: battle.id });
   const submission = useBattleSubmission({ code, battleId: battle.id, locked });
   const confirmed = images.succeeded.find((item) => item.id === submission.confirmId);
   const opponentId =
@@ -152,6 +154,7 @@ export function BattlePage({
               successCount={images.succeeded.length}
               pending={images.pendings.length > 0}
               locked={stage !== "generating" || locked}
+              onGenerate={generate}
               modifierKey={modifierKey}
             />
           )
