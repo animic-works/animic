@@ -63,6 +63,7 @@ export const navigationBar = defineSlotRecipe({
         "&[data-navigation-layout=stacked]": { columnGap: "2" },
         gap: "2",
       },
+      _navigationNarrow: { paddingInline: "3" },
     },
     brand: {
       "[data-initial-visible] &": {
@@ -96,6 +97,7 @@ export const navigationBar = defineSlotRecipe({
         minWidth: "control.0",
         maxWidth: "6.5rem",
       },
+      _navigationNarrow: { width: "4.75rem", maxWidth: "4.75rem" },
     },
     content: {
       display: "flex",
@@ -145,7 +147,9 @@ export const navigationBar = defineSlotRecipe({
       _navigationCompact: {
         minWidth: 0,
         borderInlineStartWidth: "0",
-        paddingInlineStart: "0",
+        // アカウントのアイコンの輪と印が、隣の操作や画面の端に付かないようにする。
+        paddingInlineStart: "3",
+        paddingInlineEnd: "2",
         "[data-navigation-layout=stacked] &": { paddingInlineStart: "0" },
       },
     },

@@ -194,6 +194,7 @@ export const button = defineRecipe({
         position: "relative",
         "&::before": { content: '""', position: "absolute", inset: "-2px" },
         _navigationCompact: { paddingInline: "1rem" },
+        _navigationNarrow: { minHeight: "2.25rem", paddingInline: "0.65rem", gap: "0.35rem" },
       },
     },
     shape: { rounded: {}, pill: { borderRadius: "full" } },

@@ -102,6 +102,8 @@ export const conditions = {
   navigationWide: "@media (min-width: 901px)",
   navigationConstrained: "@media (min-width: 901px) and (max-width: 1200px)",
   navigationCompact: "@media (max-width: 35em)",
+  // 幅400px未満。メニューの操作を1行に収めるため、ロゴ・ボタン・アカウントの表示を小さくする。
+  navigationNarrow: "@media (max-width: 24.99em)",
   actionNarrow: "@media (max-width: 400px)",
   actionCompact: "@media (max-width: 35em)",
   layerStack: "@media (max-width: 560px), (max-width: 1100px) and (orientation: portrait)",

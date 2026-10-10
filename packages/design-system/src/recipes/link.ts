@@ -65,6 +65,7 @@ export const link = defineRecipe({
             zIndex: -1,
           },
         },
+        _navigationNarrow: { minHeight: "2.25rem", minWidth: "2.25rem" },
       },
       scroll: {
         display: "grid",
