@@ -101,7 +101,7 @@ function MatchDetail({ detail }: { detail: Detail }) {
   const level = getDifficulty(detail.settings.difficulty).label;
   return (
     <Stack space="section">
-      <Split layout="balanced-aside" collapseOrder="reverse">
+      <Split layout="balanced-aside" collapseOrder="reverse" align="stretch">
         <Surface appearance="card" padding="sm" fill>
           <Stack fill justify="center">
             <ImagePair
