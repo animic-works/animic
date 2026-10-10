@@ -7,6 +7,7 @@ import { IconButton } from "@animic/react/icon-button";
 import { Page } from "@animic/react/page";
 import { Split } from "@animic/react/split";
 import { Stack } from "@animic/react/stack";
+import { Heading } from "@animic/react/heading";
 import { Text } from "@animic/react/text";
 import { useToast } from "@animic/react/toast";
 import { AppBrand } from "../shared/app-brand";
@@ -68,6 +69,17 @@ export function LobbyPage({
     <Page decoration={<GridBackdrop />}>
       <AppFrame
         brand={<AppBrand />}
+        // 見出しを置き、ロゴの横ではなくヘッダーの下からカードを並べる。
+        context={
+          <Stack space="tight">
+            <Text variant="eyebrow.strong" tone="accent">
+              LOBBY
+            </Text>
+            <Heading level={1} size="title">
+              ロビー
+            </Heading>
+          </Stack>
+        }
         compactContext={
           <Button appearance="soft" shape="pill" size="xs" onClick={copyCode}>
             <Text variant="caption" tone="supporting">
@@ -83,8 +95,8 @@ export function LobbyPage({
         }
         bottomAction
       >
-        <Split layout="balanced-aside">
-          <Stack>
+        <Split layout="balanced-aside" align="stretch">
+          <Stack fill>
             <LobbyPlayersPanel
               code={code}
               lobby={lobby}
