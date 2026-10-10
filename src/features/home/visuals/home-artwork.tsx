@@ -425,6 +425,7 @@ export function StepArtwork({ kind }: { kind: "room" | "image" | "prompt" | "tro
 }
 
 const sampleArtwork = css({
+  clipPath: "[inset(0 round 0.5rem)]",
   width:
     "[calc(max(12rem, min(100svh - clamp(7rem, 16svh, 9rem) - 14rem, (44vw - 12rem) * 1216 / 832)) * 832 / 1216)]",
   _artworkNarrow: {
@@ -436,48 +437,11 @@ const sampleArtwork = css({
       "[calc(max(12rem, min(100svh - 4.75rem - 22rem, (50vw - 2.2rem) * 1216 / 832)) * 832 / 1216)]",
   },
 });
-const sampleTint = css({
-  transitionProperty: "[fill]",
-  transitionDuration: "[300ms]",
-  transitionTimingFunction: "[ease]",
-  _motionReduce: { transitionDuration: "[0ms]" },
-});
-const sampleSymbol = css({ translate: "[-17px -17px]" });
-export function SampleArtwork({ tint }: { tint: string }) {
-  const pattern = useId();
+/** ギャラリーの例の画像。縦長のまま、画面の高さに合わせた幅で角を丸めて表示する。 */
+export function SampleArtwork({ src, alt }: { src: string; alt: string }) {
   return (
-    <svg className={sampleArtwork} width="832" height="1216" aria-hidden="true">
-      <defs>
-        <pattern
-          id={pattern}
-          width="19"
-          height="19"
-          patternUnits="userSpaceOnUse"
-          patternTransform="rotate(-18)"
-        >
-          <rect y="16" width="19" height="3" fill="#fff" opacity="0.5" />
-        </pattern>
-      </defs>
-      <rect className={sampleTint} width="100%" height="100%" rx="16" fill={tint} />
-      <rect width="100%" height="100%" rx="16" fill={`url(#${pattern})`} />
-      <svg
-        className={sampleSymbol}
-        x="50%"
-        y="50%"
-        width="34"
-        height="34"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="#0b1b2b"
-        opacity="0.35"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <rect x="3" y="3" width="18" height="18" rx="3" />
-        <circle cx="9" cy="9" r="2" />
-        <path d="m21 15-5-5L5 21" />
-      </svg>
+    <svg className={sampleArtwork} viewBox="0 0 832 1216" role="img" aria-label={alt}>
+      <image href={src} width="832" height="1216" />
     </svg>
   );
 }
@@ -604,8 +568,8 @@ export function ScoreWeightsBar({
 /** グラフの色と凡例を結び付ける色見本。 */
 export function ScoreWeightSwatch({ metric }: { metric: ScoreWeightKey }) {
   return (
-    <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
-      <rect width="12" height="12" rx="3" fill={scoreWeightColors[metric]} />
+    <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+      <rect width="10" height="10" rx="2.5" fill={scoreWeightColors[metric]} />
     </svg>
   );
 }

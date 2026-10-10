@@ -260,7 +260,7 @@ export function Gallery({
                   </div>
                   <Stack space="compact">
                     <Separator appearance="dashed" />
-                    <Meter label="再現度" value={match.score} />
+                    <Meter label="再現度" value={match.score} valueText={match.score.toFixed(1)} />
                   </Stack>
                 </Stack>
               </Surface>
@@ -272,10 +272,33 @@ export function Gallery({
                     <Stack fill justify="center">
                       <ImagePair sizing="intrinsic">
                         <ImagePairItem label="お題">
-                          <SampleArtwork tint={match.topic} />
+                          <SampleArtwork src={match.topic.src} alt={match.topic.alt} />
                         </ImagePairItem>
-                        <ImagePairItem label="提出">
-                          <SampleArtwork tint={match.shot} />
+                        <ImagePairItem
+                          label="提出"
+                          detail={
+                            <Cluster space="compact">
+                              <Text as="p" variant="caption" tone="supporting">
+                                {scoringMetrics.map((metric, row) => (
+                                  <Fragment key={metric.key}>
+                                    {row > 0 && <br />}
+                                    <ScoreWeightSwatch metric={metric.key} />
+                                    {`\u00a0${metric.label}`}
+                                  </Fragment>
+                                ))}
+                              </Text>
+                              <Text as="p" variant="caption" emphasis="strong">
+                                {scoringMetrics.map((metric, row) => (
+                                  <Fragment key={metric.key}>
+                                    {row > 0 && <br />}
+                                    {match.metrics[metric.key].toFixed(1)}
+                                  </Fragment>
+                                ))}
+                              </Text>
+                            </Cluster>
+                          }
+                        >
+                          <SampleArtwork src={match.shot.src} alt={match.shot.alt} />
                         </ImagePairItem>
                       </ImagePair>
                     </Stack>
