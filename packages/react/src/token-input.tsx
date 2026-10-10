@@ -18,6 +18,7 @@ export interface TokenInputProps {
   onValueChange: (value: string, composing: boolean) => void;
   onCommit: () => void;
   commitOnBlur?: boolean;
+  /** 入力欄が空のときのBackspace。押し続けたときの繰り返し（`repeat`）では呼ばない */
   onEmptyBackspace?: () => void;
   onSubmitShortcut?: () => void;
   font?: "body" | "code";
@@ -102,7 +103,8 @@ export function TokenInput({ inputRef, ...props }: TokenInputProps) {
       combobox.setOpen(false);
     } else if (event.key === "Backspace" && !props.value && props.onEmptyBackspace) {
       event.preventDefault();
-      props.onEmptyBackspace();
+      // 押し続けたときの繰り返しでは呼ばない。書き直しに戻した語句を消し終えても、前の語句まで消し続けないようにする
+      if (!event.repeat) props.onEmptyBackspace();
     }
   };
   return (
