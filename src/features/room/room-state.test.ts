@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { reconcileRoom, getRoomDeadline } from "./room-state";
+import { canJoinRoom, reconcileRoom, getRoomDeadline, roomCapacity } from "./room-state";
 import type { RoomState } from "./room-state";
 
 function room(): RoomState {
@@ -83,5 +83,23 @@ describe("ルームの次の期限", () => {
     expect(
       getRoomDeadline(reconcileRoom(state, new Set(), 1_801_000), new Set(), 1_801_001),
     ).toBeNull();
+  });
+});
+
+function members(count: number) {
+  return Array.from({ length: count }, (_, index) => ({
+    id: `m${index}`,
+    name: `参加者${index}`,
+    ready: false,
+  }));
+}
+
+describe("ルームの定員", () => {
+  it("定員までは新しい人を受け付け、定員に達したら受け付けない", () => {
+    expect(canJoinRoom({ members: members(roomCapacity - 1) }, "new")).toBe(true);
+    expect(canJoinRoom({ members: members(roomCapacity) }, "new")).toBe(false);
+  });
+  it("参加済みの人の再参加は定員に達していても受け付ける", () => {
+    expect(canJoinRoom({ members: members(roomCapacity) }, "m0")).toBe(true);
   });
 });

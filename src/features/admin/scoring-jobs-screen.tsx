@@ -1,14 +1,12 @@
 import { useState } from "react";
-
-import { Badge } from "../../components/badge";
-import { Button } from "../../components/button";
-import { DataCell, DataCode, DataRow, DataTable } from "../../components/data-table";
-import { EmptyState } from "../../components/empty-state";
-import { Icon } from "../../components/icon";
+import { Badge } from "@animic/react/badge";
+import { Button } from "@animic/react/button";
+import { DataTable, type DataTableColumn } from "@animic/react/data-table";
+import { Text } from "@animic/react/text";
+import { useToast } from "@animic/react/toast";
 import type { getScoringAdminData } from "../scoring/scoring-admin.functions";
-import { formatDateTime } from "./admin-format";
+import { errorMessage, formatDateTime } from "./admin-format";
 import { AdminHead } from "./admin-parts";
-
 type ScoringAdminData = Awaited<ReturnType<typeof getScoringAdminData>>;
 type ScoringJob = ScoringAdminData["jobs"][number];
 
@@ -16,13 +14,13 @@ type ScoringJob = ScoringAdminData["jobs"][number];
 function StateBadge({ state }: { state: ScoringJob["state"] }) {
   if (state === "running")
     return (
-      <Badge tone="info" size="sm">
+      <Badge tone="highlight" size="sm">
         実行中
       </Badge>
     );
   if (state === "succeeded")
     return (
-      <Badge tone="success" variant="solid" size="sm">
+      <Badge tone="success" size="sm">
         成功
       </Badge>
     );
@@ -32,11 +30,7 @@ function StateBadge({ state }: { state: ScoringJob["state"] }) {
         失敗
       </Badge>
     );
-  return (
-    <Badge variant="outline" size="sm">
-      待機中
-    </Badge>
-  );
+  return <Badge size="sm">待機中</Badge>;
 }
 
 // 参加者ごとのtotalを「participantId: total」で並べる。なければ「—」
@@ -45,6 +39,22 @@ function totalsText(totals: ScoringJob["totals"]) {
   return totals.map((item) => `${item.participantId}: ${item.total}`).join("、");
 }
 
+const jobColumns: DataTableColumn<ScoringJob>[] = [
+  { id: "state", header: "状態", cell: (job) => <StateBadge state={job.state} /> },
+  {
+    id: "battle",
+    header: "対戦ID",
+    rowHeader: true,
+    cell: (job) => <Text variant="code.compact">{job.battleId}</Text>,
+  },
+  { id: "worker", header: "採点ワーカー", cell: (job) => job.workerName ?? "—" },
+  { id: "attempts", header: "試行", cell: (job) => job.attempts },
+  { id: "created", header: "登録日時", cell: (job) => formatDateTime(job.createdAt) },
+  { id: "finished", header: "確定日時", cell: (job) => formatDateTime(job.finishedAt) },
+  { id: "error", header: "失敗の理由", cell: (job) => job.error ?? "—" },
+  { id: "totals", header: "total", cell: (job) => totalsText(job.totals) },
+];
+
 export function ScoringJobsScreen({
   jobs,
   onRefresh,
@@ -52,12 +62,15 @@ export function ScoringJobsScreen({
   jobs: ScoringAdminData["jobs"];
   onRefresh: () => Promise<void>;
 }) {
+  const toast = useToast();
   const [refreshing, setRefreshing] = useState(false);
 
   async function refresh() {
     setRefreshing(true);
     try {
       await onRefresh();
+    } catch (error) {
+      toast.show({ title: errorMessage(error) });
     } finally {
       setRefreshing(false);
     }
@@ -70,51 +83,18 @@ export function ScoringJobsScreen({
         title="採点ジョブ"
         description="新しい順に最大100件を表示します。"
         actions={
-          <Button
-            variant="secondary"
-            leadingIcon={<Icon name="refresh" size="md" />}
-            loading={refreshing}
-            onClick={() => void refresh()}
-          >
+          <Button appearance="secondary" loading={refreshing} onClick={() => void refresh()}>
             最新の状態にする
           </Button>
         }
       />
-      {jobs.length === 0 ? (
-        <EmptyState title="採点ジョブはまだありません" />
-      ) : (
-        <DataTable
-          caption="採点ジョブ"
-          overflow="scroll"
-          columns={[
-            "状態",
-            "対戦ID",
-            "採点ワーカー",
-            "試行",
-            "登録日時",
-            "確定日時",
-            "失敗の理由",
-            "total",
-          ]}
-        >
-          {jobs.map((job) => (
-            <DataRow key={job.id}>
-              <DataCell>
-                <StateBadge state={job.state} />
-              </DataCell>
-              <DataCell header>
-                <DataCode>{job.battleId}</DataCode>
-              </DataCell>
-              <DataCell>{job.workerName ?? "—"}</DataCell>
-              <DataCell kind="number">{job.attempts}</DataCell>
-              <DataCell>{formatDateTime(job.createdAt)}</DataCell>
-              <DataCell>{formatDateTime(job.finishedAt)}</DataCell>
-              <DataCell>{job.error ?? "—"}</DataCell>
-              <DataCell>{totalsText(job.totals)}</DataCell>
-            </DataRow>
-          ))}
-        </DataTable>
-      )}
+      <DataTable
+        label="採点ジョブ"
+        rows={jobs}
+        getRowKey={(job) => job.id}
+        empty="採点ジョブはまだありません"
+        columns={jobColumns}
+      />
     </>
   );
 }

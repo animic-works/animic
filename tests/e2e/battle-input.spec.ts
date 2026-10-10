@@ -4,11 +4,19 @@ import { create, join } from "./api";
 import { executeLocalD1 } from "./d1";
 
 test.use({ reducedMotion: "reduce" });
-// ほかのファイルと同じお題の行を使い、「かんたん」のお題を増やさない（battle.spec.tsが出題されたお題を確かめる）。
+// 同じ難易度のお題を残すと、ほかのテストの出題が入れ替わるため片付ける。
+test.afterAll(async () => {
+  await executeLocalD1("DELETE FROM topic WHERE id = 'e2e-input-topic'");
+});
 test("日本語の変換中は区切りを含む入力を保持し、変換後に語句にする", async ({ page, browser }) => {
   test.setTimeout(60000);
+  const inputWarnings: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error" && /controlled|defaultValue/.test(message.text()))
+      inputWarnings.push(message.text());
+  });
   await executeLocalD1(
-    "INSERT OR REPLACE INTO topic (id, difficulty, image_url) VALUES ('e2e-topic', 'easy', 'https://example.invalid/animic-topic.svg'); DELETE FROM rate_limit",
+    "INSERT OR REPLACE INTO topic (id, difficulty, image_url) VALUES ('e2e-input-topic', 'easy', 'https://example.invalid/topic.svg'); DELETE FROM rate_limit",
   );
   const code = await create(page);
   const guest = await browser.newContext();
@@ -43,6 +51,13 @@ test("日本語の変換中は区切りを含む入力を保持し、変換後�
     await input.dispatchEvent("compositionend", { data: "ねこ、" });
     await expect(input).toHaveValue("");
     await expect(page.getByRole("button", { name: "「ねこ」を書き直す" })).toBeVisible();
+    // 書きかけが空の状態へ、区切りで終わる複数語句を貼り付けてもDOMに残さない。
+    await input.fill("ピンクの髪、ツインテール、笑顔、");
+    await expect(input).toHaveValue("");
+    for (const word of ["ピンクの髪", "ツインテール", "笑顔"]) {
+      await expect(page.getByRole("button", { name: `「${word}」を書き直す` })).toBeVisible();
+    }
+    expect(inputWarnings).toEqual([]);
   } finally {
     await guest.close();
   }
@@ -51,7 +66,7 @@ test("日本語の変換中は区切りを含む入力を保持し、変換後�
 test("提出確認中に生成が完成しても確認する画像を変えない", async ({ page, browser }) => {
   test.setTimeout(60000);
   await executeLocalD1(
-    "INSERT OR REPLACE INTO topic (id, difficulty, image_url) VALUES ('e2e-topic', 'easy', 'https://example.invalid/animic-topic.svg'); DELETE FROM rate_limit",
+    "INSERT OR REPLACE INTO topic (id, difficulty, image_url) VALUES ('e2e-input-topic', 'easy', 'https://example.invalid/topic.svg'); DELETE FROM rate_limit",
   );
   const code = await create(page);
   const guest = await browser.newContext();

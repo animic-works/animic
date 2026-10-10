@@ -1,15 +1,16 @@
-import { useState } from "react";
+import { Split } from "@animic/react/split";
+import { useId, useState } from "react";
 import * as v from "valibot";
-
-import { Button } from "../../components/button";
-import { DataCell, DataCode, DataRow, DataTable } from "../../components/data-table";
-import { Dialog, DialogClose } from "../../components/dialog";
-import { EmptyState } from "../../components/empty-state";
-import { TextField } from "../../components/field";
-import { Icon, IconButton } from "../../components/icon";
-import { Stack } from "../../components/layout";
-import { Text } from "../../components/text";
-import { toast } from "../../components/toast";
+import { Button } from "@animic/react/button";
+import { Cluster } from "@animic/react/cluster";
+import { DataTable, type DataTableColumn } from "@animic/react/data-table";
+import { Dialog } from "@animic/react/dialog";
+import { Field } from "@animic/react/field";
+import { Input } from "@animic/react/input";
+import { IconButton } from "@animic/react/icon-button";
+import { Stack } from "@animic/react/stack";
+import { Text } from "@animic/react/text";
+import { useToast } from "@animic/react/toast";
 import {
   deletePromptGroup,
   deletePromptPhrase,
@@ -24,12 +25,214 @@ import {
   promptPhraseTagSchema,
 } from "../image-generation/prompt-phrases";
 import type { PromptGroup, PromptPhrase } from "../image-generation/prompt-phrases";
-import { AdminColumns, AdminHead } from "./admin-parts";
+import { AdminHead } from "./admin-parts";
 import { errorMessage } from "./admin-format";
 
-type GroupDraft = { id: string | null; label: string };
-type PhraseDraft = { id: string | null; label: string; tag: string };
+type GroupDraft = { id: string; isNew: boolean; label: string };
+type PhraseDraft = { id: string; isNew: boolean; label: string; tag: string };
 type Deleting = { kind: "group"; item: PromptGroup } | { kind: "phrase"; item: PromptPhrase };
+
+type RunMutation = (
+  task: () => Promise<{ error?: string | null } | void>,
+  done?: string,
+) => Promise<void>;
+
+function groupColumns({
+  groups,
+  selected,
+  busy,
+  run,
+  setSelectedId,
+  setFormError,
+  setGroupDraft,
+  setDeleting,
+}: {
+  groups: PromptGroup[];
+  selected: PromptGroup | null;
+  busy: boolean;
+  run: RunMutation;
+  setSelectedId: (id: string) => void;
+  setFormError: (error: string | null) => void;
+  setGroupDraft: (draft: GroupDraft) => void;
+  setDeleting: (target: Deleting) => void;
+}): DataTableColumn<PromptGroup>[] {
+  return [
+    {
+      id: "name",
+      header: "名前",
+      rowHeader: true,
+      cell: (group) => (
+        <Button
+          appearance="quiet"
+          size="sm"
+          loading={busy}
+          aria-pressed={group.id === selected?.id}
+          onClick={() => setSelectedId(group.id)}
+        >
+          {group.label}
+        </Button>
+      ),
+    },
+    { id: "count", header: "表現", cell: (group) => group.phrases.length },
+    {
+      id: "order",
+      header: "並び",
+      cell: (group) => (
+        <Cluster layout="nowrap">
+          <IconButton
+            label={`${group.label}を上へ`}
+            appearance="quiet"
+            size="sm"
+            disabled={groups[0]?.id === group.id}
+            loading={busy}
+            onClick={() =>
+              void run(() => movePromptGroup({ data: { id: group.id, direction: "up" } }))
+            }
+          >
+            ↑
+          </IconButton>
+          <IconButton
+            label={`${group.label}を下へ`}
+            appearance="quiet"
+            size="sm"
+            disabled={groups.at(-1)?.id === group.id}
+            loading={busy}
+            onClick={() =>
+              void run(() => movePromptGroup({ data: { id: group.id, direction: "down" } }))
+            }
+          >
+            ↓
+          </IconButton>
+        </Cluster>
+      ),
+    },
+    {
+      id: "actions",
+      header: "操作",
+      cell: (group) => (
+        <Cluster layout="nowrap">
+          <Button
+            appearance="secondary"
+            size="sm"
+            aria-label={`${group.label}を編集`}
+            loading={busy}
+            onClick={() => {
+              setFormError(null);
+              setGroupDraft({ id: group.id, isNew: false, label: group.label });
+            }}
+          >
+            編集
+          </Button>
+          <Button
+            appearance="quiet"
+            size="sm"
+            aria-label={`${group.label}を削除`}
+            loading={busy}
+            onClick={() => setDeleting({ kind: "group", item: group })}
+          >
+            削除
+          </Button>
+        </Cluster>
+      ),
+    },
+  ];
+}
+
+function phraseColumns({
+  selected,
+  busy,
+  run,
+  setFormError,
+  setPhraseDraft,
+  setDeleting,
+}: {
+  selected: PromptGroup;
+  busy: boolean;
+  run: RunMutation;
+  setFormError: (error: string | null) => void;
+  setPhraseDraft: (draft: PhraseDraft) => void;
+  setDeleting: (target: Deleting) => void;
+}): DataTableColumn<PromptPhrase>[] {
+  return [
+    {
+      id: "label",
+      header: "表示名",
+      rowHeader: true,
+      cell: (phrase) => phrase.label,
+    },
+    {
+      id: "tag",
+      header: "NovelAIへ送る語",
+      cell: (phrase) => <Text variant="code.compact">{phrase.tag}</Text>,
+    },
+    {
+      id: "order",
+      header: "並び",
+      cell: (phrase) => (
+        <Cluster layout="nowrap">
+          <IconButton
+            label={`${phrase.label}を上へ`}
+            appearance="quiet"
+            size="sm"
+            disabled={selected.phrases[0]?.id === phrase.id}
+            loading={busy}
+            onClick={() =>
+              void run(() => movePromptPhrase({ data: { id: phrase.id, direction: "up" } }))
+            }
+          >
+            ↑
+          </IconButton>
+          <IconButton
+            label={`${phrase.label}を下へ`}
+            appearance="quiet"
+            size="sm"
+            disabled={selected.phrases.at(-1)?.id === phrase.id}
+            loading={busy}
+            onClick={() =>
+              void run(() => movePromptPhrase({ data: { id: phrase.id, direction: "down" } }))
+            }
+          >
+            ↓
+          </IconButton>
+        </Cluster>
+      ),
+    },
+    {
+      id: "actions",
+      header: "操作",
+      cell: (phrase) => (
+        <Cluster layout="nowrap">
+          <Button
+            appearance="secondary"
+            size="sm"
+            aria-label={`${phrase.label}を編集`}
+            loading={busy}
+            onClick={() => {
+              setFormError(null);
+              setPhraseDraft({
+                id: phrase.id,
+                isNew: false,
+                label: phrase.label,
+                tag: phrase.tag,
+              });
+            }}
+          >
+            編集
+          </Button>
+          <Button
+            appearance="quiet"
+            size="sm"
+            aria-label={`${phrase.label}を削除`}
+            loading={busy}
+            onClick={() => setDeleting({ kind: "phrase", item: phrase })}
+          >
+            削除
+          </Button>
+        </Cluster>
+      ),
+    },
+  ];
+}
 
 // よく使う表現: グループと表現の表、追加・編集・並べ替え・削除
 export function PromptPhrasesScreen({
@@ -39,6 +242,9 @@ export function PromptPhrasesScreen({
   groups: PromptGroup[];
   onChanged: () => Promise<void>;
 }) {
+  const toast = useToast();
+  const groupForm = useId();
+  const phraseForm = useId();
   const [selectedId, setSelectedId] = useState<string | null>(groups[0]?.id ?? null);
   const [groupDraft, setGroupDraft] = useState<GroupDraft | null>(null);
   const [phraseDraft, setPhraseDraft] = useState<PhraseDraft | null>(null);
@@ -51,17 +257,18 @@ export function PromptPhrasesScreen({
 
   // 並べ替え・削除の共通処理。サーバーの結果にエラーがあれば知らせ、なければ読み直す。
   async function run(task: () => Promise<{ error?: string | null } | void>, done?: string) {
+    if (busy) return;
     setBusy(true);
     try {
       const result = await task();
       if (result && result.error) {
-        toast(result.error);
+        toast.show({ title: result.error });
         return;
       }
-      if (done) toast(done);
+      if (done) toast.show({ title: done });
       await onChanged();
     } catch (caught) {
-      toast(errorMessage(caught));
+      toast.show({ title: errorMessage(caught) });
     } finally {
       setBusy(false);
     }
@@ -69,12 +276,12 @@ export function PromptPhrasesScreen({
 
   function openAddGroup() {
     setFormError(null);
-    setGroupDraft({ id: null, label: "" });
+    setGroupDraft({ id: crypto.randomUUID(), isNew: true, label: "" });
   }
 
   function openAddPhrase() {
     setFormError(null);
-    setPhraseDraft({ id: null, label: "", tag: "" });
+    setPhraseDraft({ id: crypto.randomUUID(), isNew: true, label: "", tag: "" });
   }
 
   async function saveGroup() {
@@ -84,14 +291,15 @@ export function PromptPhrasesScreen({
       setFormError(parsed.issues[0].message);
       return;
     }
+    if (busy) return;
     setBusy(true);
     try {
       await savePromptGroup({
-        data: { id: groupDraft.id ?? crypto.randomUUID(), label: parsed.output },
+        data: { id: groupDraft.id, label: parsed.output },
       });
-      setGroupDraft(null);
-      toast("保存しました");
       await onChanged();
+      setGroupDraft(null);
+      toast.show({ title: "保存しました" });
     } catch (caught) {
       setFormError(errorMessage(caught));
     } finally {
@@ -111,11 +319,12 @@ export function PromptPhrasesScreen({
       setFormError(tag.issues[0].message);
       return;
     }
+    if (busy) return;
     setBusy(true);
     try {
       const result = await savePromptPhrase({
         data: {
-          id: phraseDraft.id ?? crypto.randomUUID(),
+          id: phraseDraft.id,
           groupId: selected.id,
           label: label.output,
           tag: tag.output,
@@ -125,9 +334,9 @@ export function PromptPhrasesScreen({
         setFormError(result.error);
         return;
       }
-      setPhraseDraft(null);
-      toast("保存しました");
       await onChanged();
+      setPhraseDraft(null);
+      toast.show({ title: "保存しました" });
     } catch (caught) {
       setFormError(errorMessage(caught));
     } finally {
@@ -146,270 +355,194 @@ export function PromptPhrasesScreen({
   }
 
   return (
-    <>
+    <Stack space="section">
       <AdminHead
         eyebrow="Admin"
         title="よく使う表現"
         description="プロンプト入力の選択肢です。表示名は画面に出す名前、NovelAIへ送る語は生成に使う語です。"
-        // グループがないときは空の表示の中の案内で追加するため、ここには出さない。
         actions={
-          groups.length ? (
-            <Button leadingIcon={<Icon name="plus" size="md" />} onClick={openAddGroup}>
+          groups.length > 0 ? (
+            <Button loading={busy} onClick={openAddGroup}>
               グループを追加
             </Button>
           ) : undefined
         }
       />
-      <AdminColumns
-        layout="split"
-        primary={
-          groups.length === 0 ? (
-            <EmptyState
-              title="グループがまだありません"
-              actions={
-                <Button leadingIcon={<Icon name="plus" size="sm" />} onClick={openAddGroup}>
-                  最初のグループを追加
-                </Button>
-              }
+      <Split layout="balanced">
+        {groups.length === 0 ? (
+          <Stack>
+            <Text>グループがまだありません</Text>
+            <Cluster>
+              <Button loading={busy} onClick={openAddGroup}>
+                最初のグループを追加
+              </Button>
+            </Cluster>
+          </Stack>
+        ) : (
+          <DataTable
+            label="グループ"
+            rows={groups}
+            getRowKey={(group) => group.id}
+            empty="グループがまだありません"
+            columns={groupColumns({
+              groups,
+              selected,
+              busy,
+              run,
+              setSelectedId,
+              setFormError,
+              setGroupDraft,
+              setDeleting,
+            })}
+          />
+        )}
+        {selected && (
+          <Stack>
+            <DataTable
+              label={`${selected.label}の表現`}
+              rows={selected.phrases}
+              getRowKey={(phrase) => phrase.id}
+              empty="表現がまだありません"
+              columns={phraseColumns({
+                selected,
+                busy,
+                run,
+                setFormError,
+                setPhraseDraft,
+                setDeleting,
+              })}
             />
-          ) : (
-            <DataTable caption="グループ" columns={["名前", "表現", "並び", "操作"]}>
-              {groups.map((group, index) => (
-                <DataRow key={group.id} selected={group.id === selected?.id}>
-                  <DataCell header kind="strong">
-                    <Button
-                      variant="link"
-                      size="sm"
-                      aria-pressed={group.id === selected?.id}
-                      onClick={() => setSelectedId(group.id)}
-                    >
-                      {group.label}
-                    </Button>
-                  </DataCell>
-                  <DataCell kind="number">{group.phrases.length}</DataCell>
-                  <DataCell kind="actions">
-                    <IconButton
-                      variant="row"
-                      icon="arrowUp"
-                      label={`${group.label}を上へ`}
-                      disabled={busy || index === 0}
-                      onClick={() =>
-                        void run(() => movePromptGroup({ data: { id: group.id, direction: "up" } }))
-                      }
-                    />
-                    <IconButton
-                      variant="row"
-                      icon="arrowDown"
-                      label={`${group.label}を下へ`}
-                      disabled={busy || index === groups.length - 1}
-                      onClick={() =>
-                        void run(() =>
-                          movePromptGroup({ data: { id: group.id, direction: "down" } }),
-                        )
-                      }
-                    />
-                  </DataCell>
-                  <DataCell kind="actions">
-                    <Button
-                      variant="secondary"
-                      size="xs"
-                      aria-label={`${group.label}を編集`}
-                      onClick={() => {
-                        setFormError(null);
-                        setGroupDraft({ id: group.id, label: group.label });
-                      }}
-                    >
-                      編集
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="xs"
-                      aria-label={`${group.label}を削除`}
-                      onClick={() => setDeleting({ kind: "group", item: group })}
-                    >
-                      削除
-                    </Button>
-                  </DataCell>
-                </DataRow>
-              ))}
-            </DataTable>
-          )
-        }
-        secondary={
-          selected ? (
-            <Stack gap="3">
-              {selected.phrases.length ? (
-                <DataTable
-                  caption={`${selected.label}の表現`}
-                  columns={["表示名", "NovelAIへ送る語", "並び", "操作"]}
-                >
-                  {selected.phrases.map((phrase, index) => (
-                    <DataRow key={phrase.id}>
-                      <DataCell header kind="strong">
-                        {phrase.label}
-                      </DataCell>
-                      <DataCell>
-                        <DataCode>{phrase.tag}</DataCode>
-                      </DataCell>
-                      <DataCell kind="actions">
-                        <IconButton
-                          variant="row"
-                          icon="arrowUp"
-                          label={`${phrase.label}を上へ`}
-                          disabled={busy || index === 0}
-                          onClick={() =>
-                            void run(() =>
-                              movePromptPhrase({ data: { id: phrase.id, direction: "up" } }),
-                            )
-                          }
-                        />
-                        <IconButton
-                          variant="row"
-                          icon="arrowDown"
-                          label={`${phrase.label}を下へ`}
-                          disabled={busy || index === selected.phrases.length - 1}
-                          onClick={() =>
-                            void run(() =>
-                              movePromptPhrase({ data: { id: phrase.id, direction: "down" } }),
-                            )
-                          }
-                        />
-                      </DataCell>
-                      <DataCell kind="actions">
-                        <Button
-                          variant="secondary"
-                          size="xs"
-                          aria-label={`${phrase.label}を編集`}
-                          onClick={() => {
-                            setFormError(null);
-                            setPhraseDraft({ id: phrase.id, label: phrase.label, tag: phrase.tag });
-                          }}
-                        >
-                          編集
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="xs"
-                          aria-label={`${phrase.label}を削除`}
-                          onClick={() => setDeleting({ kind: "phrase", item: phrase })}
-                        >
-                          削除
-                        </Button>
-                      </DataCell>
-                    </DataRow>
-                  ))}
-                </DataTable>
-              ) : (
-                <EmptyState title="表現がまだありません" />
-              )}
-              <Stack direction="row">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  leadingIcon={<Icon name="plus" size="sm" />}
-                  onClick={openAddPhrase}
-                >
-                  表現を追加
-                </Button>
-              </Stack>
-            </Stack>
-          ) : null
-        }
-      />
+            <Cluster>
+              <Button appearance="secondary" size="sm" loading={busy} onClick={openAddPhrase}>
+                表現を追加
+              </Button>
+            </Cluster>
+          </Stack>
+        )}
+      </Split>
       <Dialog
+        size="compact"
+        presentation="centered"
         open={groupDraft !== null}
         onOpenChange={(open) => {
-          if (!open) setGroupDraft(null);
+          if (!open && !busy) setGroupDraft(null);
         }}
-        title={groupDraft?.id ? "グループを編集" : "グループを追加"}
+        dismissible={!busy}
+        closeButton={!busy}
+        title={groupDraft?.isNew ? "グループを追加" : "グループを編集"}
         footer={
-          <>
-            <DialogClose>
-              <Button variant="secondary">やめる</Button>
-            </DialogClose>
-            <Button loading={busy} onClick={() => void saveGroup()}>
+          <Cluster justify="end">
+            <Button appearance="secondary" loading={busy} onClick={() => setGroupDraft(null)}>
+              やめる
+            </Button>
+            <Button form={groupForm} type="submit" loading={busy}>
               保存する
             </Button>
-          </>
+          </Cluster>
         }
       >
-        {groupDraft ? (
-          <Stack gap="3">
-            <TextField
-              label="グループの名前"
-              value={groupDraft.label}
-              maxLength={20}
-              helperText="20文字まで"
-              onChange={(event) => setGroupDraft({ ...groupDraft, label: event.target.value })}
-            />
-            {formError ? (
-              <Text variant="note" tone="danger" role="alert">
-                {formError}
-              </Text>
-            ) : null}
-          </Stack>
-        ) : null}
+        {groupDraft && (
+          <form
+            id={groupForm}
+            onSubmit={(event) => {
+              event.preventDefault();
+              void saveGroup();
+            }}
+          >
+            <Stack>
+              <Field label="グループの名前" description="20文字まで" error={formError ?? undefined}>
+                <Input
+                  value={groupDraft.label}
+                  maxLength={20}
+                  disabled={busy}
+                  onChange={(event) => setGroupDraft({ ...groupDraft, label: event.target.value })}
+                />
+              </Field>
+            </Stack>
+          </form>
+        )}
       </Dialog>
       <Dialog
+        size="compact"
+        presentation="centered"
         open={phraseDraft !== null}
         onOpenChange={(open) => {
-          if (!open) setPhraseDraft(null);
+          if (!open && !busy) setPhraseDraft(null);
         }}
-        title={phraseDraft?.id ? "表現を編集" : "表現を追加"}
+        dismissible={!busy}
+        closeButton={!busy}
+        title={phraseDraft?.isNew ? "表現を追加" : "表現を編集"}
         footer={
-          <>
-            <DialogClose>
-              <Button variant="secondary">やめる</Button>
-            </DialogClose>
-            <Button loading={busy} onClick={() => void savePhrase()}>
+          <Cluster justify="end">
+            <Button appearance="secondary" loading={busy} onClick={() => setPhraseDraft(null)}>
+              やめる
+            </Button>
+            <Button form={phraseForm} type="submit" loading={busy}>
               保存する
             </Button>
-          </>
+          </Cluster>
         }
       >
-        {phraseDraft ? (
-          <Stack gap="3">
-            <TextField
-              label="表示名"
-              value={phraseDraft.label}
-              maxLength={30}
-              helperText="30文字まで"
-              onChange={(event) => setPhraseDraft({ ...phraseDraft, label: event.target.value })}
-            />
-            <TextField
-              label="NovelAIへ送る語"
-              value={phraseDraft.tag}
-              maxLength={200}
-              helperText="200文字まで"
-              onChange={(event) => setPhraseDraft({ ...phraseDraft, tag: event.target.value })}
-            />
-            {formError ? (
-              <Text variant="note" tone="danger" role="alert">
-                {formError}
-              </Text>
-            ) : null}
-          </Stack>
-        ) : null}
+        {phraseDraft && (
+          <form
+            id={phraseForm}
+            onSubmit={(event) => {
+              event.preventDefault();
+              void savePhrase();
+            }}
+          >
+            <Stack>
+              <Field label="表示名" description="30文字まで">
+                <Input
+                  value={phraseDraft.label}
+                  maxLength={30}
+                  disabled={busy}
+                  onChange={(event) =>
+                    setPhraseDraft({ ...phraseDraft, label: event.target.value })
+                  }
+                />
+              </Field>
+              <Field label="NovelAIへ送る語" description="200文字まで">
+                <Input
+                  value={phraseDraft.tag}
+                  maxLength={200}
+                  disabled={busy}
+                  onChange={(event) => setPhraseDraft({ ...phraseDraft, tag: event.target.value })}
+                />
+              </Field>
+              {formError && (
+                <div role="alert">
+                  <Text tone="danger">{formError}</Text>
+                </div>
+              )}
+            </Stack>
+          </form>
+        )}
       </Dialog>
       <Dialog
+        size="compact"
+        presentation="centered"
         open={deleting !== null}
         onOpenChange={(open) => {
-          if (!open) setDeleting(null);
+          if (!open && !busy) setDeleting(null);
         }}
-        role="alertdialog"
+        dismissible={!busy}
+        closeButton={!busy}
         title={deleting?.kind === "phrase" ? "表現を削除しますか？" : "グループを削除しますか？"}
         description={deleting?.kind === "group" ? "中の表現もすべて削除します。" : undefined}
         footer={
-          <>
-            <DialogClose>
-              <Button variant="secondary">やめる</Button>
-            </DialogClose>
-            <Button variant="destructive" loading={busy} onClick={confirmDelete}>
+          <Cluster justify="end">
+            <Button appearance="secondary" loading={busy} onClick={() => setDeleting(null)}>
+              やめる
+            </Button>
+            <Button loading={busy} onClick={confirmDelete}>
               削除する
             </Button>
-          </>
+          </Cluster>
         }
-      />
-    </>
+      >
+        {deleting && <Text>{deleting.item.label}</Text>}
+      </Dialog>
+    </Stack>
   );
 }
