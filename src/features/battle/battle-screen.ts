@@ -31,3 +31,17 @@ export function getBattleScreen(
   if (battle.selectionEndsAt === null) return { kind: "battle", battle, stage: "finishing" };
   return { kind: "battle", battle, stage: "selecting" };
 }
+
+/**
+ * 生成の受付が終わった未提出者に、成功した画像も生成中の画像もない（提出できる画像がない）か。
+ * サーバーは同じ状態の参加者を未提出として確定するため、確定が届くまでの表示に使う。
+ */
+export function hasNoImageToSubmit(
+  stage: BattleStage,
+  generations: BattleSnapshot["myGenerations"],
+) {
+  return (
+    (stage === "finishing" || stage === "selecting") &&
+    generations.every((generation) => generation.status === "failed")
+  );
+}

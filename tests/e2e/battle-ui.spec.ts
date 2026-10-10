@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import type { WebSocketRoute } from "@playwright/test";
 
 import { create, join } from "./api";
 import { executeLocalD1 } from "./d1";
@@ -50,13 +51,13 @@ test("対戦画面でプロンプトを入力し、候補・重み・検索・�
         .getByRole("listitem", { name: /^ホスト: ?$/ }),
     ).toBeVisible();
 
-    // 生成の処理をつなぐまでは「生成する」を押せず、理由を出す。
+    // プロンプトが空の間は「生成する」を押せず、理由を出す。
     await expect(page.getByRole("button", { name: "生成する", exact: true })).toBeDisabled();
-    await expect(page.getByText("画像の生成は準備中です")).toBeVisible();
+    await expect(page.getByText("プロンプトを入力してください")).toBeVisible();
     const input = page.getByRole("combobox", { name: "プロンプト（キャラ）" });
     await input.press("ControlOrMeta+Enter");
     await expect(
-      page.getByRole("status").filter({ hasText: "画像の生成は準備中です" }),
+      page.getByRole("status").filter({ hasText: "プロンプトを入力してください" }),
     ).toBeVisible();
 
     // 区切りを書くと語句になる。
@@ -184,5 +185,74 @@ test("むずかしいではキャラ2の欄を足して消せる", async ({ page
   } finally {
     await guestContext.close();
     await executeLocalD1("DELETE FROM topic WHERE id = 'e2e-topic-hard'");
+  }
+});
+
+test("時間切れで提出できる画像がなければ、提出の操作を出さずにそのことを表示する", async ({
+  page,
+  browser,
+}) => {
+  test.setTimeout(60_000);
+  // 匿名参加の回数制限を、ほかのテストと分けて数える。
+  const guestContext = await browser.newContext({
+    reducedMotion: "reduce",
+    extraHTTPHeaders: { "CF-Connecting-IP": "203.0.113.37" },
+  });
+  try {
+    const code = await create(page, "ホスト");
+    await join(await guestContext.newPage(), code, "ゲスト");
+    await page.evaluate(async (roomCode) => {
+      const data = {
+        code: roomCode,
+        settings: { difficulty: "easy" as const, durationSeconds: 600, selectionSeconds: 10 },
+        previousBattleId: null,
+      };
+      await window.animicTest.setRoomSettings({ data });
+      await window.animicTest.startBattle({ data });
+    }, code);
+    const participantId = await page.evaluate(
+      async () => (await window.animicTest.getCurrentParticipant())?.id,
+    );
+    const room = await page.evaluate(() => window.animicTest.snapshot());
+    if (!room?.battle || !participantId) throw new Error("対戦が開始されていません。");
+    // サーバーはこの状態の参加者をすぐに未提出として確定するため、確定が届く前の配信に差し替える。
+    room.version += 100;
+    room.battle.generationClosed = true;
+    room.battle.selectionEndsAt = room.battle.serverTime + 10_000;
+    room.battle.myGenerations = [
+      {
+        id: "a",
+        status: "failed",
+        acceptedAt: room.battle.startedAt,
+        finishedAt: room.battle.startedAt + 1000,
+      },
+    ];
+    let connection: WebSocketRoute | undefined;
+    await page.routeWebSocket("**/connection", (socket) => {
+      connection = socket;
+      socket.send(JSON.stringify(room));
+    });
+    await page.goto(`/rooms/${code}`);
+    await expect(page.getByRole("heading", { name: "時間切れ", exact: true })).toBeVisible();
+    await expect(page.getByText("生成終了！")).toHaveCount(0);
+    await expect(page.getByText("時間切れのため提出できません")).toBeVisible();
+    await expect(page.getByRole("img", { name: "提出できる画像がありません" })).toBeVisible();
+    await expect(page.getByText("時間内に完成した画像はありませんでした")).toBeVisible();
+    await expect(page.getByRole("button", { name: "1回目・失敗", exact: true })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "この1枚で提出" })).toHaveCount(0);
+    await expect(page.getByRole("checkbox", { name: "確認なしですぐ提出" })).toHaveCount(0);
+
+    // 未提出の確定が届いたら、未提出の全面表示に切り替える。
+    room.version++;
+    room.battle.mySubmission = {
+      participantId,
+      status: "not-submitted",
+      decidedAt: room.battle.generationEndsAt,
+    };
+    if (!connection) throw new Error("ルームに接続していません。");
+    connection.send(JSON.stringify(room));
+    await expect(page.getByRole("dialog", { name: "時間内に提出できませんでした" })).toBeVisible();
+  } finally {
+    await guestContext.close();
   }
 });

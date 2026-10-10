@@ -20,39 +20,58 @@ import { getBattleImages, type BattleImagePick } from "./battle-images";
 import { BattleImagesPanel } from "./battle-images-panel";
 import { useModifierKey, useQuickSubmit } from "./battle-preferences";
 import type { BattleSnapshot } from "./battle-state";
+import { hasNoImageToSubmit } from "./battle-screen";
 import type { BattleStage } from "./battle-screen";
 import { SubmissionWaitDialog, SubmitConfirmDialog, TopicZoomDialog } from "./submission-dialogs";
 import { useBattleEntrance } from "./use-battle-entrance";
+import { useBattleGeneration } from "./use-battle-generation";
 import { useBattleSubmission } from "./use-battle-submission";
 import { useImageArrival } from "./use-image-arrival";
 import { useRemainingMs } from "./use-remaining-ms";
 import { HurryEdge } from "./visuals/battle-motion";
 import { BattleKickoff } from "./visuals/battle-entrance";
 
-/** 生成時間が終わり、履歴から1枚を選ぶ段階でプロンプト欄の代わりに出す案内。 */
-function SelectionNotice({ stage, seconds }: { stage: BattleStage; seconds: number }) {
+/**
+ * 生成時間が終わり、履歴から1枚を選ぶ段階でプロンプト欄の代わりに出す案内。
+ * `empty`は提出できる画像がないときの表示。
+ */
+function SelectionNotice({
+  stage,
+  seconds,
+  empty,
+}: {
+  stage: BattleStage;
+  seconds: number;
+  empty: boolean;
+}) {
   return (
     <Stack align="center" justify="center" fill>
       <Text variant="eyebrow.strong" tone="accent">
         TIME UP
       </Text>
       <Heading level={2} size="title">
-        生成終了！
+        {empty ? "時間切れ" : "生成終了！"}
       </Heading>
-      <Text variant="label">
-        {stage === "finishing" ? (
-          "生成の完了を待っています"
-        ) : (
-          <>
-            残り <Text variant="numeric.display">{seconds}</Text> 秒で1枚提出
-          </>
-        )}
-      </Text>
-      <Text variant="body.sm" align="center" tone="supporting">
-        履歴から選んで「この1枚で提出」
-        <br />
-        生成中の画像も、完成すれば選べます
-      </Text>
+      {empty ? (
+        <Text variant="label">提出できる画像がありません</Text>
+      ) : (
+        <>
+          <Text variant="label">
+            {stage === "finishing" ? (
+              "生成の完了を待っています"
+            ) : (
+              <>
+                残り <Text variant="numeric.display">{seconds}</Text> 秒で1枚提出
+              </>
+            )}
+          </Text>
+          <Text variant="body.sm" align="center" tone="supporting">
+            履歴から選んで「この1枚で提出」
+            <br />
+            生成中の画像も、完成すれば選べます
+          </Text>
+        </>
+      )}
     </Stack>
   );
 }
@@ -91,8 +110,11 @@ export function BattlePage({
   );
   const locked = Boolean(mySubmission) || battle.submissionsClosed;
   const waiting = stage === "waiting" || stage === "scoring";
+  // 時間切れで提出できる画像がなければ、生成や提出を促さずにそのことを伝える
+  const noImage = hasNoImageToSubmit(stage, battle.myGenerations);
   const remaining = useRemainingMs(battle.serverTime, getBattleDeadline(battle, stage), receivedAt);
   const clock = getBattleClock(battle, stage, remaining);
+  const generate = useBattleGeneration({ code, battleId: battle.id });
   const submission = useBattleSubmission({ code, battleId: battle.id, locked });
   const confirmed = images.succeeded.find((item) => item.id === submission.confirmId);
   const opponentId =
@@ -128,7 +150,7 @@ export function BattlePage({
         }
         editor={
           stage === "finishing" || stage === "selecting" ? (
-            <SelectionNotice stage={stage} seconds={clock.seconds} />
+            <SelectionNotice stage={stage} seconds={clock.seconds} empty={noImage} />
           ) : (
             <PromptComposer
               key={battle.id}
@@ -136,6 +158,7 @@ export function BattlePage({
               successCount={images.succeeded.length}
               pending={images.pendings.length > 0}
               locked={stage !== "generating" || locked}
+              onGenerate={generate}
               modifierKey={modifierKey}
             />
           )
@@ -147,6 +170,7 @@ export function BattlePage({
           entrance={entrance}
           arrival={arrival}
           locked={locked}
+          noImage={noImage}
           pending={submission.pending}
           error={submission.error}
           quick={quick}

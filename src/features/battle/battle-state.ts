@@ -87,6 +87,7 @@ export const battleStateSchema = v.object({
   ),
 });
 export type BattleState = v.InferOutput<typeof battleStateSchema>;
+type Generation = BattleState["generations"][number];
 export type GenerationOutcome = { status: "succeeded"; imageUrl: string } | { status: "failed" };
 export type ScoringJobOutcome = {
   id: string;
@@ -125,6 +126,8 @@ export type BattleSettings = v.InferOutput<typeof battleSettingsSchema>;
 export type Topic = v.InferOutput<typeof topicSchema>;
 
 const scoringTimeoutMs = 5 * 60_000;
+/** 受け付けた生成は、この時間（順番待ちを含む）のうちに終わらなければ失敗にする。 */
+export const generationTimeoutMs = 60_000;
 
 export function canStartBattle(count: number) {
   return count >= 2;
@@ -160,8 +163,19 @@ export function createBattle(
   };
 }
 
+// 結果の確定後も適用し、生成中のまま別の画像を提出した場合に生成中の処理を残さない。
+function expireGenerations(generations: Generation[], now: number) {
+  return generations.map((item): Generation => {
+    const expiresAt = item.acceptedAt + generationTimeoutMs;
+    return item.status === "pending" && now >= expiresAt
+      ? { ...item, status: "failed", finishedAt: expiresAt }
+      : item;
+  });
+}
+
 export function reconcileBattle(state: BattleState, now: number): BattleState {
   const next = structuredClone(state);
+  next.generations = expireGenerations(next.generations, now);
   if (next.result) return next;
   if (now >= next.generationEndsAt) {
     if (
@@ -174,16 +188,16 @@ export function reconcileBattle(state: BattleState, now: number): BattleState {
       );
       next.selectionEndsAt = lastFinishedAt + next.settings.selectionSeconds * 1000;
     }
-    if (next.selectionEndsAt !== null && now >= next.selectionEndsAt) {
-      for (const participantId of next.participantIds) {
-        if (!next.submissions.some((item) => item.participantId === participantId)) {
-          next.submissions.push({
-            participantId,
-            status: "not-submitted",
-            decidedAt: next.selectionEndsAt,
-          });
-        }
-      }
+    for (const participantId of next.participantIds) {
+      if (next.submissions.some((item) => item.participantId === participantId)) continue;
+      // 提出できる画像がない人は、選択の猶予を待たずに未提出として確定する。
+      const decidedAt =
+        getNoImageAt(next, participantId) ??
+        (next.selectionEndsAt !== null && now >= next.selectionEndsAt
+          ? next.selectionEndsAt
+          : null);
+      if (decidedAt !== null)
+        next.submissions.push({ participantId, status: "not-submitted", decidedAt });
     }
   }
   // 全員の提出状態が確定したら結果を決める。1人だけ提出した場合は採点を待たずにその人を1位にする。
@@ -191,28 +205,41 @@ export function reconcileBattle(state: BattleState, now: number): BattleState {
     next.participantIds.every((id) => next.submissions.some((item) => item.participantId === id))
   ) {
     const submitted = next.submissions.filter((item) => item.status === "submitted");
-    const decidedAt = next.selectionEndsAt;
-    if (decidedAt !== null && submitted.length === 0)
-      next.result = { kind: "no-contest", reason: "no-submissions", decidedAt };
-    else if (decidedAt !== null && submitted.length === 1 && submitted[0])
+    // 勝敗と採点期限は、全員の提出状態が確定した時刻から決める。
+    const settledAt = Math.max(
+      ...next.submissions.map((item) =>
+        item.status === "submitted" ? item.submittedAt : item.decidedAt,
+      ),
+    );
+    if (submitted.length === 0)
+      next.result = { kind: "no-contest", reason: "no-submissions", decidedAt: settledAt };
+    else if (submitted.length === 1 && submitted[0])
       next.result = {
         kind: "win",
         reason: "opponent-not-submitted",
         winnerId: submitted[0].participantId,
-        decidedAt,
+        decidedAt: settledAt,
       };
-    else if (submitted.length > 1) {
-      // 採点期限は全員の提出状態が確定した時刻から数える。
-      const settledAt = Math.max(
-        ...next.submissions.map((item) =>
-          item.status === "submitted" ? item.submittedAt : item.decidedAt,
-        ),
-      );
+    else {
       next.scoring.endsAt ??= settledAt + scoringTimeoutMs;
       next.result = decideByScores(next, next.scoring.endsAt, now);
     }
   }
   return next;
+}
+
+/**
+ * 本人の生成がすべて失敗に終わった（または生成していない）参加者の、提出できる画像がないと決まった時刻
+ * （生成終了時刻と最後の失敗の遅い方）を返す。成功した画像か生成中の画像があれば`null`。
+ */
+function getNoImageAt(state: BattleState, participantId: string) {
+  let decidedAt = state.generationEndsAt;
+  for (const item of state.generations) {
+    if (item.participantId !== participantId) continue;
+    if (item.status !== "failed") return null;
+    decidedAt = Math.max(decidedAt, item.finishedAt);
+  }
+  return decidedAt;
 }
 
 // 1対1では、採点期限までに両者の採点がそろわなければ勝負不成立にする。
@@ -260,7 +287,11 @@ export function acceptGeneration(
       existing.inputHash !== request.inputHash
     )
       throw new Error("同じ処理IDで別の生成を要求できません。");
-    return { battle: reconcileBattle(state, now), accepted: false };
+    return {
+      battle: reconcileBattle(state, now),
+      accepted: false,
+      acceptedAt: existing.acceptedAt,
+    };
   }
   const next = reconcileBattle(state, now);
   if (
@@ -269,8 +300,14 @@ export function acceptGeneration(
     next.submissions.some((item) => item.participantId === request.participantId)
   )
     throw new Error("画像生成の受付は終了しています。");
+  if (
+    next.generations.some(
+      (item) => item.participantId === request.participantId && item.status === "pending",
+    )
+  )
+    throw new Error("生成が終わるまでお待ちください。");
   next.generations.push({ ...request, acceptedAt: now, status: "pending" });
-  return { battle: next, accepted: true };
+  return { battle: next, accepted: true, acceptedAt: now };
 }
 
 export function finishGeneration(
@@ -279,11 +316,12 @@ export function finishGeneration(
   outcome: GenerationOutcome,
   now: number,
 ): BattleState {
-  const next = structuredClone(state);
+  // タイムアウトを先に反映し、タイムアウトの後に届いた完了を無視する。
+  const next = reconcileBattle(state, now);
   const index = next.generations.findIndex((item) => item.id === id);
   const existing = next.generations[index];
   if (!existing) throw new Error("受け付けていない生成です。");
-  if (existing.status !== "pending") return reconcileBattle(next, now);
+  if (existing.status !== "pending") return next;
   if (now < existing.acceptedAt) throw new Error("受付時刻より前には完了できません。");
   next.generations[index] = v.parse(generationSchema, { ...existing, ...outcome, finishedAt: now });
   return reconcileBattle(next, now);

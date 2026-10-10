@@ -188,3 +188,40 @@ test("勝負不成立後に再戦し、前の結果のD1保存も再試行する
     await guestContext.close();
   }
 });
+
+test("提出できる画像がなければ、画像選択の猶予を待たずに未提出と勝負不成立を確定する", async ({
+  page,
+  browser,
+}) => {
+  // 匿名参加の回数制限を、ほかのテストと分けて数える。
+  const guestContext = await browser.newContext({
+    extraHTTPHeaders: { "CF-Connecting-IP": "203.0.113.36" },
+  });
+  try {
+    const code = await create(page, "時間切れ確認");
+    const guest = await guestContext.newPage();
+    await join(guest, code, "時間切れ参加者");
+    await expect
+      .poll(async () => (await snapshot(page)).members.filter((member) => member.connected).length)
+      .toBe(2);
+    // 猶予を長くし、猶予の終わりを待たずに確定することを確かめる。
+    expect(
+      (await start(page, code, { difficulty: "easy", durationSeconds: 2, selectionSeconds: 600 }))
+        .error,
+    ).toBeNull();
+    for (const participant of [page, guest]) {
+      await expect
+        .poll(async () => (await battle(participant)).result?.kind, { timeout: 8000 })
+        .toBe("no-contest");
+      const current = await battle(participant);
+      expect(current.selectionEndsAt).toBe(current.generationEndsAt + 600_000);
+      expect(current.mySubmission).toMatchObject({
+        status: "not-submitted",
+        decidedAt: current.generationEndsAt,
+      });
+      expect(current.result?.decidedAt).toBe(current.generationEndsAt);
+    }
+  } finally {
+    await guestContext.close();
+  }
+});

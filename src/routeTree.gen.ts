@@ -27,6 +27,7 @@ import { Route as AdminTopicsIndexRouteImport } from './routes/admin/topics/inde
 import { Route as AdminTopicsTopicIdRouteImport } from './routes/admin/topics/$topicId'
 import { Route as AdminTopicsNewRouteImport } from './routes/admin/topics/new'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as GeneratedImagesBattleIdGenerationIdRouteImport } from './routes/generated-images.$battleId.$generationId'
 import { Route as MypageMatchesBattleIdRouteImport } from './routes/mypage/matches/$battleId'
 import { Route as TopicImagesTopicIdImageIdRouteImport } from './routes/topic-images.$topicId.$imageId'
 
@@ -120,6 +121,12 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GeneratedImagesBattleIdGenerationIdRoute =
+  GeneratedImagesBattleIdGenerationIdRouteImport.update({
+    id: '/generated-images/$battleId/$generationId',
+    path: '/generated-images/$battleId/$generationId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const MypageMatchesBattleIdRoute = MypageMatchesBattleIdRouteImport.update({
   id: '/mypage/matches/$battleId',
   path: '/mypage/matches/$battleId',
@@ -150,6 +157,7 @@ export interface FileRoutesByFullPath {
   '/admin/topics/$topicId': typeof AdminTopicsTopicIdRoute
   '/admin/topics/new': typeof AdminTopicsNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/generated-images/$battleId/$generationId': typeof GeneratedImagesBattleIdGenerationIdRoute
   '/mypage/matches/$battleId': typeof MypageMatchesBattleIdRoute
   '/topic-images/$topicId/$imageId': typeof TopicImagesTopicIdImageIdRoute
   '/admin/topics/': typeof AdminTopicsIndexRoute
@@ -171,6 +179,7 @@ export interface FileRoutesByTo {
   '/admin/topics/$topicId': typeof AdminTopicsTopicIdRoute
   '/admin/topics/new': typeof AdminTopicsNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/generated-images/$battleId/$generationId': typeof GeneratedImagesBattleIdGenerationIdRoute
   '/mypage/matches/$battleId': typeof MypageMatchesBattleIdRoute
   '/topic-images/$topicId/$imageId': typeof TopicImagesTopicIdImageIdRoute
   '/admin/topics': typeof AdminTopicsIndexRoute
@@ -194,6 +203,7 @@ export interface FileRoutesById {
   '/admin/topics/$topicId': typeof AdminTopicsTopicIdRoute
   '/admin/topics/new': typeof AdminTopicsNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/generated-images/$battleId/$generationId': typeof GeneratedImagesBattleIdGenerationIdRoute
   '/mypage/matches/$battleId': typeof MypageMatchesBattleIdRoute
   '/topic-images/$topicId/$imageId': typeof TopicImagesTopicIdImageIdRoute
   '/admin/topics/': typeof AdminTopicsIndexRoute
@@ -218,6 +228,7 @@ export interface FileRouteTypes {
     | '/admin/topics/$topicId'
     | '/admin/topics/new'
     | '/api/auth/$'
+    | '/generated-images/$battleId/$generationId'
     | '/mypage/matches/$battleId'
     | '/topic-images/$topicId/$imageId'
     | '/admin/topics/'
@@ -239,6 +250,7 @@ export interface FileRouteTypes {
     | '/admin/topics/$topicId'
     | '/admin/topics/new'
     | '/api/auth/$'
+    | '/generated-images/$battleId/$generationId'
     | '/mypage/matches/$battleId'
     | '/topic-images/$topicId/$imageId'
     | '/admin/topics'
@@ -261,6 +273,7 @@ export interface FileRouteTypes {
     | '/admin/topics/$topicId'
     | '/admin/topics/new'
     | '/api/auth/$'
+    | '/generated-images/$battleId/$generationId'
     | '/mypage/matches/$battleId'
     | '/topic-images/$topicId/$imageId'
     | '/admin/topics/'
@@ -275,6 +288,7 @@ export interface RootRouteChildren {
   RoomsCodeRoute: typeof RoomsCodeRoute
   MypageIndexRoute: typeof MypageIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  GeneratedImagesBattleIdGenerationIdRoute: typeof GeneratedImagesBattleIdGenerationIdRoute
   MypageMatchesBattleIdRoute: typeof MypageMatchesBattleIdRoute
   TopicImagesTopicIdImageIdRoute: typeof TopicImagesTopicIdImageIdRoute
 }
@@ -407,6 +421,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/generated-images/$battleId/$generationId': {
+      id: '/generated-images/$battleId/$generationId'
+      path: '/generated-images/$battleId/$generationId'
+      fullPath: '/generated-images/$battleId/$generationId'
+      preLoaderRoute: typeof GeneratedImagesBattleIdGenerationIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/mypage/matches/$battleId': {
       id: '/mypage/matches/$battleId'
       path: '/mypage/matches/$battleId'
@@ -463,6 +484,8 @@ const rootRouteChildren: RootRouteChildren = {
   RoomsCodeRoute: RoomsCodeRoute,
   MypageIndexRoute: MypageIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  GeneratedImagesBattleIdGenerationIdRoute:
+    GeneratedImagesBattleIdGenerationIdRoute,
   MypageMatchesBattleIdRoute: MypageMatchesBattleIdRoute,
   TopicImagesTopicIdImageIdRoute: TopicImagesTopicIdImageIdRoute,
 }
