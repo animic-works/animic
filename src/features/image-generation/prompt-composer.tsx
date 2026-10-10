@@ -1,8 +1,10 @@
 import type { ReactNode } from "react";
 import { useEffect, useId, useRef, useState } from "react";
+import { ActionGroup } from "@animic/react/action-group";
 import { Button } from "@animic/react/button";
 import { Cluster } from "@animic/react/cluster";
 import { Composer } from "@animic/react/composer";
+import { Dialog } from "@animic/react/dialog";
 import { Heading } from "@animic/react/heading";
 import { IconButton } from "@animic/react/icon-button";
 import { SegmentedControl } from "@animic/react/segmented-control";
@@ -36,9 +38,12 @@ import {
 import type { DictionaryEntry, DictionaryHit } from "./prompt-dictionary";
 import { PromptField } from "./prompt-field";
 import { PromptSearchDialog } from "./prompt-search-dialog";
+import { savePrompt, useSavedPrompt } from "./prompt-storage";
 import type { SearchCard, SearchGenre } from "./prompt-search-dialog";
 
 export type PromptComposerProps = {
+  /** 入力をこのタブに保存する単位。別の対戦の保存は使わない */
+  battleId: string;
   summary?: ReactNode;
   /** キャラの欄の上限（むずかしいは2） */
   maxCharacters: 1 | 2;
@@ -116,6 +121,7 @@ const isMode = (value: string): value is PromptMode => value === "text" || value
 
 // 左のパネル: 入力方法の切り替え、ベース／キャラのタブ、プロンプト欄、検索、生成の回数とボタン
 export function PromptComposer({
+  battleId,
   summary: generationSummary,
   maxCharacters,
   successCount,
@@ -125,11 +131,19 @@ export function PromptComposer({
   modifierKey,
 }: PromptComposerProps) {
   const baseId = useId();
-  const [state, setState] = useState(INITIAL_STATE);
+  // 入力していない間は、この対戦の保存（再接続・再読み込みで作り直す前の入力）を出す
+  const saved = useSavedPrompt(battleId, maxCharacters);
+  const [edited, setEdited] = useState<ComposerState | null>(null);
+  const state = edited ?? saved ?? INITIAL_STATE;
   const toast = useToast();
   const [requesting, setRequesting] = useState(false);
   const [search, setSearch] = useState<SearchState>({ open: false, genre: null, query: "" });
+  const [clearing, setClearing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (edited) savePrompt(battleId, edited);
+  }, [battleId, edited]);
 
   const { mode, blocks, active, draft } = state;
   const tokens = blocks[active] ?? [];
@@ -158,7 +172,7 @@ export function PromptComposer({
 
   const focusInput = () => inputRef.current?.focus();
   const update = (change: (current: ComposerState) => ComposerState) =>
-    setState((current) => change(current));
+    setEdited((current) => change(current ?? saved ?? INITIAL_STATE));
 
   function switchTo(index: number) {
     update((current) => ({ ...commitActive(current), active: index }));
@@ -450,14 +464,38 @@ export function PromptComposer({
               ),
             )
           }
-          onClear={() => {
-            update((current) => ({ ...withTokens(current, []), draft: "" }));
-            focusInput();
-          }}
+          onClear={() => setClearing(true)}
           onSubmitShortcut={() => void generate()}
           inputRef={inputRef}
         />
       </Composer>
+      <Dialog
+        open={clearing && !locked}
+        onOpenChange={(open) => !open && setClearing(false)}
+        title={`${activeLabel}のプロンプトを空にしますか？`}
+        description={`${activeLabel}の語句と書きかけを消します。ほかの欄は消しません。`}
+        closeButton={false}
+        presentation="centered"
+        size="compact"
+      >
+        <ActionGroup layout="confirm">
+          <Button appearance="secondary" shape="pill" size="lg" onClick={() => setClearing(false)}>
+            やめる
+          </Button>
+          <Button
+            shape="pill"
+            size="lg"
+            onClick={() => {
+              update((current) => ({ ...withTokens(current, []), draft: "" }));
+              setClearing(false);
+              // 閉じた確認の窓がフォーカスを戻した後に、入力欄へ移す
+              requestAnimationFrame(focusInput);
+            }}
+          >
+            空にする
+          </Button>
+        </ActionGroup>
+      </Dialog>
       <PromptSearchDialog
         open={search.open && !locked}
         onOpenChange={(open) => setSearch((current) => ({ ...current, open }))}

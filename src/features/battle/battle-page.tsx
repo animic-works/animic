@@ -154,6 +154,7 @@ export function BattlePage({
           ) : (
             <PromptComposer
               key={battle.id}
+              battleId={battle.id}
               maxCharacters={battle.settings.difficulty === "hard" ? 2 : 1}
               successCount={images.succeeded.length}
               pending={images.pendings.length > 0}
