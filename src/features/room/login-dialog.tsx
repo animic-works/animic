@@ -1,42 +1,39 @@
-import { Dialog } from "../../components/dialog";
-import { EntryAlert, EntryLogo, EntryTerms } from "../../components/entry";
-import { Stack } from "../../components/layout";
+import { Dialog } from "@animic/react/dialog";
+import { Stack } from "@animic/react/stack";
+import { LoginError } from "./login-error";
+import { LoginLogo } from "../account/visuals/login-artwork";
 import { LoginButtons, useLogin } from "./login-buttons";
+import { LoginTerms } from "./login-terms";
 
-export type LoginDialogProps = {
+export function LoginDialog({
+  open,
+  onOpenChange,
+}: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-};
-
-// トップの「スタート」で、ログインしていないときに開くダイアログ。
-// ルームを作る画面のログインのカードと同じ並びにし、ログインの後はその画面へ進む
-export function LoginDialog({ open, onOpenChange }: LoginDialogProps) {
+}) {
   return (
     <Dialog
       open={open}
       onOpenChange={onOpenChange}
-      density="compact"
-      media={<EntryLogo src="/animic-logo.svg" />}
+      headerMedia={<LoginLogo />}
       title="ログインしてはじめよう"
       description="ルームを作るには、ログインが必要です。"
-      closeLabel="閉じる"
+      size="compact"
+      presentation="centered"
+      footer={<LoginTerms />}
     >
       <LoginDialogBody />
     </Dialog>
   );
 }
 
-// 閉じると中身ごと外れるため、次に開いたときは接続中や失敗の表示が残らない
 function LoginDialogBody() {
   const { connecting, error, login } = useLogin("/start");
   return (
-    <Stack gap="4">
-      {error ? <EntryAlert>{error}</EntryAlert> : null}
+    <Stack>
+      {error && <LoginError message={error} />}
       <LoginButtons connecting={connecting} onLogin={(provider) => void login(provider)} />
-      <EntryTerms>
-        続行すると、<a href="/terms">利用規約</a>と<a href="/privacy">プライバシーポリシー</a>
-        に同意したものとみなします。
-      </EntryTerms>
     </Stack>
   );
 }

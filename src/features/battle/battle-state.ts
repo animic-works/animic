@@ -130,7 +130,7 @@ const scoringTimeoutMs = 5 * 60_000;
 export const generationTimeoutMs = 60_000;
 
 export function canStartBattle(count: number) {
-  return count === 2;
+  return count >= 2;
 }
 
 export function createBattle(
@@ -144,7 +144,7 @@ export function createBattle(
     !canStartBattle(participantIds.length) ||
     new Set(participantIds).size !== participantIds.length
   ) {
-    throw new Error("対戦を開始するには参加者が2人必要です。");
+    throw new Error("対戦を開始するには参加者が2人以上必要です。");
   }
   if (settings.difficulty !== topic.difficulty) throw new Error("お題の難易度が一致しません。");
   return {
@@ -200,9 +200,8 @@ export function reconcileBattle(state: BattleState, now: number): BattleState {
       }
     }
   }
-  // 勝敗は1対1のルールで決める。複数人の順位はここでは決めない。
+  // 全員の提出状態が確定したら結果を決める。1人だけ提出した場合は採点を待たずにその人を1位にする。
   if (
-    next.participantIds.length === 2 &&
     next.participantIds.every((id) => next.submissions.some((item) => item.participantId === id))
   ) {
     const submitted = next.submissions.filter((item) => item.status === "submitted");
@@ -230,7 +229,8 @@ export function reconcileBattle(state: BattleState, now: number): BattleState {
   return next;
 }
 
-// 採点期限までに全員の採点がそろわなければ勝負不成立にする。
+// 1対1では、採点期限までに両者の採点がそろわなければ勝負不成立にする。
+// 3人以上では、採点に失敗した人と期限までに採点がそろわなかった人を順位なしにし、残りの最高点で決める。
 function decideByScores(state: BattleState, endsAt: number, now: number): BattleState["result"] {
   const entries = state.submissions
     .filter((item) => item.status === "submitted")
@@ -242,17 +242,22 @@ function decideByScores(state: BattleState, endsAt: number, now: number): Battle
       ? [{ participantId: entry.participantId, total: entry.total }]
       : [],
   );
-  if (totals.length === entries.length) {
-    const best = Math.max(...totals.map((item) => item.total));
-    const leaders = totals.filter((item) => item.total === best);
-    return leaders.length === 1 && leaders[0]
-      ? { kind: "win", reason: "higher-score", winnerId: leaders[0].participantId, decidedAt: now }
-      : { kind: "draw", reason: "same-score", decidedAt: now };
-  }
-  if (entries.some((entry) => entry?.status === "failed"))
-    return { kind: "no-contest", reason: "scoring-failed", decidedAt: now };
-  if (now >= endsAt) return { kind: "no-contest", reason: "scoring-failed", decidedAt: endsAt };
-  return null;
+  const settled = entries.every((entry) => entry && entry.status !== "pending");
+  if (state.participantIds.length === 2) {
+    if (totals.length !== entries.length) {
+      if (entries.some((entry) => entry?.status === "failed"))
+        return { kind: "no-contest", reason: "scoring-failed", decidedAt: now };
+      if (now >= endsAt) return { kind: "no-contest", reason: "scoring-failed", decidedAt: endsAt };
+      return null;
+    }
+  } else if (!settled && now < endsAt) return null;
+  const decidedAt = settled ? now : endsAt;
+  if (!totals.length) return { kind: "no-contest", reason: "scoring-failed", decidedAt };
+  const best = Math.max(...totals.map((item) => item.total));
+  const leaders = totals.filter((item) => item.total === best);
+  return leaders.length === 1 && leaders[0]
+    ? { kind: "win", reason: "higher-score", winnerId: leaders[0].participantId, decidedAt }
+    : { kind: "draw", reason: "same-score", decidedAt };
 }
 
 export function acceptGeneration(

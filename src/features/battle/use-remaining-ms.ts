@@ -1,21 +1,33 @@
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
-/**
- * 状態を配信した時点のサーバー時刻と締切から、残り時間（ミリ秒）を返す。
- * 受信後の経過は端末の時計ではなく`performance.now()`で数える。
- */
-export function useRemainingMs(serverTime: number, deadline: number | null) {
-  const [clock, setClock] = useState({ serverTime, elapsed: 0 });
-  // 新しい状態を受け取ったら、描画の前に経過時間を0に戻す。
-  if (clock.serverTime !== serverTime) setClock({ serverTime, elapsed: 0 });
-  useEffect(() => {
-    const receivedAt = performance.now();
-    const timer = setInterval(
-      () => setClock({ serverTime, elapsed: performance.now() - receivedAt }),
-      200,
-    );
-    return () => clearInterval(timer);
-  }, [serverTime]);
-  const elapsed = clock.serverTime === serverTime ? clock.elapsed : 0;
+const listeners = new Set<() => void>();
+let now: number | null = null;
+let timer: ReturnType<typeof setInterval> | undefined;
+function tick() {
+  now = performance.now();
+  for (const listener of listeners) listener();
+}
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  if (listeners.size === 1) {
+    tick();
+    timer = setInterval(tick, 200);
+  }
+  return () => {
+    listeners.delete(listener);
+    if (!listeners.size) clearInterval(timer);
+  };
+}
+const getSnapshot = () => now;
+const getServerSnapshot = () => null;
+
+/** 配信時刻と受信後の経過から数え、画面の演出や端末時計の変更で締切を延ばさない。 */
+export function useRemainingMs(
+  serverTime: number,
+  deadline: number | null,
+  receivedAt: number | null,
+) {
+  const current = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const elapsed = current === null || receivedAt === null ? 0 : Math.max(0, current - receivedAt);
   return deadline === null ? null : Math.max(0, deadline - serverTime - elapsed);
 }

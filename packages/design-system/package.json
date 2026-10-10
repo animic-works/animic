@@ -1,0 +1,12 @@
+{
+  "name": "@animic/design-system",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./preset": "./src/preset.ts"
+  },
+  "dependencies": {
+    "@pandacss/dev": "2.0.1",
+    "@pandacss/preset-base": "2.0.1"
+  }
+}

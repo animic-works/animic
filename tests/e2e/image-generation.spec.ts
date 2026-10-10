@@ -230,7 +230,7 @@ test("対戦画面で「生成する」から生成して表示し、送れな�
 
     await input.fill(`${novelAiFailMarker}、`);
     await generateButton.click();
-    await expect(page.getByRole("img", { name: "2回目は生成に失敗しました" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "2回目・失敗", exact: true })).toBeDisabled();
     await expect(page.getByRole("img", { name: "1回目の画像" })).toBeVisible();
   } finally {
     await guestContext.close();

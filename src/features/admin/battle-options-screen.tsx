@@ -1,14 +1,16 @@
+import { Split } from "@animic/react/split";
 import { useState } from "react";
 import * as v from "valibot";
-
-import { Button } from "../../components/button";
-import { TextField } from "../../components/field";
-import { Icon, IconButton } from "../../components/icon";
-import { Stack } from "../../components/layout";
-import { SegmentedControl } from "../../components/segmented-control";
-import { Surface } from "../../components/surface";
-import { Heading, Text } from "../../components/text";
-import { toast } from "../../components/toast";
+import { Button } from "@animic/react/button";
+import { Cluster } from "@animic/react/cluster";
+import { Field } from "@animic/react/field";
+import { Input } from "@animic/react/input";
+import { Stack } from "@animic/react/stack";
+import { SegmentedControl } from "@animic/react/segmented-control";
+import { Surface } from "@animic/react/surface";
+import { Heading } from "@animic/react/heading";
+import { Text } from "@animic/react/text";
+import { useToast } from "@animic/react/toast";
 import { saveBattleOptions } from "../room/battle-options.functions";
 import {
   BATTLE_OPTION_LABELS,
@@ -18,7 +20,7 @@ import {
   maxBattleChoices,
 } from "../room/battle-options";
 import type { BattleOptions, BattleOptionKind } from "../room/battle-options";
-import { AdminColumns, AdminGuide, AdminHead } from "./admin-parts";
+import { AdminGuide, AdminHead } from "./admin-parts";
 import { errorMessage } from "./admin-format";
 
 type Draft = Record<BattleOptionKind, { choices: string[]; defaultSeconds: number }>;
@@ -70,6 +72,7 @@ export function BattleOptionsScreen({
   options: BattleOptions;
   onSaved: () => Promise<void>;
 }) {
+  const toast = useToast();
   const [draft, setDraft] = useState<Draft>(() => toDraft(options));
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -104,6 +107,7 @@ export function BattleOptionsScreen({
   }
 
   async function save() {
+    if (saving) return;
     const parsed = v.safeParse(battleOptionsSchema, buildOptions());
     if (!parsed.success) {
       const [issue] = parsed.issues;
@@ -115,7 +119,7 @@ export function BattleOptionsScreen({
     setSaving(true);
     try {
       await saveBattleOptions({ data: parsed.output });
-      toast("保存しました");
+      toast.show({ title: "保存しました" });
       await onSaved();
     } catch (caught) {
       setError(errorMessage(caught));
@@ -125,113 +129,105 @@ export function BattleOptionsScreen({
   }
 
   return (
-    <>
+    <Stack space="section">
       <AdminHead eyebrow="Admin" title="対戦条件" description="ロビーでホストが選べる候補です。" />
-      <AdminColumns
-        layout="form"
-        primary={
-          <Stack gap="4">
-            {battleOptionKinds.map((kind) => {
-              const label = BATTLE_OPTION_LABELS[kind];
-              const { choices } = draft[kind];
-              const numbers = optionNumbers(choices);
-              const selectedDefault = effectiveDefault(numbers, draft[kind].defaultSeconds);
-              return (
-                <Surface key={kind} as="section" variant="soft" padding="lg">
-                  <Stack gap="4">
-                    <Heading variant="heading-sm">{label}</Heading>
-                    <Stack gap="3">
-                      {choices.map((choice, index) => (
-                        <Stack key={index} direction="row" gap="2" align="end">
-                          <TextField
-                            label={`${label}の候補${index + 1}（秒）`}
-                            type="number"
-                            inputMode="numeric"
-                            min={1}
-                            max={3600}
-                            value={choice}
-                            onChange={(event) => setChoice(kind, index, event.target.value)}
-                          />
-                          <IconButton
-                            variant="rowDanger"
-                            icon="trash"
-                            label={`${label}の候補${index + 1}を削除`}
-                            disabled={choices.length <= 1}
-                            onClick={() => removeChoice(kind, index)}
-                          />
-                        </Stack>
-                      ))}
-                    </Stack>
-                    <Stack direction="row">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        leadingIcon={<Icon name="plus" size="sm" />}
-                        aria-label={`${label}の候補を追加`}
-                        disabled={choices.length >= maxBattleChoices}
-                        onClick={() => addChoice(kind)}
-                      >
-                        候補を追加
-                      </Button>
-                    </Stack>
-                    {numbers.length ? (
-                      <Stack gap="2">
-                        <Text as="p" variant="label" aria-hidden="true">
-                          既定値
-                        </Text>
-                        <SegmentedControl
-                          label={`${label}の既定値`}
-                          options={numbers.map((seconds) => ({
-                            value: String(seconds),
-                            label: `${seconds}秒`,
-                          }))}
-                          value={String(selectedDefault)}
-                          onValueChange={(value) =>
-                            updateKind(kind, { ...draft[kind], defaultSeconds: Number(value) })
-                          }
+      <Split layout="main-aside">
+        <Stack>
+          {battleOptionKinds.map((kind) => {
+            const label = BATTLE_OPTION_LABELS[kind];
+            const { choices } = draft[kind];
+            const numbers = optionNumbers(choices);
+            const selectedDefault = effectiveDefault(numbers, draft[kind].defaultSeconds);
+            return (
+              <Surface key={kind} appearance="subtle" padding="lg">
+                <Stack>
+                  <Heading level={2} size="sm">
+                    {label}
+                  </Heading>
+                  {choices.map((choice, index) => (
+                    <Cluster key={index} layout="nowrap">
+                      <Field label={`${label}の候補${index + 1}（秒）`}>
+                        <Input
+                          inputMode="numeric"
+                          value={choice}
+                          disabled={saving}
+                          onChange={(event) => setChoice(kind, index, event.target.value)}
                         />
-                      </Stack>
-                    ) : null}
-                  </Stack>
-                </Surface>
-              );
-            })}
-            {error ? (
-              <Text tone="danger" variant="note" role="alert">
-                {error}
-              </Text>
-            ) : null}
-            <Stack direction="row" gap="2">
-              <Button
-                leadingIcon={<Icon name="check" size="sm" />}
-                loading={saving}
-                loadingText="保存しています…"
-                onClick={() => void save()}
-              >
-                保存する
-              </Button>
-              <Button variant="ghost" onClick={() => setDraft(toDraft(DEFAULT_BATTLE_OPTIONS))}>
-                元の候補に戻す
-              </Button>
-            </Stack>
-          </Stack>
-        }
-        secondary={
-          <AdminGuide
-            items={[
-              {
-                term: "反映",
-                body: "保存した後に開いたロビーから、この候補を選べます。進行中の対戦と、ルームに保存済みの条件は変わりません。",
-              },
-              { term: "範囲", body: "1〜3600秒の整数を、1つの条件につき5個まで登録できます。" },
-              {
-                term: "未保存のとき",
-                body: "保存するまでは、制限時間60・90・120秒（既定90秒）、画像選択の猶予10・15・30秒（既定15秒）を使います。",
-              },
-            ]}
-          />
-        }
-      />
-    </>
+                      </Field>
+                      <Button
+                        appearance="quiet"
+                        size="sm"
+                        aria-label={`${label}の候補${index + 1}を削除`}
+                        disabled={choices.length <= 1}
+                        loading={saving}
+                        onClick={() => removeChoice(kind, index)}
+                      >
+                        削除
+                      </Button>
+                    </Cluster>
+                  ))}
+                  <Cluster>
+                    <Button
+                      appearance="secondary"
+                      size="sm"
+                      aria-label={`${label}の候補を追加`}
+                      disabled={choices.length >= maxBattleChoices}
+                      loading={saving}
+                      onClick={() => addChoice(kind)}
+                    >
+                      候補を追加
+                    </Button>
+                  </Cluster>
+                  {numbers.length > 0 && (
+                    <SegmentedControl
+                      label={`${label}の既定値`}
+                      options={numbers.map((seconds) => ({
+                        value: String(seconds),
+                        label: `${seconds}秒`,
+                      }))}
+                      value={String(selectedDefault)}
+                      disabled={saving}
+                      onValueChange={(value) =>
+                        updateKind(kind, { ...draft[kind], defaultSeconds: Number(value) })
+                      }
+                    />
+                  )}
+                </Stack>
+              </Surface>
+            );
+          })}
+          {error && (
+            <div role="alert">
+              <Text tone="danger">{error}</Text>
+            </div>
+          )}
+          <Cluster>
+            <Button loading={saving} onClick={() => void save()}>
+              {saving ? "保存しています…" : "保存する"}
+            </Button>
+            <Button
+              appearance="quiet"
+              loading={saving}
+              onClick={() => setDraft(toDraft(DEFAULT_BATTLE_OPTIONS))}
+            >
+              元の候補に戻す
+            </Button>
+          </Cluster>
+        </Stack>
+        <AdminGuide
+          items={[
+            {
+              term: "反映",
+              body: "保存した後に開いたロビーから、この候補を選べます。進行中の対戦と、ルームに保存済みの条件は変わりません。",
+            },
+            { term: "範囲", body: "1〜3600秒の整数を、1つの条件につき5個まで登録できます。" },
+            {
+              term: "未保存のとき",
+              body: "保存するまでは、制限時間60・90・120秒（既定90秒）、画像選択の猶予10・15・30秒（既定15秒）を使います。",
+            },
+          ]}
+        />
+      </Split>
+    </Stack>
   );
 }

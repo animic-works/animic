@@ -68,7 +68,7 @@ function chunkNames(bytes: Buffer) {
 }
 
 async function addTopic(page: Page, fileName: string, prompt: string) {
-  await page.goto("/admin/topics/new");
+  await page.goto("/admin/topics/new", { waitUntil: "networkidle" });
   await page.locator('input[type="file"]').setInputFiles({
     name: fileName,
     mimeType: "image/png",
@@ -122,6 +122,7 @@ test("画像からお題を非公開で追加し、メタデータを消した�
   await page.getByLabel("題名").fill("E2Eのお題");
   await page.getByRole("button", { name: "保存する" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toContainText("E2Eのお題");
+  await expect(page.getByRole("status").filter({ hasText: "保存しました" })).toBeVisible();
   // 一覧のタイルは、画像の上を押しても詳細を開く。
   await page
     .getByRole("navigation", { name: "パンくず" })
@@ -154,6 +155,7 @@ test("画像からお題を非公開で追加し、メタデータを消した�
 
     await page.getByRole("button", { name: "公開する" }).click();
     await expect(page.getByRole("button", { name: "非公開にする" })).toBeVisible();
+    await expect(page.getByRole("status").filter({ hasText: "公開しました" })).toBeVisible();
     expect((await start(host, code, settings)).error).toBeNull();
     await expect.poll(async () => (await snapshot(host)).battle?.topic.imageUrl).toBe(imageUrl);
     await host.close();
@@ -163,8 +165,9 @@ test("画像からお題を非公開で追加し、メタデータを消した�
 
   await page.getByRole("button", { name: "非公開にする" }).click();
   await expect(page.getByRole("button", { name: "公開する" })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "非公開にしました" })).toBeVisible();
   await page.getByRole("button", { name: "お題を削除" }).click();
-  const dialog = page.getByRole("alertdialog", { name: "お題を削除しますか？" });
+  const dialog = page.getByRole("dialog", { name: "お題を削除しますか？" });
   await dialog.getByRole("button", { name: "削除する" }).click();
   await expect(page).toHaveURL(/\/admin\/topics$/);
   await expect(page.getByRole("link", { name: "E2Eのお題の詳細" })).toHaveCount(0);
@@ -264,7 +267,7 @@ test("よく使う表現をグループに分けて追加・並べ替え・削�
   await expect(phrases.getByRole("row", { name: /ピンクの髪/ })).toContainText("pink hair");
 
   await groups.getByRole("button", { name: "目を削除" }).click();
-  const confirm = page.getByRole("alertdialog", { name: "グループを削除しますか？" });
+  const confirm = page.getByRole("dialog", { name: "グループを削除しますか？" });
   await confirm.getByRole("button", { name: "削除する" }).click();
   await expect(groups.getByRole("row")).toHaveCount(2);
 });
@@ -319,7 +322,7 @@ test("書き出したZIPを読み込むと、消したお題と画像・対戦�
   await expect(summary.getByRole("row", { name: /^表現/ })).toContainText("1");
   await page.getByRole("button", { name: "読み込む" }).click();
   await page
-    .getByRole("alertdialog", { name: "読み込みますか？" })
+    .getByRole("dialog", { name: "読み込みますか？" })
     .getByRole("button", { name: "読み込む" })
     .click();
   await expect(page.getByText("読み込みました")).toBeVisible();

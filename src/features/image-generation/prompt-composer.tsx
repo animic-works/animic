@@ -1,12 +1,14 @@
-import { Tabs } from "@ark-ui/react/tabs";
-import { useEffect, useId, useRef, useState } from "react";
 import type { ReactNode } from "react";
-
-import { Button } from "../../components/button";
-import { Icon } from "../../components/icon";
-import { PanelHead } from "../../components/panel-head";
-import { SegmentedControl } from "../../components/segmented-control";
-import { toast } from "../../components/toast";
+import { useEffect, useId, useRef, useState } from "react";
+import { Button } from "@animic/react/button";
+import { Cluster } from "@animic/react/cluster";
+import { Composer } from "@animic/react/composer";
+import { Heading } from "@animic/react/heading";
+import { IconButton } from "@animic/react/icon-button";
+import { SegmentedControl } from "@animic/react/segmented-control";
+import { Stack } from "@animic/react/stack";
+import { Text } from "@animic/react/text";
+import { useToast } from "@animic/react/toast";
 import {
   assemblePrompt,
   blockLabel,
@@ -22,7 +24,6 @@ import {
   togglePhrase,
 } from "./prompt-blocks";
 import type { PromptBlocks, PromptMode } from "./prompt-blocks";
-import composerStyles from "./prompt-composer.module.css";
 import {
   browseDictionary,
   hitId,
@@ -38,6 +39,7 @@ import { PromptSearchDialog } from "./prompt-search-dialog";
 import type { SearchCard, SearchGenre } from "./prompt-search-dialog";
 
 export type PromptComposerProps = {
+  summary?: ReactNode;
   /** キャラの欄の上限（むずかしいは2） */
   maxCharacters: 1 | 2;
   /** 成功した生成の回数（Generationsの表示） */
@@ -46,8 +48,6 @@ export type PromptComposerProps = {
   pending: boolean;
   /** 受付終了・提出済み（入力・切り替え・検索も止める） */
   locked: boolean;
-  /** パネルを覆う案内（生成終了の黄色いカード） */
-  cover?: ReactNode;
   /** 生成の要求。受付を拒否されたか通信に失敗したら例外を投げる（入力は残してエラーを表示する） */
   onGenerate: (prompt: string) => Promise<void>;
   /** ショートカットの案内に出す修飾キー */
@@ -83,11 +83,11 @@ const PLACEHOLDERS: Record<PromptMode, string[]> = {
 };
 
 const MODE_OPTIONS = [
-  { value: "text", label: "文章", icon: "textLines", title: "日本語の文章で書く" },
-  { value: "tag", label: "タグ", icon: "hash", title: "英語のタグ（Danbooru形式）で書く" },
+  { value: "text", label: "文章", leadingIcon: "☰" },
+  { value: "tag", label: "タグ", leadingIcon: "＃" },
 ] as const;
 
-const TAB_TONES = ["base", "char1", "char2"] as const;
+const TAB_TONES = ["green", "yellow", "cyan"] as const;
 
 const ALL_HITS = browseDictionary(promptDictionary, null, "");
 const HITS_BY_ID = new Map(ALL_HITS.map((hit) => [hitId(hit), hit]));
@@ -116,17 +116,17 @@ const isMode = (value: string): value is PromptMode => value === "text" || value
 
 // 左のパネル: 入力方法の切り替え、ベース／キャラのタブ、プロンプト欄、検索、生成の回数とボタン
 export function PromptComposer({
+  summary: generationSummary,
   maxCharacters,
   successCount,
   pending,
   locked,
-  cover,
   onGenerate,
   modifierKey,
 }: PromptComposerProps) {
   const baseId = useId();
   const [state, setState] = useState(INITIAL_STATE);
-  const [shakeKey, setShakeKey] = useState(0);
+  const toast = useToast();
   const [requesting, setRequesting] = useState(false);
   const [search, setSearch] = useState<SearchState>({ open: false, genre: null, query: "" });
   const inputRef = useRef<HTMLInputElement>(null);
@@ -154,8 +154,6 @@ export function PromptComposer({
         labelMatch: matchRange(hit.ja, query),
         tagMatch: matchRange(hit.tag, query),
       }));
-  const triggerId = (value: string) => `${baseId}-tab-${value}`;
-  const panelId = `${baseId}-panel`;
   const reasonId = `${baseId}-reason`;
 
   const focusInput = () => inputRef.current?.focus();
@@ -201,8 +199,7 @@ export function PromptComposer({
 
   async function generate() {
     if (blocker.disabled) {
-      toast(blocker.reason ?? "いまは画像を生成できません");
-      setShakeKey((key) => key + 1);
+      toast.show({ title: blocker.reason ?? "いまは画像を生成できません" });
       return;
     }
     // 書きかけも語句にしてから送る（送った内容と欄の表示をそろえる）
@@ -211,7 +208,7 @@ export function PromptComposer({
     try {
       await onGenerate(prompt);
     } catch {
-      toast("画像を生成できませんでした。もう一度お試しください。");
+      toast.show({ title: "画像を生成できませんでした。もう一度お試しください。" });
     } finally {
       setRequesting(false);
     }
@@ -221,7 +218,13 @@ export function PromptComposer({
   const shortcutRef = useRef<(event: KeyboardEvent) => void>(() => {});
   useEffect(() => {
     shortcutRef.current = (event) => {
-      if (event.key.toLowerCase() !== "k" || !(event.metaKey || event.ctrlKey)) return;
+      if (
+        event.isComposing ||
+        event.defaultPrevented ||
+        event.key.toLowerCase() !== "k" ||
+        !(event.metaKey || event.ctrlKey)
+      )
+        return;
       // 検索・確認などのダイアログが開いている間は開かない
       if (locked || search.open || document.activeElement?.closest("[role='dialog']")) return;
       event.preventDefault();
@@ -278,71 +281,117 @@ export function PromptComposer({
   );
 
   return (
-    <section
-      className={composerStyles.root}
-      aria-labelledby="prompt-title"
-      // 生成終了のカードで覆っている間は、下の操作に触れさせない
-      data-covered={cover ? "" : undefined}
-    >
-      <div className={composerStyles.body} inert={Boolean(cover)}>
-        <PanelHead eyebrow="01 — Prompt" title="プロンプト" titleId="prompt-title">
+    <>
+      <Composer
+        eyebrow="01 — PROMPT"
+        title={
+          <Heading level={1} size="panel">
+            プロンプト
+          </Heading>
+        }
+        controls={
           <SegmentedControl
             label="入力方法"
-            variant="mode"
-            options={[...MODE_OPTIONS]}
+            appearance="pill"
+            density="compact"
+            tone="violet"
+            options={MODE_OPTIONS}
             value={mode}
+            disabled={locked}
             onValueChange={(value) => {
               if (isMode(value)) update((current) => ({ ...current, mode: value }));
             }}
-            disabled={locked}
           />
-        </PanelHead>
-
-        <div className={composerStyles.tabsBar}>
-          <Tabs.Root
-            className={composerStyles.tabs}
-            value={String(active)}
-            onValueChange={(details) => switchTo(Number(details.value))}
-            activationMode="automatic"
-            ids={{ trigger: triggerId, content: () => panelId }}
-          >
-            <Tabs.List className={composerStyles.tabList} aria-label="プロンプトの種類">
-              {blocks.map((_, index) => (
-                <Tabs.Trigger
-                  // 欄は末尾にだけ足し・消すため、添字で見分けられる
-                  key={index}
-                  value={String(index)}
-                  className={composerStyles.tab}
-                  data-tone={TAB_TONES[index]}
-                >
-                  <i className={composerStyles.tabMark} aria-hidden="true" />
-                  {labelOf(index)}
-                </Tabs.Trigger>
-              ))}
-            </Tabs.List>
-          </Tabs.Root>
-          {blocks.length > 2 && !locked ? (
-            <button
-              type="button"
-              className={composerStyles.tabRemove}
-              aria-label={`${labelOf(2)}を消す`}
-              onClick={removeCharacter}
-            >
-              <Icon name="close" size="2xs" />
-            </button>
-          ) : null}
-          {blocks.length - 1 < maxCharacters ? (
-            <button
-              type="button"
-              className={composerStyles.tabAdd}
+        }
+        tabs={
+          <Cluster>
+            <SegmentedControl
+              label="プロンプトの種類"
+              appearance="chips"
+              value={String(active)}
               disabled={locked}
-              onClick={addCharacter}
+              options={blocks.map((_, index) => ({
+                value: String(index),
+                label: labelOf(index),
+                leadingIcon: index === 0 ? "■" : "●",
+                tone: TAB_TONES[index],
+              }))}
+              onValueChange={(value) => switchTo(Number(value))}
+            />
+            {blocks.length > 2 && (
+              <IconButton
+                label={`${labelOf(2)}を消す`}
+                size="sm"
+                disabled={locked}
+                onClick={removeCharacter}
+              >
+                ×
+              </IconButton>
+            )}
+            {blocks.length - 1 < maxCharacters && (
+              <Button appearance="quiet" size="sm" disabled={locked} onClick={addCharacter}>
+                ＋ {labelOf(blocks.length)}
+              </Button>
+            )}
+          </Cluster>
+        }
+        tools={
+          <>
+            <Button
+              appearance="soft"
+              tone="green"
+              shape="pill"
+              size="sm"
+              compactLabel="ベースを検索"
+              aria-haspopup="dialog"
+              disabled={locked}
+              onClick={() => openSearch(0)}
             >
-              ＋ {labelOf(blocks.length)}
-            </button>
-          ) : null}
-        </div>
-
+              ベースプロンプトを検索
+            </Button>
+            <Button
+              appearance="soft"
+              tone="yellow"
+              shape="pill"
+              size="sm"
+              compactLabel="キャラを検索"
+              aria-haspopup="dialog"
+              disabled={locked}
+              onClick={() => openSearch(active === 0 ? 1 : active)}
+            >
+              キャラプロンプトを検索
+            </Button>
+          </>
+        }
+        summary={
+          <Stack space="tight">
+            {blocker.reason && (
+              <Text id={reasonId} variant="caption" tone="muted">
+                {blocker.reason}
+              </Text>
+            )}
+            {generationSummary ?? (
+              <>
+                {!blocker.reason && <Text variant="eyebrow">Generations</Text>}
+                <Text variant="label.supporting">
+                  生成 <strong>{successCount}</strong> 回
+                </Text>
+              </>
+            )}
+          </Stack>
+        }
+        action={
+          <Button
+            size="lg"
+            disabled={blocker.disabled}
+            aria-describedby={blocker.reason ? reasonId : undefined}
+            trailingIcon={<Text variant="caption">{modifierKey} ↵</Text>}
+            onClick={() => void generate()}
+          >
+            生成する
+          </Button>
+        }
+      >
         <PromptField
           label={`プロンプト（${activeLabel}）`}
           tokens={tokens}
@@ -350,8 +399,7 @@ export function PromptComposer({
           onDraftChange={(value, composing) =>
             update((current) => {
               if (composing) return { ...current, draft: value };
-              const list = current.blocks[current.active] ?? [];
-              const committed = commitDraft(list, value);
+              const committed = commitDraft(current.blocks[current.active] ?? [], value);
               return { ...withTokens(current, committed.tokens), draft: committed.draft };
             })
           }
@@ -371,8 +419,11 @@ export function PromptComposer({
             const hit = HITS_BY_ID.get(id);
             if (!hit) return;
             update((current) => {
-              const list = current.blocks[current.active] ?? [];
-              const picked = pickSuggestion(list, current.draft, wordOf(hit, current.mode));
+              const picked = pickSuggestion(
+                current.blocks[current.active] ?? [],
+                current.draft,
+                wordOf(hit, current.mode),
+              );
               return { ...withTokens(current, picked.tokens), draft: picked.draft };
             });
           }}
@@ -404,84 +455,11 @@ export function PromptComposer({
             focusInput();
           }}
           onSubmitShortcut={() => void generate()}
-          shakeKey={shakeKey}
           inputRef={inputRef}
-          panel={{ id: panelId, labelledBy: triggerId(String(active)) }}
         />
-
-        <div className={composerStyles.search}>
-          <button
-            type="button"
-            className={composerStyles.searchButton}
-            data-tone="base"
-            aria-haspopup="dialog"
-            aria-label="ベースプロンプトを検索"
-            disabled={locked}
-            onClick={() => openSearch(0)}
-          >
-            <span className={composerStyles.searchIcon} aria-hidden="true">
-              <Icon name="frame" size="md" />
-            </span>
-            <span className={composerStyles.searchText}>
-              <b>ベース</b>
-              <span className={composerStyles.searchMid}>プロンプト</span>を検索
-            </span>
-          </button>
-          <button
-            type="button"
-            className={composerStyles.searchButton}
-            data-tone="char"
-            aria-haspopup="dialog"
-            aria-label="キャラプロンプトを検索"
-            disabled={locked}
-            onClick={() => openSearch(active === 0 ? 1 : active)}
-          >
-            <span className={composerStyles.searchIcon} aria-hidden="true">
-              <Icon name="user" size="md" />
-            </span>
-            <span className={composerStyles.searchText}>
-              <b>キャラ</b>
-              <span className={composerStyles.searchMid}>プロンプト</span>を検索
-            </span>
-          </button>
-        </div>
-
-        <div className={composerStyles.foot}>
-          <div className={composerStyles.meter}>
-            {blocker.reason ? (
-              <span id={reasonId} className={composerStyles.reason}>
-                {blocker.reason}
-              </span>
-            ) : (
-              <span className={composerStyles.eyebrow}>Generations</span>
-            )}
-            <span className={composerStyles.count}>
-              生成 <b>{successCount}</b> 回
-            </span>
-          </div>
-          <div className={composerStyles.generate}>
-            <Button
-              size="lg"
-              fullWidth
-              disabled={blocker.disabled}
-              aria-describedby={blocker.reason ? reasonId : undefined}
-              leadingIcon={<Icon name="sparkle" size="xl" />}
-              trailingIcon={
-                <span className={composerStyles.kbd}>
-                  <kbd>{modifierKey}</kbd>
-                  <kbd>↵</kbd>
-                </span>
-              }
-              onClick={() => void generate()}
-            >
-              生成する
-            </Button>
-          </div>
-        </div>
-      </div>
-
+      </Composer>
       <PromptSearchDialog
-        open={search.open}
+        open={search.open && !locked}
         onOpenChange={(open) => setSearch((current) => ({ ...current, open }))}
         title={`${activeLabel}プロンプトを検索`}
         query={search.query}
@@ -499,8 +477,6 @@ export function PromptComposer({
         pickedText={`プロンプト 合計${total}語`}
         disabled={locked}
       />
-
-      {cover ? <div className={composerStyles.cover}>{cover}</div> : null}
-    </section>
+    </>
   );
 }

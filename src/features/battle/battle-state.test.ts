@@ -33,8 +33,8 @@ describe("対戦の開始", () => {
   it("選んだ難易度と異なるお題では開始しない", () => {
     expect(() => createBattle(settings, { ...topic, difficulty: "hard" }, ["a", "b"], 0)).toThrow();
   });
-  it("開始は1対1に限定し、保存スキーマには人数を固定しない", () => {
-    expect(() => createBattle(settings, topic, ["a", "b", "c"], 0)).toThrow();
+  it("2人以上で開始でき、保存スキーマには人数を固定しない", () => {
+    expect(createBattle(settings, topic, ["a", "b", "c"], 0).participantIds).toHaveLength(3);
     const battle = createBattle(settings, topic, ["a", "b"], 0);
     expect(
       v.parse(battleStateSchema, { ...battle, participantIds: ["a", "b", "c", "d"] })

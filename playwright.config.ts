@@ -9,6 +9,7 @@ import { e2eOAuthClients } from "./tests/e2e/oauth-clients";
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  outputDir: "test-results/e2e",
   forbidOnly: Boolean(process.env.CI),
   retries: 0,
   // Wranglerからも同じローカルSQLiteを操作するため、テスト間のDB操作を競合させない。
@@ -26,7 +27,7 @@ export default defineConfig({
       "node -e \"require('node:fs').rmSync('.wrangler/e2e', { recursive: true, force: true })\"",
       "vp run build",
       "vp run db:migrate:local --persist-to .wrangler/e2e",
-      "vp preview --host 127.0.0.1 --port 4173 --strictPort",
+      "vp run preview --host 127.0.0.1 --port 4173 --strictPort",
     ].join(" && "),
     env: {
       ANIMIC_E2E: "true",
