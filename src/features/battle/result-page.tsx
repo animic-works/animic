@@ -19,6 +19,7 @@ import { accountIconAvatar, type AccountIcon } from "../account/account-icon";
 import { levels, playerPalettes } from "../room/room-presentation";
 import { getResultEntries, getResultHeadline, type ResultEntry } from "./battle-outcome";
 import type { BattleSnapshot } from "./battle-state";
+import { ResultBreakdown } from "./result-breakdown";
 import { RankingResult } from "./result-ranking";
 import { ResultBurst, ResultConfetti } from "./visuals/result-artwork";
 function ParticipantResult({
@@ -27,12 +28,15 @@ function ParticipantResult({
   icon,
   mine,
   seat,
+  breakdown,
 }: {
   entry: ResultEntry;
   name: string;
   icon: AccountIcon | null;
   mine: boolean;
   seat: number;
+  /** 自分のカードに出す、スコアの内訳を開く操作。 */
+  breakdown?: ReactNode;
 }) {
   return (
     <Surface appearance="card" padding="content">
@@ -69,6 +73,7 @@ function ParticipantResult({
               {entry.total.toLocaleString("ja-JP", { maximumFractionDigits: 2 })}
               <Text variant="caption">pt</Text>
             </Text>
+            {breakdown}
           </Stack>
         )}
         {!entry.submitted && (
@@ -143,6 +148,11 @@ export function ResultPage({
       icon={icons.get(entry.participantId) ?? null}
       mine={entry.participantId === participantId}
       seat={battle.participantIds.indexOf(entry.participantId)}
+      breakdown={
+        entry.participantId === participantId && (
+          <ResultBreakdown battle={battle} participantId={participantId} />
+        )
+      }
     />
   );
   return (

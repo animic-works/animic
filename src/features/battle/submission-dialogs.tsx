@@ -1,7 +1,9 @@
 import { ActionGroup } from "@animic/react/action-group";
 import { Button } from "@animic/react/button";
 import { Dialog } from "@animic/react/dialog";
+import { Cluster } from "@animic/react/cluster";
 import { Media } from "@animic/react/media";
+import { Spinner } from "@animic/react/spinner";
 import { Stack } from "@animic/react/stack";
 import { Switch } from "@animic/react/switch";
 import { Text } from "@animic/react/text";
@@ -106,16 +108,24 @@ export function SubmitConfirmDialog({
   );
 }
 
-/** 提出後・未提出の確定後に、結果が出るまで全面に出す表示。閉じられない。 */
+/**
+ * 提出後・未提出の確定後に、結果が出るまで全面に出す表示。閉じられない。
+ * 全員の提出状態が確定して採点中（`scoring`）になったら、採点中であることを示す。
+ */
 export function SubmissionWaitDialog({
   open,
   battle,
+  scoring,
+  slow,
   submitted,
   submittedNumber,
   opponentName,
 }: {
   open: boolean;
   battle: BattleSnapshot;
+  scoring: boolean;
+  /** 採点に時間がかかっているか。採点中だけ使う。 */
+  slow: boolean;
   submitted: SucceededGeneration | undefined;
   submittedNumber: number;
   /** 2人の対戦の相手の名前。3人以上では使わない。 */
@@ -150,7 +160,18 @@ export function SubmissionWaitDialog({
               {title}
             </Text>
           </SubmissionHeading>
-          <Text tone="inverse">{notSubmitted ? "結果を待っています" : "あとは結果を待つだけ"}</Text>
+          {scoring ? (
+            <Cluster justify="center">
+              <Spinner label="採点しています" labelVisibility="hidden" tone="gradient" />
+              <Text tone="inverse" aria-hidden="true">
+                採点しています
+              </Text>
+            </Cluster>
+          ) : (
+            <Text tone="inverse">
+              {notSubmitted ? "結果を待っています" : "あとは結果を待つだけ"}
+            </Text>
+          )}
           {battle.mySubmission?.status === "submitted" && (
             <Text tone="inverse">
               {opponentName === null
@@ -161,6 +182,17 @@ export function SubmissionWaitDialog({
                   ? `${opponentName} さんも提出しました！`
                   : `${opponentName} さんの提出を待っています`}
             </Text>
+          )}
+          {scoring && (
+            <div role="status">
+              {slow && (
+                <Text variant="body.sm" tone="inverse" align="center">
+                  採点に時間がかかっています
+                  <br />
+                  もうしばらくお待ちください
+                </Text>
+              )}
+            </div>
           )}
         </Stack>
       </SubmissionContent>

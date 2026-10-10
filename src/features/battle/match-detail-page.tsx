@@ -2,12 +2,10 @@ import { ActionGroup } from "@animic/react/action-group";
 import { AppFrame } from "@animic/react/app-frame";
 import { Button } from "@animic/react/button";
 import { Cluster } from "@animic/react/cluster";
-import { Grid } from "@animic/react/grid";
 import { Heading } from "@animic/react/heading";
 import { ImagePair, ImagePairItem } from "@animic/react/image-pair";
 import { ButtonLink } from "@animic/react/link";
 import { Media, MediaPlaceholder } from "@animic/react/media";
-import { Meter } from "@animic/react/meter";
 import { Page } from "@animic/react/page";
 import { RecordItem, RecordList } from "@animic/react/record-list";
 import { Split } from "@animic/react/split";
@@ -17,12 +15,12 @@ import { Text } from "@animic/react/text";
 import { AccountLoginPrompt } from "../account/account-login-prompt";
 import { ArrowIcon } from "../shared/icons";
 import { usePageTransition } from "../navigation/page-transition-provider";
-import { scoringMetrics } from "../scoring/scoring-metrics";
 import { AppBrand } from "../shared/app-brand";
 import { GridBackdrop } from "../shared/visuals/grid-backdrop";
 import type { getMyBattleDetail } from "./battle-history.functions";
 import { getDifficulty, playedAtLabel } from "./battle-labels";
 import { ordinal } from "./battle-outcome";
+import { ScoreBreakdown } from "./score-breakdown";
 
 type Detail = NonNullable<Awaited<ReturnType<typeof getMyBattleDetail>>>;
 
@@ -34,67 +32,6 @@ function resultLabel(detail: Detail) {
   if (detail.rank !== null) return ordinal(detail.rank);
   if (detail.resultKind === "no-contest") return "NO GAME";
   return detail.imageUrl ? "NO SCORE" : "NO ENTRY";
-}
-
-/** 再現度・提出速度・生成回数と、指標ごとの点。 */
-function ScoreBreakdown({ detail }: { detail: Detail }) {
-  const { submission } = detail;
-  const terms = [
-    { label: "再現度", value: formatTotal(detail.total) },
-    { label: "提出時間", value: submission ? `${submission.seconds}秒` : "—" },
-    { label: "生成回数", value: submission ? `${submission.generationCount}回` : "—" },
-    { label: "合計", value: formatTotal(detail.total), strong: true },
-  ];
-  return (
-    <Stack space="compact">
-      <Heading level={2} size="sm">
-        スコアの内訳
-      </Heading>
-      <Grid columns={4} space="compact" collapse="none">
-        {terms.map((term) => (
-          <Surface key={term.label} appearance="subtle" padding="xs">
-            <Stack space="tight">
-              <Text variant="caption" tone="muted">
-                {term.label}
-              </Text>
-              <Text variant="code" emphasis={term.strong ? "strong" : undefined}>
-                {term.value}
-              </Text>
-            </Stack>
-          </Surface>
-        ))}
-      </Grid>
-      {detail.metrics && (
-        <Stack space="compact">
-          <Heading level={3} size="sm">
-            指標
-          </Heading>
-          {scoringMetrics.map((metric) => {
-            const score = detail.metrics?.[metric.key] ?? null;
-            return score === null ? (
-              <Cluster key={metric.key} justify="between">
-                <Text variant="label.supporting">
-                  {metric.label}（{metric.name}）
-                </Text>
-                <Text variant="caption" tone="muted">
-                  採点の対象外
-                </Text>
-              </Cluster>
-            ) : (
-              <Meter
-                key={metric.key}
-                label={metric.label}
-                description={metric.name}
-                value={score}
-                valueText={score.toFixed(1)}
-                presentation="row"
-              />
-            );
-          })}
-        </Stack>
-      )}
-    </Stack>
-  );
 }
 
 function MatchDetail({ detail }: { detail: Detail }) {
@@ -167,7 +104,16 @@ function MatchDetail({ detail }: { detail: Detail }) {
             </Cluster>
           </Surface>
           <Surface appearance="card" padding="content">
-            <ScoreBreakdown detail={detail} />
+            <Stack space="compact">
+              <Heading level={2} size="sm">
+                スコアの内訳
+              </Heading>
+              <ScoreBreakdown
+                total={detail.total}
+                submission={detail.submission}
+                metrics={detail.metrics}
+              />
+            </Stack>
           </Surface>
         </Stack>
       </Split>

@@ -132,7 +132,8 @@ export type BattleSnapshot = v.InferOutput<typeof battleSnapshotSchema>;
 export type BattleSettings = v.InferOutput<typeof battleSettingsSchema>;
 export type Topic = v.InferOutput<typeof topicSchema>;
 
-const scoringTimeoutMs = 5 * 60_000;
+/** 全員の提出状態が確定してから、採点を待つ時間。過ぎたら採点できなかったものとして扱う。 */
+export const scoringTimeoutMs = 5 * 60_000;
 /** 受け付けた生成は、この時間（順番待ちを含む）のうちに終わらなければ失敗にする。 */
 export const generationTimeoutMs = 60_000;
 
