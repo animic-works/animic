@@ -1,5 +1,5 @@
 import { useSectionNavigation } from "./use-section-navigation";
-import { useEffect, useRef, useState } from "react";
+import { type MouseEvent, useEffect, useRef, useState } from "react";
 import { getCurrentParticipant } from "../../lib/auth.functions";
 import { LoginDialog } from "../room/login-dialog";
 import { Button } from "@animic/react/button";
@@ -45,6 +45,7 @@ export function HomePage() {
   const [matchIndex, setMatchIndex] = useState(0);
   const [joinOpen, setJoinOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
+  const [loginPurpose, setLoginPurpose] = useState<"start" | "mypage">("start");
   const [checkingLogin, setCheckingLogin] = useState(false);
   const starting = useRef(false);
   async function start() {
@@ -53,11 +54,30 @@ export function HomePage() {
     setCheckingLogin(true);
     try {
       const participant = await getCurrentParticipant().catch(() => undefined);
-      if (participant !== undefined && !participant?.account) setLoginOpen(true);
-      else navigate("/start");
+      if (participant !== undefined && !participant?.account) {
+        setLoginPurpose("start");
+        setLoginOpen(true);
+      } else navigate("/start");
     } finally {
       starting.current = false;
       setCheckingLogin(false);
+    }
+  }
+  // ログインしていなければ、マイページへ移る前にログインを求める。
+  async function openMypage(event: MouseEvent<HTMLAnchorElement>) {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
+      return;
+    event.preventDefault();
+    if (starting.current) return;
+    starting.current = true;
+    try {
+      const participant = await getCurrentParticipant().catch(() => undefined);
+      if (participant !== undefined && !participant?.account) {
+        setLoginPurpose("mypage");
+        setLoginOpen(true);
+      } else navigate("/mypage");
+    } finally {
+      starting.current = false;
     }
   }
   const [joinVisit, setJoinVisit] = useState(0);
@@ -155,7 +175,12 @@ export function HomePage() {
           </>
         }
         actions={
-          <Link appearance="subtle" href="/mypage" aria-label="マイページ">
+          <Link
+            appearance="subtle"
+            href="/mypage"
+            aria-label="マイページ"
+            onClick={(event) => void openMypage(event)}
+          >
             <AccountIcon />
             <NavigationBarLabel>マイページ</NavigationBarLabel>
           </Link>
@@ -280,7 +305,7 @@ export function HomePage() {
         <Scoring />
         <Gallery index={matchIndex} onIndexChange={setMatchIndex} />
       </main>
-      <LoginDialog open={loginOpen} onOpenChange={setLoginOpen} />
+      <LoginDialog open={loginOpen} onOpenChange={setLoginOpen} purpose={loginPurpose} />
       <JoinRoomDialog
         key={joinVisit}
         open={joinOpen}
