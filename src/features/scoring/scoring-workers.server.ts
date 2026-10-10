@@ -8,6 +8,10 @@ import * as v from "valibot";
 
 import { parseTopicImageUrl } from "../battle/topic-images";
 import { readTopicImage } from "../battle/topic-images.server";
+import {
+  parseGeneratedImageUrl,
+  readGeneratedImage,
+} from "../image-generation/generated-images.server";
 import { claimScoringJob, completeScoringJob, releaseScoringJob } from "./scoring-jobs.server";
 import { scoringLinkCode, scoringWorker } from "./scoring.schema";
 import { buildScoringWorkflow, scoringInputsSchema } from "./scoring-workflows";
@@ -94,11 +98,19 @@ async function authenticate(request: Request, workerId: string) {
   return expected.byteLength === actual.byteLength && timingSafeEqual(expected, actual);
 }
 
-async function fetchImage(url: string) {
-  // このアプリが配信するお題の画像は、自分のURLへ通信せずR2から読む。
+// このアプリが配信する画像（お題・生成画像）は、自分のURLへ通信せずR2から読む。それ以外のURLならnull。
+// Workerから自分の公開URLへ通信すると、workers.devでは失敗し、Custom Domainでは自分をもう一度通るため。
+function readOwnImage(url: string) {
   const topicImage = parseTopicImageUrl(url, env.BETTER_AUTH_URL);
-  if (topicImage) {
-    const object = await readTopicImage(topicImage);
+  if (topicImage) return readTopicImage(topicImage);
+  const generatedImage = parseGeneratedImageUrl(url, env.BETTER_AUTH_URL);
+  return generatedImage ? readGeneratedImage(generatedImage) : null;
+}
+
+async function fetchImage(url: string) {
+  const ownImage = readOwnImage(url);
+  if (ownImage) {
+    const object = await ownImage;
     if (!object) throw new Error(`画像を取得できませんでした（R2にありません）: ${url}`);
     const body = await object.arrayBuffer();
     return { base64: Buffer.from(body).toString("base64"), contentType: "image/webp" };

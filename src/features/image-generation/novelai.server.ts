@@ -7,7 +7,6 @@ import { defaultImageModel, imageModelSchema } from "./image-models";
 import type { ImageModel } from "./image-models";
 import { minimumTimeMs, requestImage } from "./novelai";
 
-const apiUrl = "https://image.novelai.net";
 // 429は同じアカウントの別の生成が終わっていない状態。短い間隔で送り直すとロックが続くため、間を空ける。
 const lockedRetryIntervalMs = 10_000;
 const maxAttempts = 3;
@@ -74,7 +73,7 @@ export class NovelAiQueue extends DurableObject<Env> {
       waiting: this.#waiting,
     });
     const request = {
-      apiUrl,
+      apiUrl: this.env.NOVELAI_API_URL,
       token: config.output.NOVELAI_API_TOKEN,
       prompt,
       stylePrompt: config.output.NOVELAI_STYLE_PROMPT,

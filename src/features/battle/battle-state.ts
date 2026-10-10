@@ -87,6 +87,7 @@ export const battleStateSchema = v.object({
   ),
 });
 export type BattleState = v.InferOutput<typeof battleStateSchema>;
+type Generation = BattleState["generations"][number];
 export type GenerationOutcome = { status: "succeeded"; imageUrl: string } | { status: "failed" };
 export type ScoringJobOutcome = {
   id: string;
@@ -125,6 +126,8 @@ export type BattleSettings = v.InferOutput<typeof battleSettingsSchema>;
 export type Topic = v.InferOutput<typeof topicSchema>;
 
 const scoringTimeoutMs = 5 * 60_000;
+/** 受け付けた生成は、この時間（順番待ちを含む）のうちに終わらなければ失敗にする。 */
+export const generationTimeoutMs = 60_000;
 
 export function canStartBattle(count: number) {
   return count >= 2;
@@ -160,8 +163,19 @@ export function createBattle(
   };
 }
 
+// 結果の確定後も適用し、生成中のまま別の画像を提出した場合に生成中の処理を残さない。
+function expireGenerations(generations: Generation[], now: number) {
+  return generations.map((item): Generation => {
+    const expiresAt = item.acceptedAt + generationTimeoutMs;
+    return item.status === "pending" && now >= expiresAt
+      ? { ...item, status: "failed", finishedAt: expiresAt }
+      : item;
+  });
+}
+
 export function reconcileBattle(state: BattleState, now: number): BattleState {
   const next = structuredClone(state);
+  next.generations = expireGenerations(next.generations, now);
   if (next.result) return next;
   if (now >= next.generationEndsAt) {
     if (
@@ -260,7 +274,11 @@ export function acceptGeneration(
       existing.inputHash !== request.inputHash
     )
       throw new Error("同じ処理IDで別の生成を要求できません。");
-    return { battle: reconcileBattle(state, now), accepted: false };
+    return {
+      battle: reconcileBattle(state, now),
+      accepted: false,
+      acceptedAt: existing.acceptedAt,
+    };
   }
   const next = reconcileBattle(state, now);
   if (
@@ -269,8 +287,14 @@ export function acceptGeneration(
     next.submissions.some((item) => item.participantId === request.participantId)
   )
     throw new Error("画像生成の受付は終了しています。");
+  if (
+    next.generations.some(
+      (item) => item.participantId === request.participantId && item.status === "pending",
+    )
+  )
+    throw new Error("生成が終わるまでお待ちください。");
   next.generations.push({ ...request, acceptedAt: now, status: "pending" });
-  return { battle: next, accepted: true };
+  return { battle: next, accepted: true, acceptedAt: now };
 }
 
 export function finishGeneration(
@@ -279,11 +303,12 @@ export function finishGeneration(
   outcome: GenerationOutcome,
   now: number,
 ): BattleState {
-  const next = structuredClone(state);
+  // タイムアウトを先に反映し、タイムアウトの後に届いた完了を無視する。
+  const next = reconcileBattle(state, now);
   const index = next.generations.findIndex((item) => item.id === id);
   const existing = next.generations[index];
   if (!existing) throw new Error("受け付けていない生成です。");
-  if (existing.status !== "pending") return reconcileBattle(next, now);
+  if (existing.status !== "pending") return next;
   if (now < existing.acceptedAt) throw new Error("受付時刻より前には完了できません。");
   next.generations[index] = v.parse(generationSchema, { ...existing, ...outcome, finishedAt: now });
   return reconcileBattle(next, now);
