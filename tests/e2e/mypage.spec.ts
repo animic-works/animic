@@ -121,6 +121,32 @@ test("ログインしていない人がトップの「マイページ」を押�
   expect((await loginRequest).postDataJSON()).toMatchObject({ callbackURL: "/mypage" });
 });
 
+test("ログインしていれば、トップのメニューにアカウントのアイコンを出してマイページへ移る", async ({
+  browser,
+}) => {
+  for (const provider of ["google", "discord"] as const) {
+    const context = await browser.newContext({ reducedMotion: "reduce" });
+    try {
+      const page = await context.newPage();
+      await signIn(context, {
+        provider,
+        email: `${crypto.randomUUID()}@example.test`,
+        name: provider === "google" ? "ぐーぐる" : "でぃすこ",
+      });
+      await page.goto("/");
+      const link = page.getByRole("link", {
+        name: `マイページ（${provider === "google" ? "ぐーぐる" : "でぃすこ"}）`,
+      });
+      await expect(link).toBeVisible();
+      await link.click();
+      await expect(page).toHaveURL("/mypage");
+      await expect(page.getByRole("dialog")).toHaveCount(0);
+    } finally {
+      await context.close();
+    }
+  }
+});
+
 test("ログインしていない人と匿名の参加者には、ログインを案内する", async ({ page }) => {
   await page.goto("/mypage");
   const prompt = page.getByRole("heading", { name: "ログインして戦績を残そう" });
