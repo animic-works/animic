@@ -338,3 +338,106 @@ test("生成した画像を提出すると、採点ワーカーへR2の生成画
     await executeLocalD1("DELETE FROM topic WHERE id = 'e2e-scoring-topic'");
   }
 });
+
+test("画像選択の猶予までに提出しなければ、最後に完成した画像の採点ジョブを登録して勝敗を決める", async ({
+  browser,
+  request,
+}) => {
+  test.setTimeout(90_000);
+  await executeLocalD1(
+    `INSERT OR REPLACE INTO topic (id, difficulty, image_url) VALUES ('e2e-scoring-topic', 'hard', '${origin}/og-image.png')`,
+  );
+  const hostContext = await browser.newContext({
+    extraHTTPHeaders: { "CF-Connecting-IP": "203.0.113.39" },
+  });
+  const guestContext = await browser.newContext({
+    extraHTTPHeaders: { "CF-Connecting-IP": "203.0.113.40" },
+  });
+  try {
+    const host = await hostContext.newPage();
+    const guest = await guestContext.newPage();
+    const code = await create(host, "自動提出ホスト");
+    await join(guest, code, "自動提出ゲスト");
+    await expect
+      .poll(async () => (await snapshot(host)).members.filter((member) => member.connected).length)
+      .toBe(2);
+    const started = await host.evaluate(
+      async (data) => {
+        await window.animicTest.setRoomSettings({ data });
+        return window.animicTest.startBattle({ data });
+      },
+      {
+        code,
+        settings: { difficulty: "hard" as const, durationSeconds: 10, selectionSeconds: 2 },
+        previousBattleId: null,
+      },
+    );
+    expect(started.error).toBeNull();
+    const battleId = (await snapshot(host)).battle?.id ?? "";
+    const imageUrls = new Map<string, string>();
+    const lastIds = new Map<Page, string>();
+    for (const [participant, count] of [
+      [host, 2],
+      [guest, 1],
+    ] as const) {
+      await expect.poll(async () => (await snapshot(participant)).battle?.id).toBe(battleId);
+      let last = "";
+      for (let index = 0; index < count; index += 1) {
+        last = crypto.randomUUID();
+        await participant.evaluate((data) => window.animicTest.generateImage({ data }), {
+          code,
+          battleId,
+          generationId: last,
+          prompt: `e2e auto submit ${index}`,
+        });
+        await expect
+          .poll(async () => (await snapshot(participant)).battle?.myGenerations[index]?.status)
+          .toBe("succeeded");
+      }
+      lastIds.set(participant, last);
+      imageUrls.set(
+        await participantId(participant),
+        `${origin}/generated-images/${battleId}/${last}`,
+      );
+    }
+
+    // どちらも提出しないまま猶予の期限を過ぎると、最後に完成した画像を速度の加点なしで提出する。
+    for (const participant of [host, guest]) {
+      await expect
+        .poll(async () => (await snapshot(participant)).battle?.mySubmission?.status, {
+          timeout: 20_000,
+        })
+        .toBe("submitted");
+      const current = (await snapshot(participant)).battle;
+      expect(current?.mySubmission).toMatchObject({
+        generationId: lastIds.get(participant),
+        submittedAt: current?.selectionEndsAt,
+        eligibleForSpeedBonus: false,
+      });
+    }
+
+    const hostId = await participantId(host);
+    const worker = await link(request, "E2EE-0002");
+    for (let count = 0; count < 2; count += 1) {
+      const claimed = await claimJob(request, worker);
+      const [inputs] = await executeLocalD1(
+        `SELECT json_extract(inputs, '$[1].participantId') AS participant_id, json_extract(inputs, '$[1].imageUrl') AS image_url FROM scoring_job WHERE id = '${claimed.jobId}'`,
+      );
+      const submitter = String(inputs?.participant_id);
+      expect(inputs?.image_url).toBe(imageUrls.get(submitter));
+      const reported = similarity(JSON.stringify({ total: submitter === hostId ? 80 : 50 }));
+      expect(
+        (await post(request, worker, `jobs/${claimed.jobId}/complete`, reported)).status(),
+      ).toBe(200);
+    }
+    for (const participant of [host, guest]) {
+      await expect
+        .poll(async () => (await snapshot(participant)).battle?.result, { timeout: 30_000 })
+        .toMatchObject({ kind: "win", reason: "higher-score", winnerId: hostId });
+    }
+  } finally {
+    await hostContext.close();
+    await guestContext.close();
+    await executeLocalD1("DELETE FROM topic WHERE id = 'e2e-scoring-topic'");
+  }
+});

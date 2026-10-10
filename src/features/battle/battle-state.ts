@@ -191,13 +191,16 @@ export function reconcileBattle(state: BattleState, now: number): BattleState {
     for (const participantId of next.participantIds) {
       if (next.submissions.some((item) => item.participantId === participantId)) continue;
       // 提出できる画像がない人は、選択の猶予を待たずに未提出として確定する。
-      const decidedAt =
-        getNoImageAt(next, participantId) ??
-        (next.selectionEndsAt !== null && now >= next.selectionEndsAt
-          ? next.selectionEndsAt
-          : null);
-      if (decidedAt !== null)
+      const decidedAt = getNoImageAt(next, participantId);
+      if (decidedAt !== null) {
         next.submissions.push({ participantId, status: "not-submitted", decidedAt });
+        continue;
+      }
+      // 猶予の期限までに提出しなかった人は、最後に完成した画像を期限の時刻に提出したものとして扱う。
+      // 猶予は生成がすべて終わってから数えるため、期限の時点で生成中の画像はない。
+      if (next.selectionEndsAt === null || now < next.selectionEndsAt) continue;
+      const latest = getLatestSucceeded(next, participantId);
+      if (latest) addSubmission(next, participantId, latest.id, next.selectionEndsAt);
     }
   }
   // 全員の提出状態が確定したら結果を決める。1人だけ提出した場合は採点を待たずにその人を1位にする。
@@ -349,18 +352,43 @@ export function submitImage(
   )
     throw new Error("自分が生成した画像を選んでください。");
   if (now < generation.finishedAt) throw new Error("完成前の画像は提出できません。");
-  next.submissions.push({
+  addSubmission(next, participantId, generationId, now);
+  return reconcileBattle(next, now);
+}
+
+/** 提出を記録し、採点を待つ。`submittedAt`が生成終了時刻より前のときだけ速度の加点の対象にする。 */
+function addSubmission(
+  state: BattleState,
+  participantId: string,
+  generationId: string,
+  submittedAt: number,
+) {
+  state.submissions.push({
     participantId,
     status: "submitted",
     generationId,
-    submittedAt: now,
-    successfulGenerationCount: next.generations.filter(
+    submittedAt,
+    successfulGenerationCount: state.generations.filter(
       (item) => item.participantId === participantId && item.status === "succeeded",
     ).length,
-    eligibleForSpeedBonus: now < next.generationEndsAt,
+    eligibleForSpeedBonus: submittedAt < state.generationEndsAt,
   });
-  next.scoring.entries.push({ participantId, jobId: crypto.randomUUID(), status: "pending" });
-  return reconcileBattle(next, now);
+  state.scoring.entries.push({ participantId, jobId: crypto.randomUUID(), status: "pending" });
+}
+
+/** 本人の成功した画像のうち、最後に完成したもの。完成時刻が同じなら後に受け付けたもの。 */
+function getLatestSucceeded(state: BattleState, participantId: string) {
+  let latest: Extract<Generation, { status: "succeeded" }> | null = null;
+  for (const item of state.generations) {
+    if (item.participantId !== participantId || item.status !== "succeeded") continue;
+    if (
+      !latest ||
+      item.finishedAt > latest.finishedAt ||
+      (item.finishedAt === latest.finishedAt && item.acceptedAt >= latest.acceptedAt)
+    )
+      latest = item;
+  }
+  return latest;
 }
 
 function getSubmittedImageUrl(state: BattleState, participantId: string) {

@@ -193,20 +193,40 @@ describe("提出と期限", () => {
   it("生成処理が終わっていれば生成終了時刻から数え、Alarmが遅れても期限を延長しない", () => {
     const state = reconcileBattle(bothGenerated(), 20_000);
     expect(state.selectionEndsAt).toBe(15_000);
-    expect(state.submissions).toEqual([
-      { participantId: "a", status: "not-submitted", decidedAt: 15_000 },
-      { participantId: "b", status: "not-submitted", decidedAt: 15_000 },
+    expect(state.submissions).toMatchObject([
+      { participantId: "a", status: "submitted", submittedAt: 15_000 },
+      { participantId: "b", status: "submitted", submittedAt: 15_000 },
     ]);
     expect(reconcileBattle(state, 30_000)).toEqual(state);
   });
-  it("選択期限ちょうどは提出を拒否し、自動で画像を選ばない", () => {
-    const state = success(accept(battle(), "one"), "one");
+  it("選択期限ちょうどに、最後に完成した画像を速度の加点なしで提出したものとして扱う", () => {
+    let state = success(accept(battle(), "one"), "one", 2000);
+    state = success(accept(state, "two", "a", 3000), "two", 4000);
+    state = failure(accept(state, "three", "a", 5000), "three", 6000);
     expect(submissionOf(submitImage(state, "a", "one", 14_999), "a")?.status).toBe("submitted");
-    expect(() => submitImage(state, "a", "one", 15_000)).toThrow();
-    expect(submissionOf(reconcileBattle(state, 15_000), "a")).toEqual({
+    expect(submissionOf(reconcileBattle(state, 14_999), "a")).toBeUndefined();
+    // 期限の後に届いた提出は受け付けず、自動で提出した画像を変えない。
+    expect(() => submitImage(state, "a", "one", 15_000)).toThrow("締め切られています");
+    const ended = reconcileBattle(state, 15_000);
+    expect(submissionOf(ended, "a")).toEqual({
       participantId: "a",
-      status: "not-submitted",
+      status: "submitted",
+      generationId: "two",
+      submittedAt: 15_000,
+      successfulGenerationCount: 2,
+      eligibleForSpeedBonus: false,
+    });
+    // 画像のない相手は生成終了時刻に未提出として確定しているため、採点を待たずに勝ちにする。
+    expect(ended.result).toEqual({
+      kind: "win",
+      reason: "opponent-not-submitted",
+      winnerId: "a",
       decidedAt: 15_000,
+    });
+    // Alarmが遅れても、提出時刻は猶予の期限のままにする。
+    expect(submissionOf(reconcileBattle(state, 40_000), "a")).toMatchObject({
+      generationId: "two",
+      submittedAt: 15_000,
     });
   });
   it("保存した状態の復元で期限や提出をリセットしない", () => {
@@ -278,7 +298,7 @@ describe("提出できる画像がない参加者", () => {
       decidedAt: 10_000,
     });
   });
-  it("相手が猶予中なら、相手の提出か猶予の終わりで勝敗を決める", () => {
+  it("相手が猶予中なら、相手の提出か猶予の終わりの自動の提出で勝敗を決める", () => {
     const state = reconcileBattle(success(accept(battle(), "one"), "one"), 10_000);
     expect(state.result).toBeNull();
     expect(submitImage(state, "a", "one", 12_000).result).toEqual({
@@ -288,8 +308,9 @@ describe("提出できる画像がない参加者", () => {
       decidedAt: 12_000,
     });
     expect(reconcileBattle(state, 15_000).result).toEqual({
-      kind: "no-contest",
-      reason: "no-submissions",
+      kind: "win",
+      reason: "opponent-not-submitted",
+      winnerId: "a",
       decidedAt: 15_000,
     });
   });
@@ -297,24 +318,52 @@ describe("提出できる画像がない参加者", () => {
 
 describe("未提出による1対1の勝敗", () => {
   it("片方だけ提出した場合は提出者の勝ちとし、締切前には確定しない", () => {
-    const state = submitImage(bothGenerated(), "a", "one", 3000);
-    expect(reconcileBattle(state, 14_999).result).toBeNull();
-    const ended = reconcileBattle(state, 15_000);
+    let state = success(accept(battle(), "one"), "one");
+    state = submitImage(failure(accept(state, "two", "b"), "two"), "a", "one", 3000);
+    expect(reconcileBattle(state, 9999).result).toBeNull();
+    const ended = reconcileBattle(state, 10_000);
     expect(ended.result).toEqual({
       kind: "win",
       reason: "opponent-not-submitted",
       winnerId: "a",
-      decidedAt: 15_000,
+      decidedAt: 10_000,
     });
     expect(reconcileBattle(ended, 50_000).result).toEqual(ended.result);
     expect(getBattleSnapshot(ended, "b", 20_000).result).toEqual(ended.result);
   });
-  it("両方未提出なら勝負不成立にする", () => {
-    expect(reconcileBattle(bothGenerated(), 20_000).result).toEqual({
-      kind: "no-contest",
-      reason: "no-submissions",
-      decidedAt: 15_000,
+  it("提出しなかった相手に画像があれば、猶予の期限に自動で提出して採点で決める", () => {
+    const state = submitImage(bothGenerated(), "a", "one", 3000);
+    expect(reconcileBattle(state, 14_999).result).toBeNull();
+    const ended = reconcileBattle(state, 15_000);
+    expect(submissionOf(ended, "b")).toMatchObject({
+      status: "submitted",
+      generationId: "two",
+      submittedAt: 15_000,
+      eligibleForSpeedBonus: false,
     });
+    expect(ended.result).toBeNull();
+    expect(ended.scoring.endsAt).toBe(315_000);
+    expect(getScoringRequests(ended).map((item) => item.submissionImageUrl)).toEqual([
+      "https://example.invalid/one.png",
+      "https://example.invalid/two.png",
+    ]);
+    const scored = applyScoringJobs(ended, jobs(ended, { a: 40, b: 60 }), 20_000);
+    expect(scored.result).toEqual({
+      kind: "win",
+      reason: "higher-score",
+      winnerId: "b",
+      decidedAt: 20_000,
+    });
+    expect(getBattleSnapshot(scored, "a", 20_000).scores).toEqual([
+      { participantId: "a", total: 40, imageUrl: "https://example.invalid/one.png" },
+      { participantId: "b", total: 60, imageUrl: "https://example.invalid/two.png" },
+    ]);
+  });
+  it("両方とも画像があって提出しなければ、両方を自動で提出して採点を待つ", () => {
+    const state = reconcileBattle(bothGenerated(), 20_000);
+    expect(state.result).toBeNull();
+    expect(state.scoring.endsAt).toBe(315_000);
+    expect(getScoringRequests(state)).toHaveLength(2);
   });
   it("両方提出しても採点結果がそろうまで勝敗を決めない", () => {
     expect(reconcileBattle(bothSubmitted(), 20_000).result).toBeNull();
@@ -336,6 +385,27 @@ describe("3人以上の結果", () => {
       reason: "opponent-not-submitted",
       winnerId: "b",
       decidedAt: 10_000,
+    });
+  });
+  it("提出しなかった人も画像があれば自動で提出し、画像のない人だけを未提出にする", () => {
+    let state = trio();
+    for (const id of ["a", "b"]) state = success(accept(state, `image-${id}`, id), `image-${id}`);
+    state = reconcileBattle(submitImage(state, "a", "image-a", 3000), 15_000);
+    expect(state.submissions).toMatchObject([
+      { participantId: "a", status: "submitted", eligibleForSpeedBonus: true },
+      {
+        participantId: "b",
+        status: "submitted",
+        submittedAt: 15_000,
+        eligibleForSpeedBonus: false,
+      },
+      { participantId: "c", status: "not-submitted", decidedAt: 10_000 },
+    ]);
+    expect(applyScoringJobs(state, jobs(state, { a: 50, b: 70 }), 16_000).result).toEqual({
+      kind: "win",
+      reason: "higher-score",
+      winnerId: "b",
+      decidedAt: 16_000,
     });
   });
   it("全員の採点がそろうまで決めず、最高点の人を1位、同点なら引き分けにする", () => {
