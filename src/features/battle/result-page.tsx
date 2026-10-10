@@ -52,7 +52,13 @@ function ParticipantResult({
         {entry.imageUrl ? (
           <Media src={entry.imageUrl} alt={`${name}さんの提出画像`} aspect="portrait" />
         ) : (
-          <MediaPlaceholder label={entry.submitted ? "提出済み" : "未提出"}>
+          <MediaPlaceholder
+            label={entry.submitted ? "提出済み" : "未提出"}
+            // 1対1で提出した相手の画像がないのは、採点で勝敗が決まらなかった場合だけ。
+            description={
+              entry.submitted && !mine ? "採点できなかったため、画像は公開されません" : undefined
+            }
+          >
             <Text>{entry.submitted ? "提出済み" : "未提出"}</Text>
           </MediaPlaceholder>
         )}

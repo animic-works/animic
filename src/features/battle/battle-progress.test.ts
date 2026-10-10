@@ -223,6 +223,30 @@ describe("提出と期限", () => {
     expect(JSON.stringify(own)).not.toContain("other.png");
     expect(getBattleSnapshot(state, "late", 3000).myGenerations).toEqual([]);
   });
+  it("このアプリが配信する画像は、記録したオリジンによらず同じオリジンのパスで配信する", () => {
+    const imageId = "3f2b4c1e-8a7d-4e6f-9b0a-1c2d3e4f5a6b";
+    const topicUrl = `https://old.trycloudflare.com/topic-images/t1/${imageId}`;
+    const generatedUrl = `http://localhost:3000/generated-images/battle/${imageId}`;
+    const started = createBattle(
+      { difficulty: "easy", durationSeconds: 10, selectionSeconds: 5 },
+      { id: "t1", difficulty: "easy", imageUrl: topicUrl },
+      ["a", "b"],
+      0,
+    );
+    const state = finishGeneration(
+      accept(started, "one"),
+      "one",
+      { status: "succeeded", imageUrl: generatedUrl },
+      2000,
+    );
+    const snapshot = getBattleSnapshot(state, "a", 3000);
+    expect(snapshot.topic.imageUrl).toBe(`/topic-images/t1/${imageId}`);
+    expect(snapshot.myGenerations[0]).toMatchObject({
+      imageUrl: `/generated-images/battle/${imageId}`,
+    });
+    // 採点ジョブに渡すURLは、記録した絶対URLのまま。
+    expect(state.topic.imageUrl).toBe(topicUrl);
+  });
 });
 
 describe("提出できる画像がない参加者", () => {

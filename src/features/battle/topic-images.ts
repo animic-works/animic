@@ -1,5 +1,7 @@
 import * as v from "valibot";
 
+import { getAppImagePath } from "./image-src";
+
 /** お題の画像として保存するWebPの上限。 */
 export const maxTopicImageBytes = 5 * 1024 * 1024;
 
@@ -41,16 +43,12 @@ export function readTopicImageParams(params: Record<string, string>) {
   return readId(params.topicId, params.imageId);
 }
 
-/** このアプリが`base`のオリジンで配信するお題の画像のURLなら、お題IDと画像IDを返す。 */
-export function parseTopicImageUrl(url: string, base: string) {
-  let parsed: URL;
-  try {
-    parsed = new URL(url);
-  } catch {
-    return null;
-  }
-  if (parsed.origin !== new URL(base).origin || parsed.search || parsed.hash) return null;
-  const match = pathPattern.exec(parsed.pathname);
+/**
+ * このアプリが配信するお題の画像のURL（またはパス）なら、お題IDと画像IDを返す。
+ * オリジンは見ない（`getAppImagePath`を参照）。
+ */
+export function parseTopicImageUrl(url: string) {
+  const match = pathPattern.exec(getAppImagePath(url) ?? "");
   return readId(match?.[1], match?.[2]);
 }
 

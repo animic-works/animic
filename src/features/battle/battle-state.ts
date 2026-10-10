@@ -1,5 +1,7 @@
 import * as v from "valibot";
 
+import { imageSrcSchema, toImageSrc } from "./image-src";
+
 export const difficultySchema = v.picklist(["easy", "normal", "hard"]);
 export const battleSettingsSchema = v.object({
   difficulty: difficultySchema,
@@ -94,9 +96,14 @@ export type ScoringJobOutcome = {
   state: "queued" | "running" | "succeeded" | "failed";
   totals: { participantId: string; total: number }[];
 };
+// 画面へ配信する状態では、このアプリが配信する画像のURLを同じオリジンのパスにする（`toImageSrc`）。
+const generationSnapshotOptions = generationSchema.options.map((option) =>
+  v.omit(option, ["inputHash", "participantId"]),
+);
 export const battleSnapshotSchema = v.object({
   serverTime: v.number(),
   ...battleHeaderSchema.entries,
+  topic: v.object({ ...topicSchema.entries, imageUrl: imageSrcSchema }),
   selectionEndsAt: v.nullable(v.number()),
   result: v.nullable(battleResultSchema),
   submissionsClosed: v.boolean(),
@@ -107,15 +114,15 @@ export const battleSnapshotSchema = v.object({
       v.object({
         participantId: v.string(),
         total: v.number(),
-        imageUrl: v.pipe(v.string(), v.url()),
+        imageUrl: imageSrcSchema,
       }),
     ),
   ),
   myGenerations: v.array(
     v.variant("status", [
-      v.omit(generationSchema.options[0], ["inputHash", "participantId"]),
-      v.omit(generationSchema.options[1], ["inputHash", "participantId"]),
-      v.omit(generationSchema.options[2], ["inputHash", "participantId"]),
+      generationSnapshotOptions[0],
+      v.object({ ...generationSnapshotOptions[1].entries, imageUrl: imageSrcSchema }),
+      generationSnapshotOptions[2],
     ]),
   ),
   mySubmission: v.nullable(submissionSchema),
@@ -431,13 +438,19 @@ export function getBattleSnapshot(
     ...state,
     serverTime: now,
     generationClosed: now >= state.generationEndsAt,
-    myGenerations: state.generations.filter((item) => item.participantId === participantId),
+    topic: { ...state.topic, imageUrl: toImageSrc(state.topic.imageUrl) },
+    myGenerations: state.generations
+      .filter((item) => item.participantId === participantId)
+      .map((item) =>
+        item.status === "succeeded" ? { ...item, imageUrl: toImageSrc(item.imageUrl) } : item,
+      ),
     mySubmission: state.submissions.find((item) => item.participantId === participantId) ?? null,
     submissionsClosed: state.participantIds.every((id) =>
       state.submissions.some((item) => item.participantId === id),
     ),
     scoringEndsAt: state.scoring.endsAt,
-    scores: getScores(state),
+    scores:
+      getScores(state)?.map((item) => ({ ...item, imageUrl: toImageSrc(item.imageUrl) })) ?? null,
   });
 }
 

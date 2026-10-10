@@ -2,7 +2,7 @@ import { setTimeout } from "node:timers/promises";
 
 import * as v from "valibot";
 import { expect, test } from "@playwright/test";
-import type { APIRequestContext, Page } from "@playwright/test";
+import type { APIRequestContext, Browser, Locator, Page } from "@playwright/test";
 
 import { create, join, snapshot } from "./api";
 import { executeLocalD1 } from "./d1";
@@ -228,21 +228,63 @@ test("失敗・読めない出力・期限切れ・画像の取得失敗は1回�
   expect(unavailable.error).toContain("画像");
 });
 
-test("生成した画像を提出すると、採点ワーカーへR2の生成画像を渡し、採点の結果で勝敗が決まる", async ({
-  browser,
-  request,
-}) => {
-  test.setTimeout(90_000);
-  // 採点ワーカーが自分のURLから取得できるお題にする。ほかのテストのお題と重ならない難易度で出題する。
+/** 2人で対戦を始め、それぞれ生成した画像を提出する。提出画像の絶対URLを参加者IDごとに返す。 */
+async function submitBoth(host: Page, guest: Page, code: string) {
+  const started = await host.evaluate(
+    async (data) => {
+      await window.animicTest.setRoomSettings({ data });
+      return window.animicTest.startBattle({ data });
+    },
+    {
+      code,
+      settings: { difficulty: "hard" as const, durationSeconds: 600, selectionSeconds: 10 },
+      previousBattleId: null,
+    },
+  );
+  expect(started.error).toBeNull();
+  const battleId = (await snapshot(host)).battle?.id ?? "";
+  const imageUrls = new Map<string, string>();
+  for (const participant of [host, guest]) {
+    await expect.poll(async () => (await snapshot(participant)).battle?.id).toBe(battleId);
+    const generationId = crypto.randomUUID();
+    await participant.evaluate((data) => window.animicTest.generateImage({ data }), {
+      code,
+      battleId,
+      generationId,
+      prompt: "e2e scoring, 1girl",
+    });
+    await expect
+      .poll(async () => (await snapshot(participant)).battle?.myGenerations[0]?.status)
+      .toBe("succeeded");
+    await participant.evaluate((data) => window.animicTest.submitBattleImage({ data }), {
+      code,
+      battleId,
+      generationId,
+    });
+    imageUrls.set(
+      await participantId(participant),
+      `${origin}/generated-images/${battleId}/${generationId}`,
+    );
+  }
+  return { battleId, imageUrls };
+}
+
+/** 2人のルームを作り、対戦の操作を`play`に任せる。お題は採点ワーカーが自分のURLから取得できる画像にする。 */
+async function withScoringRoom(
+  browser: Browser,
+  ips: [string, string],
+  play: (host: Page, guest: Page, code: string) => Promise<void>,
+) {
+  // ほかのテストのお題と重ならない難易度で出題する。
   await executeLocalD1(
     `INSERT OR REPLACE INTO topic (id, difficulty, image_url) VALUES ('e2e-scoring-topic', 'hard', '${origin}/og-image.png')`,
   );
   // 匿名参加の回数制限を、ほかのファイルのテストと分ける。
   const hostContext = await browser.newContext({
-    extraHTTPHeaders: { "CF-Connecting-IP": "203.0.113.37" },
+    extraHTTPHeaders: { "CF-Connecting-IP": ips[0] },
   });
   const guestContext = await browser.newContext({
-    extraHTTPHeaders: { "CF-Connecting-IP": "203.0.113.38" },
+    extraHTTPHeaders: { "CF-Connecting-IP": ips[1] },
   });
   try {
     const host = await hostContext.newPage();
@@ -252,43 +294,29 @@ test("生成した画像を提出すると、採点ワーカーへR2の生成画
     await expect
       .poll(async () => (await snapshot(host)).members.filter((member) => member.connected).length)
       .toBe(2);
-    const started = await host.evaluate(
-      async (data) => {
-        await window.animicTest.setRoomSettings({ data });
-        return window.animicTest.startBattle({ data });
-      },
-      {
-        code,
-        settings: { difficulty: "hard" as const, durationSeconds: 600, selectionSeconds: 10 },
-        previousBattleId: null,
-      },
-    );
-    expect(started.error).toBeNull();
-    const battleId = (await snapshot(host)).battle?.id ?? "";
-    const imageUrls = new Map<string, string>();
-    for (const participant of [host, guest]) {
-      await expect.poll(async () => (await snapshot(participant)).battle?.id).toBe(battleId);
-      const generationId = crypto.randomUUID();
-      await participant.evaluate((data) => window.animicTest.generateImage({ data }), {
-        code,
-        battleId,
-        generationId,
-        prompt: "e2e scoring, 1girl",
-      });
-      await expect
-        .poll(async () => (await snapshot(participant)).battle?.myGenerations[0]?.status)
-        .toBe("succeeded");
-      await participant.evaluate((data) => window.animicTest.submitBattleImage({ data }), {
-        code,
-        battleId,
-        generationId,
-      });
-      imageUrls.set(
-        await participantId(participant),
-        `${origin}/generated-images/${battleId}/${generationId}`,
-      );
-    }
+    await play(host, guest, code);
+  } finally {
+    await hostContext.close();
+    await guestContext.close();
+    await executeLocalD1("DELETE FROM topic WHERE id = 'e2e-scoring-topic'");
+  }
+}
 
+/** 結果画面の画像が、同じオリジンのパスから読み込めたことを確かめる。 */
+async function expectLoaded(image: Locator) {
+  await expect(image).toHaveAttribute("src", /^\/generated-images\//);
+  await expect
+    .poll(() => image.evaluate((node: HTMLImageElement) => node.complete && node.naturalWidth))
+    .toBeGreaterThan(0);
+}
+
+test("生成した画像を提出すると、採点ワーカーへR2の生成画像を渡し、採点の結果で勝敗が決まる", async ({
+  browser,
+  request,
+}) => {
+  test.setTimeout(90_000);
+  await withScoringRoom(browser, ["203.0.113.37", "203.0.113.38"], async (host, guest, code) => {
+    const { battleId, imageUrls } = await submitBoth(host, guest, code);
     const hostId = await participantId(host);
     const worker = await link(request, "E2EE-0001");
     for (let count = 0; count < 2; count += 1) {
@@ -297,6 +325,7 @@ test("生成した画像を提出すると、採点ワーカーへR2の生成画
         `SELECT battle_id, json_extract(inputs, '$[1].participantId') AS participant_id, json_extract(inputs, '$[1].imageUrl') AS image_url FROM scoring_job WHERE id = '${claimed.jobId}'`,
       );
       const submitter = String(inputs?.participant_id);
+      // 採点ジョブには、記録した絶対URLを渡す。
       expect(inputs).toEqual({
         battle_id: battleId,
         participant_id: submitter,
@@ -321,20 +350,57 @@ test("生成した画像を提出すると、採点ワーカーへR2の生成画
       await expect
         .poll(async () => (await snapshot(participant)).battle?.result, { timeout: 30_000 })
         .toMatchObject({ kind: "win", reason: "higher-score", winnerId: hostId });
-      // 結果の確定後は、両方の提出画像と採点結果を公開する。
+      // 結果の確定後は、両方の提出画像と採点結果を公開する。画面には同じオリジンのパスで渡す。
       expect(
         (await snapshot(participant)).battle?.scores?.toSorted((a, b) => b.total - a.total),
       ).toEqual(
         [...imageUrls].map(([id, imageUrl]) => ({
           participantId: id,
           total: id === hostId ? 71.4 : 60,
-          imageUrl,
+          imageUrl: new URL(imageUrl).pathname,
         })),
       );
     }
-  } finally {
-    await hostContext.close();
-    await guestContext.close();
-    await executeLocalD1("DELETE FROM topic WHERE id = 'e2e-scoring-topic'");
-  }
+
+    await guest.goto(`/rooms/${code}`);
+    await expect(guest.getByRole("heading", { name: "YOU LOSE…" })).toBeVisible({
+      timeout: 15_000,
+    });
+    await expectLoaded(guest.getByRole("img", { name: "採点ホストさんの提出画像" }));
+    await expectLoaded(guest.getByRole("img", { name: "採点ゲストさんの提出画像" }));
+  });
+});
+
+test("採点に失敗した勝負不成立では、自分の画像を表示し、相手の画像を公開しない理由を表示する", async ({
+  browser,
+  request,
+}) => {
+  test.setTimeout(90_000);
+  await withScoringRoom(browser, ["203.0.113.39", "203.0.113.40"], async (host, guest, code) => {
+    await submitBoth(host, guest, code);
+    const worker = await link(request, "E2EE-0002");
+    // 採点ワーカーが失敗を返し続け、同じジョブが2回失敗すると採点の失敗になる。
+    await expect
+      .poll(
+        async () => {
+          const claimed = await post(request, worker, "jobs/claim");
+          if (claimed.status() === 200) {
+            const { jobId } = v.parse(claimedSchema, await claimed.json());
+            await post(request, worker, `jobs/${jobId}/fail`);
+          }
+          return (await snapshot(guest)).battle?.result;
+        },
+        { timeout: 30_000 },
+      )
+      .toMatchObject({ kind: "no-contest", reason: "scoring-failed" });
+
+    await guest.goto(`/rooms/${code}`);
+    await expect(guest.getByText("採点できなかったため、勝負不成立です")).toBeVisible({
+      timeout: 15_000,
+    });
+    await expectLoaded(guest.getByRole("img", { name: "採点ゲストさんの提出画像" }));
+    await expect(guest.getByRole("img", { name: "採点ホストさんの提出画像" })).toHaveCount(0);
+    const hidden = guest.getByRole("img", { name: "提出済み" });
+    await expect(hidden).toContainText("採点できなかったため、画像は公開されません");
+  });
 });

@@ -11,6 +11,7 @@ import { executeLocalD1 } from "./d1";
 import { deleteLocalTopicImage } from "./r2";
 
 const origin = "http://127.0.0.1:4173";
+
 // 匿名参加の回数制限をほかのファイルのテストと分ける。
 test.use({ extraHTTPHeaders: { "CF-Connecting-IP": "203.0.113.28" } });
 
@@ -107,7 +108,9 @@ test("画像からお題を非公開で追加し、メタデータを消した�
 
   const image = page.getByRole("img", { name: "お題の画像" });
   const imageUrl = (await image.getAttribute("src")) ?? "";
-  expect(parseTopicImageUrl(imageUrl, origin)?.topicId).toBe(topicId);
+  // 画面には、開いているページと同じオリジンのパスで渡す。
+  expect(imageUrl).toMatch(/^\/topic-images\//);
+  expect(parseTopicImageUrl(imageUrl)?.topicId).toBe(topicId);
   const served = await request.get(imageUrl);
   expect(served.status()).toBe(200);
   expect(served.headers()["content-type"]).toBe("image/webp");
@@ -335,7 +338,8 @@ test("書き出したZIPを読み込むと、消したお題と画像・対戦�
   }));
   expect(restored.topics.find((topic) => topic.id === topicId)).toMatchObject({
     imageKey,
-    imageUrl,
+    // 記録するURLは、読み込んだ環境の`BETTER_AUTH_URL`を基にした絶対URL。
+    imageUrl: `${origin}${imageUrl}`,
     status: "unpublished",
   });
   expect(restored.options.duration).toEqual({ choices: [40, 80], defaultSeconds: 80 });
