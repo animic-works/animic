@@ -141,7 +141,7 @@ DataTableは列見出しと行データを表として関連付け、`rowHeader`
 
 OutputPanelは濃い背景の見出しと内容を分け、長い出力をキーボードでもスクロールできる領域へ収めます。OutputTagsはタグ群を利用可能な幅に応じて並べ、ラベル・値・強調状態を受けます。値の計算や逐次表示の時刻は利用側が持ちます。Meterの`appearance="inverse"`は濃い背景に合わせた外観を選びます。
 
-TokenInputはArk Comboboxで候補の開閉・ハイライト・画面内への追従・ARIAを管理します。Enterと前進するTabは表示中の候補を確定し、Shift+Tabは前の操作へ移動します。候補がなければEnterで入力の確定を通知します。Escapeで閉じた後は再入力で開きます。IME変換中のEnterは入力の確定・候補の選択・送信として扱いません。変換中に前進するTabで候補を選んだ場合は、変換終了を待って候補の採用を通知します。確定済みの語句・重み・辞書・構文は利用側が持ち、AdjustableTokenは編集と増減を通知します。TagsInputの値管理は持ち込みません。`commitOnBlur`を指定した場合はフォーカスを離れると入力の確定を通知します。`onSubmitShortcut`は修飾キー付きEnterを候補選択と分けて通知し、実際の送信可否は利用側で判断します。候補の読み上げ名は文字列の`label`で保ち、表示の強調や補足は`labelContent`・`detail`で受けます。`font`は通常書体とコード書体を選び、AdjustableTokenの`valueLabel`は値の読み上げ表現を受けます。
+TokenInputはArk Comboboxで候補の開閉・ハイライト・画面内への追従・ARIAを管理します。Enterと前進するTabは表示中の候補を確定し、Shift+Tabは前の操作へ移動します。候補がなければEnterで入力の確定を通知します。Escapeで閉じた後は再入力で開きます。IME変換中のEnterは入力の確定・候補の選択・送信として扱いません。変換中に前進するTabで候補を選んだ場合は、変換終了を待って候補の採用を通知します。確定済みの語句・重み・辞書・構文は利用側が持ち、AdjustableTokenは編集と増減を通知します。TagsInputの値管理は持ち込みません。`commitOnBlur`を指定した場合はフォーカスを離れると入力の確定を通知します。`onSubmitShortcut`は修飾キー付きEnterを候補選択と分けて通知し、実際の送信可否は利用側で判断します。候補の読み上げ名は文字列の`label`で保ち、表示の強調は`labelContent`で受けます。候補は`label`を1行目に主として表示し、`description`・`detail`を小さい補足として2行目に並べます。AdjustableTokenは＋／−を語句の横に並べ、同じ行の語句の高さを揃えます。`font`は通常書体とコード書体を選び、AdjustableTokenの`valueLabel`は値の読み上げ表現を受けます。
 
 ### Ark UIとの対応
 
