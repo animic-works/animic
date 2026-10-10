@@ -1,7 +1,9 @@
-import type { BattleSnapshot } from "./battle-state";
+import { scoringTimeoutMs, type BattleSnapshot } from "./battle-state";
 import type { BattleStage } from "./battle-screen";
 
 const urgentMs = 10_000;
+/** 採点の開始からこの時間を過ぎたら、時間がかかっていることを伝える。 */
+const slowScoringMs = 30_000;
 type BattleTiming = Pick<BattleSnapshot, "generationEndsAt" | "selectionEndsAt" | "settings">;
 
 /** 段階に応じて、残り時間を数える期限を返す。生成中と画像選択の猶予の間だけ数える。 */
@@ -25,4 +27,9 @@ export function getBattleClock(battle: BattleTiming, stage: BattleStage, remaini
     tone: stage === "selecting" ? "highlight" : urgent ? "primary" : "neutral",
     percent: remaining === null ? 0 : (remaining / totalMs) * 100,
   } as const;
+}
+
+/** 採点期限（`scoringEndsAt`）までの残りから、採点の開始から時間がかかっているかを返す。 */
+export function isScoringSlow(remaining: number | null) {
+  return remaining !== null && remaining <= scoringTimeoutMs - slowScoringMs;
 }

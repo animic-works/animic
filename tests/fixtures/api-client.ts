@@ -8,7 +8,11 @@ import {
   setReady,
   setRoomSettings,
 } from "../../src/features/room/room.functions";
-import { startBattle, submitBattleImage } from "../../src/features/battle/battle.functions";
+import {
+  getMyScoringMetrics,
+  startBattle,
+  submitBattleImage,
+} from "../../src/features/battle/battle.functions";
 import {
   getMyBattleDetail,
   getMyBattleHistory,
@@ -59,6 +63,7 @@ const api = {
   submitBattleImage,
   getMyBattleHistory,
   getMyBattleDetail,
+  getMyScoringMetrics,
   issueScoringLinkCode,
   getScoringAdminData,
   revokeScoringWorker,

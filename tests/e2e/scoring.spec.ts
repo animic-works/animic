@@ -290,6 +290,19 @@ test("生成した画像を提出すると、採点ワーカーへR2の生成画
     }
 
     const hostId = await participantId(host);
+    // 全員が提出したら採点中になる。採点の開始から30秒を過ぎたら、時間がかかっていることも伝える。
+    // ログインせずに参加したゲストの画面で、採点中の表示と結果の内訳を確かめる。
+    const guestView = await guestContext.newPage();
+    await guestView.clock.install();
+    await guestView.goto(`/rooms/${code}`);
+    const waiting = guestView.getByRole("dialog", { name: "提出しました！" });
+    await expect(waiting.getByRole("status", { name: "採点しています" })).toBeVisible();
+    await expect(waiting.getByText("採点に時間がかかっています")).toHaveCount(0);
+    await guestView.clock.fastForward(31_000);
+    await expect(waiting.getByText("採点に時間がかかっています")).toBeVisible();
+    // 採点の期限までの残り時間は出さない。
+    await expect(waiting.getByText(/\d+:\d{2}/)).toHaveCount(0);
+
     const worker = await link(request, "E2EE-0001");
     for (let count = 0; count < 2; count += 1) {
       const claimed = await claimJob(request, worker);
@@ -311,7 +324,17 @@ test("生成した画像を提出すると、採点ワーカーへR2の生成画
       expect(submission.toString("latin1", 0, 4)).toBe("RIFF");
       expect(submission.toString("latin1", 8, 12)).toBe("WEBP");
       const total = submitter === hostId ? 71.4 : 60;
-      const reported = similarity(JSON.stringify({ total }));
+      const metrics =
+        submitter === hostId
+          ? { pixai: { raw: 0.7, score: 70 } }
+          : {
+              ccip: { skipped: "no person in one of the images", raw: 0.17 },
+              pixai: { raw: 0.78, score: 74.8 },
+              siglip2: { raw: 0.91, score: 71 },
+              dinov2: { raw: 0.63, score: 88.5 },
+              depth: { raw: 0.78, score: 67 },
+            };
+      const reported = similarity(JSON.stringify({ total, ...metrics }));
       expect(
         (await post(request, worker, `jobs/${claimed.jobId}/complete`, reported)).status(),
       ).toBe(200);
@@ -332,6 +355,22 @@ test("生成した画像を提出すると、採点ワーカーへR2の生成画
         })),
       );
     }
+
+    // 結果画面で、自分の内訳と指標ごとの点だけを開いて見られる。
+    await guestView.getByRole("button", { name: "スコアの内訳を見る" }).click();
+    const breakdown = guestView.getByRole("dialog", { name: "あなたのスコアの内訳" });
+    await expect(breakdown.getByText("60.0").first()).toBeVisible();
+    await expect(breakdown.getByText("1回")).toBeVisible();
+    await expect(breakdown.getByRole("meter", { name: /画像の特徴/ })).toHaveAttribute(
+      "aria-valuenow",
+      "88.5",
+    );
+    await expect(breakdown.getByText("採点の対象外")).toBeVisible();
+    // 指標は本人の分だけを返す。
+    const myMetrics = (page: Page) =>
+      page.evaluate((data) => window.animicTest.getMyScoringMetrics({ data }), { battleId });
+    expect(await myMetrics(guest)).toMatchObject({ ccip: null, dinov2: 88.5 });
+    expect(await myMetrics(host)).toMatchObject({ pixai: 70, dinov2: null });
   } finally {
     await hostContext.close();
     await guestContext.close();

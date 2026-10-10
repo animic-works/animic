@@ -40,7 +40,7 @@ desktop-comfyui-serverの通信仕様で決まっているURLパスとキー名�
 | `scoring_job`       | 対戦ID・ルームコード・ワークフローの版・入力・状態・試行回数・割り当て先・割り当ての期限・出力・失敗の理由 |
 | `scoring_result`    | 採点ジョブと参加者ごとの`total`                                                                            |
 
-採点ジョブのIDは対戦の状態で発行し、登録は冪等にします。採点ワーカーから受け取った出力は加工せず`raw_result`に保存し、そこから読み取った`total`を`scoring_result`に保存します。戦績の詳細では、対戦IDと参加者IDで成功した採点ジョブを探し（`getScoringMetrics`、`scoring_job`の`battle_id`に索引あり）、`raw_result`から指標ごとの点を読みます。点のない指標（人物のいない画像のCCIP、失敗した指標）は対象外として表示します。指標の表示名は`src/features/scoring/scoring-metrics.ts`にあります。
+採点ジョブのIDは対戦の状態で発行し、登録は冪等にします。採点ワーカーから受け取った出力は加工せず`raw_result`に保存し、そこから読み取った`total`を`scoring_result`に保存します。戦績の詳細と結果画面のスコアの内訳では、対戦IDと本人の参加者IDで成功した採点ジョブを探し（`getScoringMetrics`、`scoring_job`の`battle_id`に索引あり）、`raw_result`から指標ごとの点を読みます。点のない指標（人物のいない画像のCCIP、失敗した指標）は対象外として表示します。指標の表示名は`src/features/scoring/scoring-metrics.ts`にあります。
 
 採点ジョブの状態は次のように変わります。
 
