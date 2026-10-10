@@ -1,0 +1,120 @@
+import { defineRecipe } from "@pandacss/dev";
+export const badge = defineRecipe({
+  className: "badge",
+  base: {
+    display: "inline-flex",
+    width: "fit-content",
+    alignItems: "center",
+    gap: "2",
+    paddingInline: "3",
+    paddingBlock: "1",
+    borderRadius: "full",
+    borderStyle: "solid",
+    borderWidth: "1",
+    textStyle: "caption",
+  },
+  variants: {
+    appearance: {
+      annotation: {
+        background: "accent.highlight",
+        color: "fg.default",
+        borderColor: "transparent",
+        borderRadius: "0.35rem",
+        padding: "0.1rem 0.45rem",
+        textStyle: "code.annotation",
+        whiteSpace: "nowrap",
+      },
+      standard: {
+        background: "var(--animic-badge-bg)",
+        color: "var(--animic-badge-fg)",
+        borderColor: "var(--animic-badge-border)",
+      },
+      translucent: {
+        background: "rgb(255 255 255 / 0.12)",
+        color: "fg.inverse",
+        borderColor: "transparent",
+        padding: "0.35rem 1rem",
+        textStyle: "label",
+      },
+      stamp: {
+        background: "accent.highlight",
+        color: "fg.default",
+        border: "3px solid token(colors.bg.surface)",
+        borderRadius: "0.5rem",
+        padding: "0.3rem 0.8rem",
+        textStyle: "label.stamp",
+        rotate: "-10deg",
+      },
+      glass: {
+        background: "color-mix(in srgb, token(colors.bg.inverse) 72%, transparent)",
+        borderColor: "transparent",
+        backdropFilter: "blur(8px)",
+        padding: "0.25rem 0.7rem",
+        color: "fg.inverse",
+        textStyle: "label.overline",
+      },
+      sticker: {
+        rotate: "-4deg",
+        padding: "0.18rem 0.65rem",
+        borderColor: "transparent",
+        background: "accent.highlight",
+        color: "fg.default",
+        textStyle: "label.overline",
+        fontSize: "0.72rem",
+        letterSpacing: "0.15em",
+      },
+    },
+    shape: { pill: {}, rounded: { borderRadius: "0.4rem" } },
+    size: {
+      // 一覧の項目の縁に重ねる、名札のような小さい表示。
+      xs: {
+        paddingInline: "0.55rem",
+        paddingBlock: "0.12rem",
+        borderWidth: "0",
+        textStyle: "label.supporting",
+        fontSize: "0.66rem",
+        whiteSpace: "nowrap",
+      },
+      sm: {},
+      md: { textStyle: "label", paddingInline: "4", paddingBlock: "2" },
+    },
+    tone: {
+      primary: {
+        "--animic-badge-bg": "token(colors.accent.primary)",
+        "--animic-badge-fg": "token(colors.fg.inverse)",
+        "--animic-badge-border": "transparent",
+      },
+      highlight: {
+        "--animic-badge-bg": "token(colors.accent.highlight)",
+        "--animic-badge-fg": "token(colors.fg.default)",
+        "--animic-badge-border": "transparent",
+      },
+      surface: {
+        "--animic-badge-bg": "token(colors.bg.surface)",
+        "--animic-badge-fg": "token(colors.fg.default)",
+        "--animic-badge-border": "token(colors.border.default)",
+      },
+      inverse: {
+        "--animic-badge-bg": "token(colors.bg.inverse)",
+        "--animic-badge-fg": "token(colors.fg.inverse)",
+        "--animic-badge-border": "transparent",
+      },
+      neutral: {
+        "--animic-badge-bg": "token(colors.bg.subtle)",
+        "--animic-badge-fg": "token(colors.fg.default)",
+        "--animic-badge-border": "token(colors.border.default)",
+      },
+      success: {
+        "--animic-badge-bg": "token(colors.status.success.bg)",
+        "--animic-badge-fg": "token(colors.status.success.fg)",
+        "--animic-badge-border": "token(colors.status.success.border)",
+      },
+      danger: {
+        "--animic-badge-bg": "token(colors.status.danger.bg)",
+        "--animic-badge-fg": "token(colors.status.danger.fg)",
+        "--animic-badge-border": "token(colors.status.danger.border)",
+      },
+    },
+  },
+  defaultVariants: { appearance: "standard", tone: "neutral" },
+});

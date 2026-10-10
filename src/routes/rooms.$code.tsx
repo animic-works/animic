@@ -1,26 +1,17 @@
-import { createFileRoute, notFound, redirect, useRouter } from "@tanstack/react-router";
-import { createClientOnlyFn } from "@tanstack/react-start";
+import { createFileRoute, notFound, redirect } from "@tanstack/react-router";
 import * as v from "valibot";
-
-import { useWipe } from "../components/transition";
-import { EntryFlow } from "../features/room/entry-flow";
-import { parseLoginSearch } from "../features/room/entry-login";
-import { RoomScreen } from "../features/room/room-screen";
-import { getBattleOptions } from "../features/room/battle-options.functions";
-import { getRoomEntry, joinRoom } from "../features/room/room.functions";
-import { ROOM_CODE_CHARS, roomCodeSchema } from "../features/room/room-state";
-import { ensureParticipant } from "../lib/auth.client";
+import { roomCodeSchema } from "../features/room/room-state";
+import { getRoomEntry } from "../features/room/room.functions";
 import { getCurrentParticipant } from "../lib/auth.functions";
-
-// 匿名セッションの準備はブラウザ専用のため、サーバーのバンドルから外す。
-const ensureParticipantOnClient = createClientOnlyFn(ensureParticipant);
-
+import { RoomPage } from "../features/room/room-page";
+import { RoomEntry } from "../features/room/room-entry";
+import { parseLoginSearch } from "../features/room/entry-login";
+import { getBattleOptions } from "../features/room/battle-options.functions";
 export const Route = createFileRoute("/rooms/$code")({
   validateSearch: parseLoginSearch,
   loader: async ({ params }) => {
     const code = v.safeParse(roomCodeSchema, params.code);
     if (!code.success) throw notFound();
-    // 小文字のコードは大文字に正規化したURLへそろえる。
     if (code.output !== params.code)
       throw redirect({ to: "/rooms/$code", params: { code: code.output }, replace: true });
     const [entry, participant, battleOptions] = await Promise.all([
@@ -28,59 +19,30 @@ export const Route = createFileRoute("/rooms/$code")({
       getCurrentParticipant(),
       getBattleOptions(),
     ]);
-    // 存在しない・終了したルームは、ほかの不明なURLと同じ404にする。
     if (!entry.exists) throw notFound();
     return { ...entry, participant, battleOptions };
   },
+  headers: () => ({ "Cache-Control": "private, no-store" }),
   head: ({ params }) => ({ meta: [{ title: `ルーム ${params.code} | Animic` }] }),
-  component: RoomPage,
-});
-
-function RoomPage() {
-  const { code } = Route.useParams();
-  const { room, inviteUrl, participant, battleOptions } = Route.useLoaderData();
-  const { error } = Route.useSearch();
-  const router = useRouter();
-  const wipe = useWipe();
-
-  if (!room || !participant) {
-    async function join(name: string) {
-      await wipe.buildRoom({
-        label: "ルームに参加しています",
-        done: "ルームに入りました！",
-        sub: `${name} さんとして参加`,
-        codeCharacters: ROOM_CODE_CHARS,
-        codeLength: 8,
-        task: async () => {
-          await ensureParticipantOnClient();
-          await joinRoom({ data: { code, name } });
-          return code;
-        },
-        // 参加したら loader を読み直し、同じURLでロビーを表示する。
-        navigate: () => router.invalidate(),
-      });
-    }
-    return (
-      <EntryFlow
-        mode="join"
+  component: function RoomRoute() {
+    const { code } = Route.useParams();
+    const { room, participant, inviteUrl, battleOptions } = Route.useLoaderData();
+    const { error } = Route.useSearch();
+    return room && participant ? (
+      <RoomPage
+        key={`${code}:${participant.id}`}
+        initial={room}
+        participantId={participant.id}
+        inviteUrl={inviteUrl}
+        battleOptions={battleOptions}
+      />
+    ) : (
+      <RoomEntry
+        key={`${code}:${participant?.id ?? "guest"}`}
         code={code}
         account={participant?.account ?? null}
         loginError={error}
-        returnTo={`/rooms/${code}`}
-        onSubmit={join}
-        onSignedOut={() => router.invalidate()}
-        back={{ href: "/", label: "トップへ戻る" }}
       />
     );
-  }
-
-  return (
-    <RoomScreen
-      key={`${code}:${participant.id}`}
-      initial={room}
-      participantId={participant.id}
-      inviteUrl={inviteUrl}
-      battleOptions={battleOptions}
-    />
-  );
-}
+  },
+});

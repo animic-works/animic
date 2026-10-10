@@ -33,7 +33,7 @@ test.beforeAll(async () => {
   );
 });
 
-test("接続中の2人で開始し、開始時に切断していた人は復帰しても対戦に加えない", async ({
+test("接続中の全員で開始し、開始時に切断していた人は復帰しても対戦に加えない", async ({
   page,
   browser,
 }) => {
@@ -64,7 +64,6 @@ test("接続中の2人で開始し、開始時に切断していた人は復帰�
       async () => (await window.animicTest.getCurrentParticipant())?.id,
     );
     await expect.poll(async () => (await snapshot(page)).members.length).toBe(3);
-    expect((await start(page, code, settings)).error).not.toBeNull();
     await late.close();
     await expect
       .poll(async () => (await snapshot(page)).members.filter((member) => member.connected).length)

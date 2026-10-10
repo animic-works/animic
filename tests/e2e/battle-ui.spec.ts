@@ -3,7 +3,6 @@ import type { WebSocketRoute } from "@playwright/test";
 
 import { create, join } from "./api";
 import { executeLocalD1 } from "./d1";
-import { createFromTop, joinByUrl, saveSettings } from "./screen";
 
 // 帯とお題の裏返しの演出を省き、対戦画面の操作だけを確認する。
 test.use({ reducedMotion: "reduce" });
@@ -20,32 +19,36 @@ test("対戦画面でプロンプトを入力し、候補・重み・検索・�
   browser,
 }) => {
   test.setTimeout(90_000);
-  const code = await createFromTop(page, "ホスト");
-  const guest = await joinByUrl(browser, code, "ゲスト");
+  const code = await create(page, "ホスト");
+  const guestContext = await browser.newContext({ reducedMotion: "reduce" });
+  const guest = await guestContext.newPage();
   try {
+    await join(guest, code, "ゲスト");
     // 操作の途中で時間切れにならないよう、長い対戦にする。
-    await saveSettings(
-      page,
-      code,
-      { difficulty: "easy", durationSeconds: 600, selectionSeconds: 10 },
-      null,
-    );
-    await page.getByRole("button", { name: "対戦をはじめる" }).click();
-    await page.getByRole("button", { name: "このままはじめる" }).click();
-    for (const participant of [page, guest.page]) {
+    const started = await page.evaluate(async (roomCode) => {
+      const data = {
+        code: roomCode,
+        settings: { difficulty: "easy" as const, durationSeconds: 600, selectionSeconds: 10 },
+        previousBattleId: null,
+      };
+      await window.animicTest.setRoomSettings({ data });
+      return window.animicTest.startBattle({ data });
+    }, code);
+    expect(started.error).toBeNull();
+    await page.goto(`/rooms/${code}`);
+    await guest.goto(`/rooms/${code}`);
+    for (const participant of [page, guest]) {
       await expect(participant.getByRole("timer")).toBeVisible();
     }
 
     // ロスターは2人。自分だけ状態と生成回数を出す。
     const roster = page.getByRole("list", { name: "プレイヤーの様子" });
     await expect(roster.getByRole("listitem")).toHaveCount(2);
+    await expect(roster.getByRole("listitem", { name: /ホスト.*考え中・生成 0回/ })).toBeVisible();
     await expect(
-      roster.getByRole("listitem", { name: "ホスト（あなた）: 考え中・生成 0回" }),
-    ).toBeVisible();
-    await expect(
-      guest.page
+      guest
         .getByRole("list", { name: "プレイヤーの様子" })
-        .getByRole("listitem", { name: "ホスト", exact: true }),
+        .getByRole("listitem", { name: /^ホスト: ?$/ }),
     ).toBeVisible();
 
     // 生成の処理をつなぐまでは「生成する」を押せず、理由を出す。
@@ -89,7 +92,10 @@ test("対戦画面でプロンプトを入力し、候補・重み・検索・�
     await expect(input).toHaveAttribute("placeholder", /「,」/);
 
     // ベースの欄に切り替える。
-    await page.getByRole("tab", { name: "ベース" }).click();
+    await page
+      .getByRole("radiogroup", { name: "プロンプトの種類" })
+      .getByText("ベース", { exact: true })
+      .click();
     await expect(page.getByText("0語（合計 2語）")).toBeVisible();
 
     // ⌘/Ctrl+Kで検索を開き、カードを押して欄に入れる。
@@ -98,12 +104,17 @@ test("対戦画面でプロンプトを入力し、候補・重み・検索・�
     await expect(search).toBeVisible();
     await search.getByRole("searchbox", { name: "プロンプトを検索" }).fill("背景");
     await expect(search.getByText(/の結果 \d+件/)).toBeVisible();
-    const card = search.getByRole("button", { name: /white background/ });
+    const card = search.getByRole("button").filter({ hasText: "white background" });
     await card.click();
     await expect(card).toHaveAttribute("aria-pressed", "true");
     await expect(
-      search.getByRole("navigation", { name: "ジャンル" }).getByRole("button", { name: /背景/ }),
-    ).toContainText("1");
+      search
+        .locator('[data-scope="segment-group"][data-part="item"]')
+        .filter({
+          has: page.getByRole("radio", { name: "背景", exact: true }),
+        })
+        .getByText("1", { exact: true }),
+    ).toBeVisible();
     await search.getByRole("button", { name: "決定" }).click();
     await expect(search).toBeHidden();
     await expect(
@@ -111,7 +122,7 @@ test("対戦画面でプロンプトを入力し、候補・重み・検索・�
     ).toBeVisible();
 
     // お題を拡大して全体を見る。
-    await page.getByRole("button", { name: "お題を拡大して全体を見る" }).click();
+    await page.getByRole("button", { name: "お題のイラストを拡大" }).click();
     const zoom = page.getByRole("dialog", { name: "お題" });
     await expect(zoom).toBeVisible();
     await zoom.getByRole("button", { name: "閉じる" }).click();
@@ -119,11 +130,11 @@ test("対戦画面でプロンプトを入力し、候補・重み・検索・�
 
     // 「確認なしですぐ提出」はこの端末に覚えておく。
     await page.getByText("確認なしですぐ提出", { exact: true }).click();
-    const quick = page.getByRole("switch", { name: "確認なしですぐ提出" });
+    const quick = page.getByRole("checkbox", { name: "確認なしですぐ提出" });
     await expect(quick).toBeChecked();
     await page.reload();
     await expect(page.getByRole("timer")).toBeVisible();
-    await expect(page.getByRole("switch", { name: "確認なしですぐ提出" })).toBeChecked();
+    await expect(page.getByRole("checkbox", { name: "確認なしですぐ提出" })).toBeChecked();
 
     // 狭い画面でも横にはみ出さず、入力欄を操作できる。
     await page.setViewportSize({ width: 320, height: 568 });
@@ -132,7 +143,7 @@ test("対戦画面でプロンプトを入力し、候補・重み・検索・�
     ).toBe(true);
     await expect(page.getByRole("combobox", { name: /^プロンプト/ })).toBeVisible();
   } finally {
-    await guest.context.close();
+    await guestContext.close();
   }
 });
 
@@ -162,15 +173,15 @@ test("むずかしいではキャラ2の欄を足して消せる", async ({ page
     await page.goto(`/rooms/${code}`);
     await expect(page.getByRole("timer")).toBeVisible();
 
-    await expect(page.getByRole("tab", { name: "キャラ1", selected: true })).toBeVisible();
+    await expect(page.getByRole("radio", { name: "キャラ1", checked: true })).toBeVisible();
     await page.getByRole("button", { name: "＋ キャラ2" }).click();
-    await expect(page.getByRole("tab", { name: "キャラ2", selected: true })).toBeVisible();
+    await expect(page.getByRole("radio", { name: "キャラ2", checked: true })).toBeVisible();
     await expect(page.getByRole("combobox", { name: "プロンプト（キャラ2）" })).toBeVisible();
     await expect(page.getByRole("button", { name: "＋ キャラ2" })).toHaveCount(0);
 
     await page.getByRole("button", { name: "キャラ2を消す" }).click();
-    await expect(page.getByRole("tab", { name: "キャラ2" })).toHaveCount(0);
-    await expect(page.getByRole("tab", { name: "キャラ1", selected: true })).toBeVisible();
+    await expect(page.getByRole("radio", { name: "キャラ2", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("radio", { name: "キャラ1", checked: true })).toBeVisible();
   } finally {
     await guestContext.close();
     await executeLocalD1("DELETE FROM topic WHERE id = 'e2e-topic-hard'");
@@ -222,14 +233,14 @@ test("時間切れで提出できる画像がなければ、提出の操作を�
       socket.send(JSON.stringify(room));
     });
     await page.goto(`/rooms/${code}`);
-    await expect(page.getByRole("status").filter({ hasText: "時間切れ" })).toContainText(
-      "提出できる画像がありません",
-    );
+    await expect(page.getByRole("heading", { name: "時間切れ", exact: true })).toBeVisible();
     await expect(page.getByText("生成終了！")).toHaveCount(0);
+    await expect(page.getByText("時間切れのため提出できません")).toBeVisible();
+    await expect(page.getByRole("img", { name: "提出できる画像がありません" })).toBeVisible();
     await expect(page.getByText("時間内に完成した画像はありませんでした")).toBeVisible();
-    await expect(page.getByRole("img", { name: "1回目は生成に失敗しました" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "1回目・失敗", exact: true })).toBeDisabled();
     await expect(page.getByRole("button", { name: "この1枚で提出" })).toHaveCount(0);
-    await expect(page.getByRole("switch", { name: "確認なしですぐ提出" })).toHaveCount(0);
+    await expect(page.getByRole("checkbox", { name: "確認なしですぐ提出" })).toHaveCount(0);
 
     // 未提出の確定が届いたら、未提出の全面表示に切り替える。
     room.version++;
@@ -240,7 +251,7 @@ test("時間切れで提出できる画像がなければ、提出の操作を�
     };
     if (!connection) throw new Error("ルームに接続していません。");
     connection.send(JSON.stringify(room));
-    await expect(page.getByRole("heading", { name: "時間内に提出できませんでした" })).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "時間内に提出できませんでした" })).toBeVisible();
   } finally {
     await guestContext.close();
   }

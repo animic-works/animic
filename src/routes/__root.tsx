@@ -1,16 +1,19 @@
-// 部品のCSSより先に読み込み、@layerの順序を最初に宣言する。
-import "../styles/global.css";
-
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 
-import { Button } from "../components/button";
-import { EntryCard, EntryPage } from "../components/entry";
-import { Toaster } from "../components/toast";
-import { WipeProvider } from "../components/transition";
+import stylesheet from "@animic/styled-system/styles.css?url";
+import { UIProvider, UIScript } from "@animic/react/ui-provider";
+import { ToastProvider } from "@animic/react/toast";
+import { Page } from "@animic/react/page";
+import { Section } from "@animic/react/section";
+import { Stack } from "@animic/react/stack";
+import { Heading } from "@animic/react/heading";
+import { Link } from "@animic/react/link";
+import { PageTransitionProvider } from "../features/navigation/page-transition-provider";
 
 export const Route = createRootRoute({
   head: () => ({
     links: [
+      { rel: "stylesheet", href: stylesheet },
       { rel: "icon", type: "image/x-icon", sizes: "16x16 32x32 48x48", href: "/favicon.ico?v=1" },
       { rel: "icon", type: "image/svg+xml", sizes: "any", href: "/favicon.svg?v=1" },
       { rel: "apple-touch-icon", sizes: "180x180", href: "/apple-touch-icon.png" },
@@ -25,32 +28,36 @@ export const Route = createRootRoute({
   }),
   component: Root,
   notFoundComponent: () => (
-    <EntryPage>
-      <EntryCard
-        logoSrc="/animic-logo.svg"
-        title="ページが見つかりません"
-        titleId="not-found-title"
-      >
-        <Button asChild fullWidth size="lg">
-          <a href="/">トップへ戻る</a>
-        </Button>
-      </EntryCard>
-    </EntryPage>
+    <Page>
+      <main>
+        <Section>
+          <Stack align="center">
+            <Heading level={1} size="lg">
+              ページが見つかりません
+            </Heading>
+            <Link href="/">トップへ戻る</Link>
+          </Stack>
+        </Section>
+      </main>
+    </Page>
   ),
 });
 
 function Root() {
   return (
-    <html lang="ja">
+    <html lang="ja" id="animic-document" suppressHydrationWarning>
       <head>
         <HeadContent />
+        <UIScript />
       </head>
       <body>
-        {/* 画面遷移の帯はルートに1つだけ置き、画面をまたいで表示する */}
-        <WipeProvider logoSrc="/favicon.svg">
-          <Outlet />
-        </WipeProvider>
-        <Toaster />
+        <UIProvider>
+          <ToastProvider>
+            <PageTransitionProvider>
+              <Outlet />
+            </PageTransitionProvider>
+          </ToastProvider>
+        </UIProvider>
         <Scripts />
       </body>
     </html>

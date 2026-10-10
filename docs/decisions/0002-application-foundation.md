@@ -1,6 +1,6 @@
 # 0002: TanStack Startの構成を必要なパッケージから組み立てる
 
-- 状態: 承認済み
+- 状態: UIの方針を[ADR 0009](0009-design-system.md)で変更。その他は承認済み
 - 決定日: 2026-09-23
 - 関連: [アーキテクチャ](../architecture.md)、[実装規約](../conventions.md)
 

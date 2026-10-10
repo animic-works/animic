@@ -1,31 +1,27 @@
 import type { MouseEvent } from "react";
-
-import { Button } from "../../components/button";
-import { EmptyState } from "../../components/empty-state";
-import { Icon } from "../../components/icon";
-import { SegmentedControl } from "../../components/segmented-control";
+import { Button } from "@animic/react/button";
+import { Cluster } from "@animic/react/cluster";
+import { Grid } from "@animic/react/grid";
+import { Link } from "@animic/react/link";
+import { Media } from "@animic/react/media";
+import { Meter } from "@animic/react/meter";
+import { Notice } from "@animic/react/notice";
+import { SegmentedControl } from "@animic/react/segmented-control";
+import { Stack } from "@animic/react/stack";
+import { Surface } from "@animic/react/surface";
+import { Text } from "@animic/react/text";
 import { DIFFICULTIES } from "../battle/battle-labels";
-import { TOPIC_GOAL } from "../battle/topic-admin";
-import type { TopicStatus } from "../battle/topic-admin";
+import { TOPIC_GOAL, type TopicStatus } from "../battle/topic-admin";
 import type { listAdminTopics } from "../battle/topic-admin.functions";
 import { formatDate } from "./admin-format";
-import {
-  AdminHead,
-  FilterBar,
-  FilterGroup,
-  ListSummary,
-  SummaryTiles,
-  TopicGrid,
-  TopicTile,
-} from "./admin-parts";
+import { AdminHead } from "./admin-parts";
 import {
   DIFFICULTY_FILTER_OPTIONS,
   DifficultyBadge,
   STATUS_FILTER_OPTIONS,
   StatusBadge,
+  type Difficulty,
 } from "./topic-labels";
-import type { Difficulty } from "./topic-labels";
-
 export type TopicListSearch = { status?: TopicStatus; difficulty?: Difficulty };
 
 export type TopicListScreenProps = {
@@ -75,38 +71,45 @@ export function TopicListScreen({
   const shown = topics.length;
 
   return (
-    <>
+    <Stack space="section">
       <AdminHead
         eyebrow="Admin"
         title="お題"
-        actions={
-          <Button leadingIcon={<Icon name="plus" size="md" />} onClick={onAdd}>
-            お題を追加
-          </Button>
-        }
+        actions={<Button onClick={onAdd}>お題を追加</Button>}
       />
-      <SummaryTiles
-        label="難易度ごとの公開中のお題"
-        items={DIFFICULTIES.map((difficulty) => ({
-          label: difficulty.label,
-          count: data.publishedByDifficulty[difficulty.value],
-          goal: TOPIC_GOAL,
-        }))}
-      />
-      <FilterBar label="お題の絞り込み">
-        <FilterGroup label="状態">
+      <section aria-label="難易度ごとの公開中のお題">
+        <Grid columns={3}>
+          {DIFFICULTIES.map((difficulty) => (
+            <Surface key={difficulty.value} appearance="card">
+              <Stack space="compact">
+                <Text variant="label">{difficulty.label}</Text>
+                <Text>
+                  公開中 {data.publishedByDifficulty[difficulty.value]} / 目安 {TOPIC_GOAL}
+                </Text>
+                <Meter
+                  label={`${difficulty.label}の公開状況`}
+                  value={Math.min(
+                    100,
+                    (data.publishedByDifficulty[difficulty.value] / TOPIC_GOAL) * 100,
+                  )}
+                />
+              </Stack>
+            </Surface>
+          ))}
+        </Grid>
+      </section>
+      <div role="search" aria-label="お題の絞り込み">
+        <Stack>
           <SegmentedControl
             label="状態"
-            variant="lift"
+            labelVisibility="visible"
             options={STATUS_FILTER_OPTIONS}
             value={search.status ?? ""}
             onValueChange={(value) => onSearchChange({ ...search, status: statusOf(value) })}
           />
-        </FilterGroup>
-        <FilterGroup label="難易度">
           <SegmentedControl
             label="難易度"
-            variant="lift"
+            labelVisibility="visible"
             tone="accent"
             options={DIFFICULTY_FILTER_OPTIONS}
             value={search.difficulty ?? ""}
@@ -114,52 +117,55 @@ export function TopicListScreen({
               onSearchChange({ ...search, difficulty: difficultyFilterOf(value) })
             }
           />
-        </FilterGroup>
-      </FilterBar>
-      <ListSummary
-        count={filtered ? `${shown}件を表示` : `${shown}件`}
-        order="更新日時の新しい順"
-      />
+        </Stack>
+      </div>
+      <Cluster justify="between">
+        <div role="status">
+          <Text>{filtered ? `${shown}件を表示` : `${shown}件`}</Text>
+        </div>
+        <Text variant="caption">更新日時の新しい順</Text>
+      </Cluster>
       {shown === 0 ? (
-        filtered ? (
-          <EmptyState
-            title="条件に合うお題がありません"
-            actions={
-              <Button variant="secondary" onClick={() => onSearchChange({})}>
-                条件を外す
-              </Button>
-            }
-          />
-        ) : (
-          <EmptyState
-            title="お題がまだありません"
-            actions={
-              <Button variant="secondary" onClick={onAdd}>
-                最初のお題を追加
-              </Button>
-            }
-          />
-        )
+        <Notice
+          title={filtered ? "条件に合うお題がありません" : "お題がまだありません"}
+          actions={
+            <Button
+              appearance="secondary"
+              onClick={() => (filtered ? onSearchChange({}) : onAdd())}
+            >
+              {filtered ? "条件を外す" : "最初のお題を追加"}
+            </Button>
+          }
+        >
+          {filtered ? "条件を変えて確認してください。" : "お題の画像を追加してください。"}
+        </Notice>
       ) : (
-        <TopicGrid label="お題">
-          {topics.map((topic) => (
-            <TopicTile
-              key={topic.id}
-              href={`/admin/topics/${encodeURIComponent(topic.id)}`}
-              onOpen={(event) => openOnClick(event, () => onOpen(topic.id))}
-              imageSrc={topic.imageUrl}
-              title={topic.title}
-              fallbackTitle={topic.id}
-              status={<StatusBadge status={topic.status} />}
-              difficulty={<DifficultyBadge difficulty={topic.difficulty} />}
-              meta={metaText(topic.note)}
-              // 移行前から登録されていたお題は更新日時が0（不明）のため、詳細画面と同じく「—」にする
-              date={topic.updatedAt ? formatDate(topic.updatedAt) : "—"}
-              dateTime={topic.updatedAt ? new Date(topic.updatedAt).toISOString() : undefined}
-            />
-          ))}
-        </TopicGrid>
+        <section aria-label="お題">
+          <Grid columns={3}>
+            {topics.map((topic) => (
+              <Surface key={topic.id} appearance="card" padding="md">
+                <Link
+                  href={`/admin/topics/${encodeURIComponent(topic.id)}`}
+                  aria-label={`${topic.title || topic.id}の詳細`}
+                  onClick={(event) => openOnClick(event, () => onOpen(topic.id))}
+                >
+                  <Stack space="compact">
+                    <Media src={topic.imageUrl} alt="" aspect="portrait" fit="contain" />
+                    <Cluster>
+                      <StatusBadge status={topic.status} />
+                      <DifficultyBadge difficulty={topic.difficulty} />
+                    </Cluster>
+                    <Text variant="label">{topic.title || topic.id}</Text>
+                    <Text variant="caption">
+                      {metaText(topic.note)}・{topic.updatedAt ? formatDate(topic.updatedAt) : "—"}
+                    </Text>
+                  </Stack>
+                </Link>
+              </Surface>
+            ))}
+          </Grid>
+        </section>
       )}
-    </>
+    </Stack>
   );
 }
