@@ -169,9 +169,13 @@ export function TokenInput({ inputRef, ...props }: TokenInputProps) {
         )}
         {props.suggestions.map((option) => (
           <Combobox.Item item={option} key={option.value} className={c.option}>
-            <Combobox.ItemText>{option.labelContent ?? option.label}</Combobox.ItemText>
-            <span>{option.description}</span>
-            {option.detail && <span>{option.detail}</span>}
+            <Combobox.ItemText className={c.optionLabel}>
+              {option.labelContent ?? option.label}
+            </Combobox.ItemText>
+            <span className={c.optionMeta}>
+              <span>{option.description}</span>
+              {option.detail && <span>{option.detail}</span>}
+            </span>
             {combobox.highlightedValue === option.value && <kbd className={c.shortcut}>Tab</kbd>}
           </Combobox.Item>
         ))}
@@ -217,7 +221,7 @@ export function AdjustableToken({
       >
         {label}
       </button>
-      {value && <span>{value}</span>}
+      {value && <span className={c.value}>{value}</span>}
       <span className={c.actions}>
         <button
           type="button"

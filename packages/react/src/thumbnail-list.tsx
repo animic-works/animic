@@ -48,7 +48,11 @@ export function ThumbnailList({
               disabled={disabled || item.disabled}
               onClick={() => onValueChange(item.id)}
             >
-              {item.src ? <img src={item.src} alt="" className={c.image} /> : item.content}
+              {item.src ? (
+                <img src={item.src} alt="" className={c.image} draggable={false} />
+              ) : (
+                item.content
+              )}
               <span className={c.label}>{item.label}</span>
               {value === item.id && (
                 <span className={c.selected} aria-hidden="true">
