@@ -35,6 +35,12 @@ function success(state: BattleState, id: string, now = 2000) {
     now,
   );
 }
+function failure(state: BattleState, id: string, now = 2000) {
+  return finishGeneration(state, id, { status: "failed" }, now);
+}
+function submissionOf(state: BattleState, participantId: string) {
+  return state.submissions.find((item) => item.participantId === participantId);
+}
 
 describe("生成受付と完了", () => {
   it("締切ちょうどの新規受付と途中参加者の生成を拒否する", () => {
@@ -62,7 +68,7 @@ describe("生成受付と完了", () => {
     const completed = success(pending, "one", 12_000);
     expect(completed.selectionEndsAt).toBe(17_000);
     const submitted = submitImage(completed, "a", "one", 16_999);
-    expect(submitted.submissions[0]).toMatchObject({
+    expect(submissionOf(submitted, "a")).toMatchObject({
       status: "submitted",
       eligibleForSpeedBonus: false,
     });
@@ -133,9 +139,10 @@ describe("生成のタイムアウトと生成中の上限", () => {
     const expiresAt = 9000 + generationTimeoutMs;
     expect(reconcileBattle(state, 30_000).selectionEndsAt).toBeNull();
     expect(reconcileBattle(state, expiresAt).selectionEndsAt).toBe(expiresAt + 5000);
+    // aの生成がタイムアウトで失敗すると提出できる画像がなくなるため、猶予を待たずに確定する。
     expect(reconcileBattle(state, expiresAt + 30_000)).toMatchObject({
       selectionEndsAt: expiresAt + 5000,
-      result: { kind: "no-contest", reason: "no-submissions", decidedAt: expiresAt + 5000 },
+      result: { kind: "no-contest", reason: "no-submissions", decidedAt: expiresAt },
     });
   });
   it("結果の確定後もタイムアウトを反映し、結果は変えない", () => {
@@ -183,8 +190,8 @@ describe("提出と期限", () => {
       submitted.submissions[0],
     );
   });
-  it("生成がなければ生成終了時刻から数え、Alarmが遅れても期限を延長しない", () => {
-    const state = reconcileBattle(battle(), 20_000);
+  it("生成処理が終わっていれば生成終了時刻から数え、Alarmが遅れても期限を延長しない", () => {
+    const state = reconcileBattle(bothGenerated(), 20_000);
     expect(state.selectionEndsAt).toBe(15_000);
     expect(state.submissions).toEqual([
       { participantId: "a", status: "not-submitted", decidedAt: 15_000 },
@@ -194,9 +201,9 @@ describe("提出と期限", () => {
   });
   it("選択期限ちょうどは提出を拒否し、自動で画像を選ばない", () => {
     const state = success(accept(battle(), "one"), "one");
-    expect(submitImage(state, "a", "one", 14_999).submissions[0]?.status).toBe("submitted");
+    expect(submissionOf(submitImage(state, "a", "one", 14_999), "a")?.status).toBe("submitted");
     expect(() => submitImage(state, "a", "one", 15_000)).toThrow();
-    expect(reconcileBattle(state, 15_000).submissions[0]).toEqual({
+    expect(submissionOf(reconcileBattle(state, 15_000), "a")).toEqual({
       participantId: "a",
       status: "not-submitted",
       decidedAt: 15_000,
@@ -218,9 +225,79 @@ describe("提出と期限", () => {
   });
 });
 
+describe("提出できる画像がない参加者", () => {
+  it("生成しなかった人は生成終了時刻に未提出として確定し、Alarmが遅れても確定時刻を変えない", () => {
+    const state = success(accept(battle(), "one"), "one");
+    expect(submissionOf(reconcileBattle(state, 9999), "b")).toBeUndefined();
+    const ended = reconcileBattle(state, 10_000);
+    expect(submissionOf(ended, "b")).toEqual({
+      participantId: "b",
+      status: "not-submitted",
+      decidedAt: 10_000,
+    });
+    expect(submissionOf(ended, "a")).toBeUndefined();
+    expect(submissionOf(reconcileBattle(state, 14_000), "b")).toEqual(submissionOf(ended, "b"));
+  });
+  it("失敗だけの人も確定し、生成中の画像がある人は確定しない", () => {
+    const state = reconcileBattle(
+      accept(failure(accept(battle(), "failed"), "failed"), "two", "b"),
+      10_000,
+    );
+    expect(submissionOf(state, "a")).toEqual({
+      participantId: "a",
+      status: "not-submitted",
+      decidedAt: 10_000,
+    });
+    expect(submissionOf(state, "b")).toBeUndefined();
+  });
+  it("生成終了時刻に生成中だった画像が失敗したら、失敗した時刻に確定する", () => {
+    const state = accept(success(accept(battle(), "one"), "one"), "late", "b", 9000);
+    expect(submissionOf(reconcileBattle(state, 11_000), "b")).toBeUndefined();
+    const failed = failure(state, "late", 12_000);
+    expect(submissionOf(failed, "b")).toEqual({
+      participantId: "b",
+      status: "not-submitted",
+      decidedAt: 12_000,
+    });
+    expect(failed.selectionEndsAt).toBe(17_000);
+  });
+  it("相手が提出済みなら、猶予の終わりを待たずに相手の勝ちにする", () => {
+    const state = submitImage(success(accept(battle(), "one"), "one"), "a", "one", 3000);
+    expect(reconcileBattle(state, 9999).result).toBeNull();
+    expect(reconcileBattle(state, 10_000).result).toEqual({
+      kind: "win",
+      reason: "opponent-not-submitted",
+      winnerId: "a",
+      decidedAt: 10_000,
+    });
+  });
+  it("相手も画像がなければ、生成終了時刻で勝負不成立にする", () => {
+    expect(reconcileBattle(battle(), 20_000).result).toEqual({
+      kind: "no-contest",
+      reason: "no-submissions",
+      decidedAt: 10_000,
+    });
+  });
+  it("相手が猶予中なら、相手の提出か猶予の終わりで勝敗を決める", () => {
+    const state = reconcileBattle(success(accept(battle(), "one"), "one"), 10_000);
+    expect(state.result).toBeNull();
+    expect(submitImage(state, "a", "one", 12_000).result).toEqual({
+      kind: "win",
+      reason: "opponent-not-submitted",
+      winnerId: "a",
+      decidedAt: 12_000,
+    });
+    expect(reconcileBattle(state, 15_000).result).toEqual({
+      kind: "no-contest",
+      reason: "no-submissions",
+      decidedAt: 15_000,
+    });
+  });
+});
+
 describe("未提出による1対1の勝敗", () => {
   it("片方だけ提出した場合は提出者の勝ちとし、締切前には確定しない", () => {
-    const state = submitImage(success(accept(battle(), "one"), "one"), "a", "one", 3000);
+    const state = submitImage(bothGenerated(), "a", "one", 3000);
     expect(reconcileBattle(state, 14_999).result).toBeNull();
     const ended = reconcileBattle(state, 15_000);
     expect(ended.result).toEqual({
@@ -233,7 +310,7 @@ describe("未提出による1対1の勝敗", () => {
     expect(getBattleSnapshot(ended, "b", 20_000).result).toEqual(ended.result);
   });
   it("両方未提出なら勝負不成立にする", () => {
-    expect(reconcileBattle(battle(), 20_000).result).toEqual({
+    expect(reconcileBattle(bothGenerated(), 20_000).result).toEqual({
       kind: "no-contest",
       reason: "no-submissions",
       decidedAt: 15_000,
@@ -246,18 +323,19 @@ describe("未提出による1対1の勝敗", () => {
 
 describe("3人以上の結果", () => {
   it("全員未提出なら勝負不成立、1人だけ提出したら採点を待たずにその人を1位にする", () => {
+    // 画像がない人は生成終了時刻に未提出として確定する。
     expect(reconcileBattle(trio(), 20_000).result).toEqual({
       kind: "no-contest",
       reason: "no-submissions",
-      decidedAt: 15_000,
+      decidedAt: 10_000,
     });
     const single = trioSubmitted("b");
-    expect(reconcileBattle(single, 14_999).result).toBeNull();
-    expect(reconcileBattle(single, 15_000).result).toEqual({
+    expect(reconcileBattle(single, 9999).result).toBeNull();
+    expect(reconcileBattle(single, 10_000).result).toEqual({
       kind: "win",
       reason: "opponent-not-submitted",
       winnerId: "b",
-      decidedAt: 15_000,
+      decidedAt: 10_000,
     });
   });
   it("全員の採点がそろうまで決めず、最高点の人を1位、同点なら引き分けにする", () => {
@@ -298,6 +376,9 @@ describe("3人以上の結果", () => {
   });
 });
 
+function bothGenerated() {
+  return success(success(accept(accept(battle(), "one"), "two", "b"), "one"), "two");
+}
 function trio() {
   return createBattle(
     { difficulty: "easy", durationSeconds: 10, selectionSeconds: 5 },
@@ -314,8 +395,7 @@ function trioSubmitted(...ids: string[]) {
   return state;
 }
 function bothSubmitted() {
-  const generated = success(success(accept(accept(battle(), "one"), "two", "b"), "one"), "two");
-  return submitImage(submitImage(generated, "a", "one", 3000), "b", "two", 4000);
+  return submitImage(submitImage(bothGenerated(), "a", "one", 3000), "b", "two", 4000);
 }
 function jobs(state: BattleState, outcomes: Record<string, number | "failed" | "running">) {
   return state.scoring.entries.map((entry): ScoringJobOutcome => {

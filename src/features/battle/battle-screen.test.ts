@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { getBattleScreen } from "./battle-screen";
+import { getBattleScreen, hasNoImageToSubmit } from "./battle-screen";
 import type { BattleSnapshot } from "./battle-state";
 
 const base: BattleSnapshot = {
@@ -98,5 +98,35 @@ describe("表示する画面", () => {
       previousBattleId: "battle-1",
       waitingForNext: false,
     });
+  });
+});
+
+describe("提出できる画像がない状態", () => {
+  const failed = { id: "f", status: "failed", acceptedAt: 1000, finishedAt: 2000 } as const;
+  const pending = { id: "p", status: "pending", acceptedAt: 3000 } as const;
+  const succeeded = {
+    id: "s",
+    status: "succeeded",
+    acceptedAt: 1000,
+    finishedAt: 2000,
+    imageUrl: "https://example.invalid/s.png",
+  } as const;
+
+  it("生成の受付が終わり、成功した画像も生成中の画像もなければ提出できない", () => {
+    for (const stage of ["finishing", "selecting"] as const) {
+      expect(hasNoImageToSubmit(stage, [])).toBe(true);
+      expect(hasNoImageToSubmit(stage, [failed])).toBe(true);
+    }
+  });
+
+  it("生成中の画像か成功した画像があれば、完成を待つか選べる", () => {
+    expect(hasNoImageToSubmit("finishing", [failed, pending])).toBe(false);
+    expect(hasNoImageToSubmit("selecting", [failed, succeeded])).toBe(false);
+  });
+
+  it("生成の受付中と提出の確定後は対象にしない", () => {
+    for (const stage of ["generating", "waiting", "scoring"] as const) {
+      expect(hasNoImageToSubmit(stage, [])).toBe(false);
+    }
   });
 });

@@ -26,6 +26,7 @@ export function BattleImagesPanel({
   entrance,
   arrival,
   locked,
+  noImage,
   pending,
   error,
   quick,
@@ -39,6 +40,8 @@ export function BattleImagesPanel({
   entrance: ReturnType<typeof useBattleEntrance>;
   arrival: string | null;
   locked: boolean;
+  /** 時間切れで提出できる画像がない。提出の操作を出さない。 */
+  noImage: boolean;
   pending: boolean;
   error: string | undefined;
   quick: boolean;
@@ -67,7 +70,9 @@ export function BattleImagesPanel({
               ? `#${numberOf(submitted.id)} を提出しました`
               : selected
                 ? `#${numberOf(selected.id)} を提出候補にしています`
-                : "画像を1枚選んでください"}
+                : noImage
+                  ? "時間切れのため提出できません"
+                  : "画像を1枚選んでください"}
           </Badge>
         </Cluster>
       }
@@ -104,6 +109,16 @@ export function BattleImagesPanel({
               ) : undefined
             }
           />
+        ) : noImage ? (
+          <MediaPlaceholder
+            label="提出できる画像がありません"
+            description="時間内に完成した画像はありませんでした"
+          >
+            <EmptyImageArtwork />
+            <Text variant="caption" align="center" tone="muted">
+              提出できる画像がありません
+            </Text>
+          </MediaPlaceholder>
         ) : (
           <MediaPlaceholder
             label={pendings.length ? "生成中の画像" : "まだ画像がありません"}
@@ -162,39 +177,43 @@ export function BattleImagesPanel({
         />
       }
       preferences={
-        <Switch checked={quick} onCheckedChange={onQuickChange} label="確認なしですぐ提出" />
+        noImage ? undefined : (
+          <Switch checked={quick} onCheckedChange={onQuickChange} label="確認なしですぐ提出" />
+        )
       }
       actions={
-        <Stack space="compact">
-          {error && (
-            <div role="alert">
-              <Text tone="danger">{error}</Text>
-            </div>
-          )}
-          <Button
-            shape="pill"
-            size="sm"
-            prominence="lifted"
-            disabled={!selected || locked}
-            loading={pending}
-            onClick={() => selected && onSubmit(selected.id)}
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="3"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
+        noImage ? null : (
+          <Stack space="compact">
+            {error && (
+              <div role="alert">
+                <Text tone="danger">{error}</Text>
+              </div>
+            )}
+            <Button
+              shape="pill"
+              size="sm"
+              prominence="lifted"
+              disabled={!selected || locked}
+              loading={pending}
+              onClick={() => selected && onSubmit(selected.id)}
             >
-              <path d="m5 12 4 4L19 6" />
-            </svg>
-            {pending ? "提出しています…" : "この1枚で提出"}
-          </Button>
-        </Stack>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="m5 12 4 4L19 6" />
+              </svg>
+              {pending ? "提出しています…" : "この1枚で提出"}
+            </Button>
+          </Stack>
+        )
       }
     />
   );
