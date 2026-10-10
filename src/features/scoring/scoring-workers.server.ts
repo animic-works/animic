@@ -100,10 +100,11 @@ async function authenticate(request: Request, workerId: string) {
 
 // このアプリが配信する画像（お題・生成画像）は、自分のURLへ通信せずR2から読む。それ以外のURLならnull。
 // Workerから自分の公開URLへ通信すると、workers.devでは失敗し、Custom Domainでは自分をもう一度通るため。
+// 記録したURLのオリジンは記録した時点の`BETTER_AUTH_URL`で、今の値と違うことがあるため、パスで判断する。
 function readOwnImage(url: string) {
-  const topicImage = parseTopicImageUrl(url, env.BETTER_AUTH_URL);
+  const topicImage = parseTopicImageUrl(url);
   if (topicImage) return readTopicImage(topicImage);
-  const generatedImage = parseGeneratedImageUrl(url, env.BETTER_AUTH_URL);
+  const generatedImage = parseGeneratedImageUrl(url);
   return generatedImage ? readGeneratedImage(generatedImage) : null;
 }
 

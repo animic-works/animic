@@ -10,7 +10,10 @@ import type { TopicImageId } from "./topic-images";
 
 const contentType = "image/webp";
 
-/** 配信URL。対戦の状態と採点が絶対URLを使うため、`BETTER_AUTH_URL`を基にする。 */
+/**
+ * 配信URL。対戦の状態と採点ジョブに記録するため、`BETTER_AUTH_URL`を基にした絶対URLにする。
+ * 画面へは`toImageSrc`（`image-src.ts`）で同じオリジンのパスにして渡す。
+ */
 export function topicImageUrl(id: TopicImageId) {
   return new URL(topicImagePath(id), env.BETTER_AUTH_URL).href;
 }

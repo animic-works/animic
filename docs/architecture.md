@@ -319,7 +319,7 @@ DOの状態はSQLiteストレージに永続化し、再起動・再接続後に
 
 提出を受け付けたら、`battle`が採点エントリーを追加します。ルームのDOは採点待ちの間、Alarmで`scoring`のサーバー処理を呼び、採点ジョブを登録して状態と結果を取得し、対戦へ反映します。採点ジョブの状態は`scoring`がD1で管理し、ルームのDOが持つ対戦の採点状態とは分けます。結果を反映するときは対戦IDと採点ジョブのIDを照合し、確定済みの結果を変更しません。
 
-リンクコードの発行、採点ワーカーの一覧と失効、採点ジョブの一覧は、[運営者の認証](#運営者の認証)を通した管理画面で行います。採点ワーカーへ渡す画像のうち、このアプリが配信するお題の画像と生成画像は、自分のURLへ通信せずR2から読みます。Workerから自分の公開URLへ通信すると、workers.devでは失敗し、Custom Domainでは自分のWorkerをもう一度通るためです。
+リンクコードの発行、採点ワーカーの一覧と失効、採点ジョブの一覧は、[運営者の認証](#運営者の認証)を通した管理画面で行います。採点ワーカーへ渡す画像のうち、このアプリが配信するお題の画像と生成画像は、自分のURLへ通信せずR2から読みます。Workerから自分の公開URLへ通信すると、workers.devでは失敗し、Custom Domainでは自分のWorkerをもう一度通るためです。このアプリが配信する画像かどうかは、URLのオリジンではなくパスで判断します（`src/features/battle/image-src.ts`）。記録したURLのオリジンは記録した時点の`BETTER_AUTH_URL`で、今の値と違うことがあるためです。
 
 採点ワーカー向けAPIは、`src/server.ts`でTanStack Startより前に振り分けます。TanStack StartのCSRF対策は、`Origin`などを持たない非GETの要求を拒否するためです。採点ワーカーはCookieを使わず、リンク時に発行した秘密情報をBearerで送るため、ブラウザ向けのCSRF対策の対象外とします。
 
@@ -369,7 +369,7 @@ NovelAIは1アカウントで同時に1件しか生成できないため、生�
 
 NovelAIはPNGのtEXtチャンクと、アルファ値の最下位ビット（`stealth_pngcomp`）に生成の条件を埋め込みます。生成キューのDOは、受け取ったPNGの画素を`src/features/image-generation/generated-image.ts`で取り出してアルファを捨て、libwebpのWASM（`@jsquash/webp`）で品質90の非可逆のWebPに書き出します。Workersは実行時にWASMをコンパイルできないため、`.wasm`はCloudflare Vite pluginでコンパイル済みのモジュールとして読み込みます。変換は1枚あたり約0.4秒のCPU時間を使うため、Workers Freeでも1リクエストあたり30秒まで使えるDOで行い、NovelAIの順番待ちの外に置いて次の生成の通信と重ねます。選定理由は[ADR 0008](decisions/0008-generated-image-webp.md)を参照してください。
 
-生成画像は、R2のバケット（binding `GENERATED_IMAGES`）の`generations/<対戦ID>/<処理ID>`に、生成キューのDOが返したWebPのまま保存します。キーに対戦IDを含め、別の対戦で同じ処理IDが使われても上書きしません。保存と配信は`src/features/image-generation/generated-images.server.ts`、配信のServer Routeは`src/routes/generated-images.$battleId.$generationId.ts`です。配信ではセッションを確かめず、`Cache-Control: private, max-age=31536000, immutable`を付けます。URLは推測できないUUIDで、結果の確定前は本人にだけ配信するため、確定前に相手の画像のURLを知る手段はありません。対戦の状態には`BETTER_AUTH_URL`を基にした絶対URLを記録します。お題の画像とはバケットを分け、バックアップの対象にせず、古い画像も消しません。選定理由は[ADR 0011](decisions/0011-generated-image-storage.md)を参照してください。
+生成画像は、R2のバケット（binding `GENERATED_IMAGES`）の`generations/<対戦ID>/<処理ID>`に、生成キューのDOが返したWebPのまま保存します。キーに対戦IDを含め、別の対戦で同じ処理IDが使われても上書きしません。保存と配信は`src/features/image-generation/generated-images.server.ts`、配信のServer Routeは`src/routes/generated-images.$battleId.$generationId.ts`です。配信ではセッションを確かめず、`Cache-Control: private, max-age=31536000, immutable`を付けます。URLは推測できないUUIDで、結果の確定前は本人にだけ配信するため、確定前に相手の画像のURLを知る手段はありません。対戦の状態と採点ジョブには`BETTER_AUTH_URL`を基にした絶対URLを記録します。画面へ配信する対戦の状態・戦績では、このアプリが配信する画像（お題の画像・生成画像）のURLを`toImageSrc`（`src/features/battle/image-src.ts`）で同じオリジンのパスにします。記録した時点と開いているページのオリジンが違っても（ローカルで登録したお題をトンネルの公開URLで使う場合や、トンネルのURLが変わった場合など）読み込めるようにするためです。お題の画像とはバケットを分け、バックアップの対象にせず、古い画像も消しません。選定理由は[ADR 0011](decisions/0011-generated-image-storage.md)を参照してください。
 
 ### 匿名参加のセッション
 
@@ -403,7 +403,7 @@ NovelAIはPNGのtEXtチャンクと、アルファ値の最下位ビット（`st
 
 管理画面は`src/routes/admin/route.tsx`の枠（左のメニュー）の中に、お題・対戦条件・よく使う表現・画像生成・採点ワーカー・採点ジョブ・バックアップの画面を並べます。仕様は[ゲーム仕様](product.md#管理画面)、画像の保存先とバックアップの方式を選んだ理由は[ADR 0007](decisions/0007-topic-images-and-backup.md)を参照してください。
 
-お題の画像はR2のバケット（binding `TOPIC_IMAGES`）の`topics/<お題ID>/<画像ID>`に保存し、`src/routes/topic-images.$topicId.$imageId.ts`のServer Routeで配信します。配信ではセッションを確かめず、`Cache-Control: public, max-age=31536000, immutable`を付けます。画像を差し替えると画像IDを変えて新しいURLにし、古い画像は過去の対戦結果のために消しません。`topic.image_url`には`BETTER_AUTH_URL`を基にした配信URLを保存し、対戦の状態と採点が絶対URLを使えるようにします。
+お題の画像はR2のバケット（binding `TOPIC_IMAGES`）の`topics/<お題ID>/<画像ID>`に保存し、`src/routes/topic-images.$topicId.$imageId.ts`のServer Routeで配信します。配信ではセッションを確かめず、`Cache-Control: public, max-age=31536000, immutable`を付けます。画像を差し替えると画像IDを変えて新しいURLにし、古い画像は過去の対戦結果のために消しません。`topic.image_url`には`BETTER_AUTH_URL`を基にした配信URLを保存し、対戦の状態と採点ジョブが絶対URLを使えるようにします。画面へ渡すときは、生成画像と同じく同じオリジンのパスにします。
 
 画像のメタデータは管理画面で消します。ブラウザーで画像を白で塗ったcanvasに描き直してWebPにし、Server FunctionへFormDataで送ります。サーバーは`src/features/battle/topic-images.ts`でWebPのチャンクを確かめ、EXIF・XMP・アニメーションがあれば保存しません。お題の画像はWorkersでは変換しません。
 

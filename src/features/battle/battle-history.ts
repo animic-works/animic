@@ -7,6 +7,7 @@ import {
   submissionSchema,
   topicSchema,
 } from "./battle-state";
+import { toImageSrc } from "./image-src";
 
 /** D1の`battle_result.data`。`serializeBattleResult`が書き出す形。 */
 export const savedBattleResultSchema = v.object({
@@ -43,6 +44,12 @@ function submittedImageUrl(saved: SavedBattleResult, participantId: string) {
   return (
     saved.submittedImages.find((image) => image.participantId === participantId)?.imageUrl ?? null
   );
+}
+
+// 画面に渡す画像のURL。保存したURLは保存した時点の`BETTER_AUTH_URL`を基にしているため、同じオリジンのパスにする。
+function submittedImageSrc(saved: SavedBattleResult, participantId: string) {
+  const url = submittedImageUrl(saved, participantId);
+  return url === null ? null : toImageSrc(url);
 }
 
 /** 保存する結果から、参加者ごとの戦績の行を作る。順位とスコアは結果画面と同じ規則で求める。 */
@@ -107,7 +114,7 @@ export function getBattleDetail(saved: SavedBattleResult, participantId: string)
       ),
       imageUrl:
         id === participantId || saved.scores?.some((score) => score.participantId === id)
-          ? submittedImageUrl(saved, id)
+          ? submittedImageSrc(saved, id)
           : null,
     }))
     .toSorted((a, b) => (a.rank ?? Infinity) - (b.rank ?? Infinity));
@@ -115,13 +122,13 @@ export function getBattleDetail(saved: SavedBattleResult, participantId: string)
     battleId: saved.battleId,
     roomCode: saved.roomCode,
     startedAt: saved.startedAt,
-    topicImageUrl: saved.topic.imageUrl,
+    topicImageUrl: toImageSrc(saved.topic.imageUrl),
     settings: saved.settings,
     participantCount: saved.participantIds.length,
     resultKind: saved.result.kind,
     rank: getRank(participantId, saved.result, saved.scores),
     total: myScore?.total ?? null,
-    imageUrl: submittedImageUrl(saved, participantId),
+    imageUrl: submittedImageSrc(saved, participantId),
     submission:
       submission?.status === "submitted"
         ? {
