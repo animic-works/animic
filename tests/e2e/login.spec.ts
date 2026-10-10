@@ -70,7 +70,7 @@ test("ログイン中はアカウントの名前と最後に使ったサービ�
   expect(await page.evaluate(() => window.animicTest.getCurrentParticipant())).toEqual({
     id: userId,
     isAnonymous: false,
-    account: { name: "ねこぜ", provider: "google" },
+    account: { name: "ねこぜ", provider: "google", icon: null },
   });
 
   const other = await browser.newContext({
@@ -84,7 +84,7 @@ test("ログイン中はアカウントの名前と最後に使ったサービ�
     expect(await otherPage.evaluate(() => window.animicTest.getCurrentParticipant())).toEqual({
       id: userId,
       isAnonymous: false,
-      account: { name: "ねこぜ", provider: "discord" },
+      account: { name: "ねこぜ", provider: "discord", icon: null },
     });
   } finally {
     await other.close();
@@ -145,7 +145,7 @@ test("匿名の参加者がログインすると参加者IDを切り替え、匿
     expect(await guest.evaluate(() => window.animicTest.getCurrentParticipant())).toEqual({
       id: userId,
       isAnonymous: false,
-      account: { name: "ぴくせる侍", provider: "discord" },
+      account: { name: "ぴくせる侍", provider: "discord", icon: null },
     });
     // 匿名のユーザーは残し、セッションだけを失効させる。
     expect(

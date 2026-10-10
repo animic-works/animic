@@ -26,6 +26,11 @@ export const getCurrentParticipant = createServerFn({ method: "GET" }).handler(a
   return {
     id: user.id,
     isAnonymous: false,
-    account: { name: user.name, provider: provider.success ? provider.output : null },
+    // アイコンは保存した文字列のまま返し、選べる値かどうかは画面側（account）で確かめる。
+    account: {
+      name: user.name,
+      provider: provider.success ? provider.output : null,
+      icon: user.icon ?? null,
+    },
   };
 });

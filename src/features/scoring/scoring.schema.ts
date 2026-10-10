@@ -34,7 +34,10 @@ export const scoringJob = sqliteTable(
     rawResult: text("raw_result"),
     error: text("error"),
   },
-  (table) => [index("scoring_job_state_created_at_idx").on(table.state, table.createdAt)],
+  (table) => [
+    index("scoring_job_state_created_at_idx").on(table.state, table.createdAt),
+    index("scoring_job_battle_id_idx").on(table.battleId),
+  ],
 );
 
 export const scoringResult = sqliteTable(

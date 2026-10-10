@@ -11,9 +11,9 @@ function room(): RoomState {
     version: 1,
     hostId: "host",
     members: [
-      { id: "host", name: "ホスト", ready: false },
-      { id: "first", name: "先に参加", ready: true },
-      { id: "second", name: "後に参加", ready: false },
+      { id: "host", name: "ホスト", ready: false, icon: null },
+      { id: "first", name: "先に参加", ready: true, icon: null },
+      { id: "second", name: "後に参加", ready: false, icon: null },
     ],
     hostDisconnectedUntil: null,
     closesAt: null,
@@ -91,6 +91,7 @@ function members(count: number) {
     id: `m${index}`,
     name: `参加者${index}`,
     ready: false,
+    icon: null,
   }));
 }
 

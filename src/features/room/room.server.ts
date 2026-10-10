@@ -24,6 +24,7 @@ import {
   getScoringJobs,
   registerScoringJobs,
 } from "../scoring/scoring-jobs.server";
+import type { AccountIcon } from "../account/account-icon";
 import { isRoomCreationRetry } from "./room-creation";
 import type { RoomCreation } from "./room-creation";
 import { session } from "../../lib/auth-schema";
@@ -74,7 +75,11 @@ export class Room extends DurableObject<Env> {
       );
       const battle = state.battle;
       if (battle?.result) {
-        const data = serializeBattleResult(battle, state.code);
+        const data = serializeBattleResult(
+          battle,
+          state.code,
+          new Map(state.members.map((member) => [member.id, member.name])),
+        );
         this.ctx.storage.sql.exec(
           "INSERT OR IGNORE INTO result_delivery (battle_id, data, retry_at) VALUES (?, ?, ?)",
           battle.id,
@@ -269,7 +274,7 @@ export class Room extends DurableObject<Env> {
     await this.#schedule();
   }
 
-  async create(code: string, creation: RoomCreation) {
+  async create(code: string, creation: RoomCreation, icon: AccountIcon | null) {
     const previous = this.#reconcile();
     if (previous) {
       if (!isRoomCreationRetry(previous.creation, creation)) return false;
@@ -285,7 +290,7 @@ export class Room extends DurableObject<Env> {
       battle: null,
       settings: null,
       hostId: participantId,
-      members: [{ id: participantId, name, ready: false }],
+      members: [{ id: participantId, name, ready: false, icon }],
       hostDisconnectedUntil: null,
       closesAt: Date.now() + 30 * 60_000,
       closed: false,
@@ -306,13 +311,13 @@ export class Room extends DurableObject<Env> {
     };
   }
 
-  async join(participantId: string, name: string) {
+  async join(participantId: string, name: string, icon: AccountIcon | null) {
     const state = this.#reconcile();
     if (!state || state.closed) throw new Error("ルームが見つからないか、終了しています。");
     if (!canJoinRoom(state, participantId))
       throw new Error(`このルームは満員です（${roomCapacity}人まで）。`);
     if (!state.members.some((member) => member.id === participantId)) {
-      state.members.push({ id: participantId, name, ready: false });
+      state.members.push({ id: participantId, name, ready: false, icon });
       this.#save(state);
     }
     await this.#publish();

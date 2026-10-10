@@ -69,3 +69,22 @@ export function ArrowIcon({ direction = "right" }: { direction?: "right" | "left
     </svg>
   );
 }
+
+export function AccountIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="8.5" r="4" />
+      <path d="M4.5 20.5c1.2-4 4-6 7.5-6s6.3 2 7.5 6" />
+    </svg>
+  );
+}

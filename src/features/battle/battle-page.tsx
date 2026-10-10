@@ -5,6 +5,7 @@ import { Page } from "@animic/react/page";
 import { Stack } from "@animic/react/stack";
 import { Text } from "@animic/react/text";
 import { Workspace } from "@animic/react/workspace";
+import type { AccountIcon } from "../account/account-icon";
 import { PromptComposer } from "../image-generation/prompt-composer";
 import { GridBackdrop } from "../shared/visuals/grid-backdrop";
 import { getBattleClock, getBattleDeadline } from "./battle-clock";
@@ -80,6 +81,7 @@ export function BattlePage({
   battle,
   stage,
   names,
+  icons,
   participantId,
   receivedAt,
   entering = false,
@@ -88,6 +90,7 @@ export function BattlePage({
   battle: BattleSnapshot;
   stage: BattleStage;
   names: Map<string, string>;
+  icons: Map<string, AccountIcon | null>;
   participantId: string;
   receivedAt: number | null;
   entering?: boolean;
@@ -130,6 +133,7 @@ export function BattlePage({
             participantIds={battle.participantIds}
             participantId={participantId}
             names={names}
+            icons={icons}
             submitted={mySubmission?.status === "submitted"}
             generating={images.pendings.length > 0}
             successCount={images.succeeded.length}

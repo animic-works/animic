@@ -5,6 +5,7 @@ import { CodeDisplay } from "@animic/react/code-display";
 import { Progress } from "@animic/react/progress";
 import { Readout } from "@animic/react/readout";
 import { AppBrand } from "../shared/app-brand";
+import { accountIconAvatar, type AccountIcon } from "../account/account-icon";
 import { levels, playerPalettes } from "../room/room-presentation";
 import type { getBattleClock } from "./battle-clock";
 import type { BattleSnapshot } from "./battle-state";
@@ -62,6 +63,7 @@ export function BattlePlayers({
   participantIds,
   participantId,
   names,
+  icons,
   submitted,
   generating,
   successCount,
@@ -69,6 +71,7 @@ export function BattlePlayers({
   participantIds: readonly string[];
   participantId: string;
   names: Map<string, string>;
+  icons: Map<string, AccountIcon | null>;
   submitted: boolean;
   generating: boolean;
   successCount: number;
@@ -92,7 +95,10 @@ export function BattlePlayers({
               size="small"
               name={name}
               fallback={Array.from(name)[0]}
-              palette={playerPalettes[index % playerPalettes.length]}
+              {...accountIconAvatar(
+                icons.get(id) ?? null,
+                playerPalettes[index % playerPalettes.length],
+              )}
               status={current ? status : undefined}
             />
           ),

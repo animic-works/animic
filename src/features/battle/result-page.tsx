@@ -15,6 +15,7 @@ import { Surface } from "@animic/react/surface";
 import { Text } from "@animic/react/text";
 import { AppBrand } from "../shared/app-brand";
 import { GridBackdrop } from "../shared/visuals/grid-backdrop";
+import { accountIconAvatar, type AccountIcon } from "../account/account-icon";
 import { levels, playerPalettes } from "../room/room-presentation";
 import { getResultEntries, getResultHeadline, type ResultEntry } from "./battle-outcome";
 import type { BattleSnapshot } from "./battle-state";
@@ -23,11 +24,13 @@ import { ResultBurst, ResultConfetti } from "./visuals/result-artwork";
 function ParticipantResult({
   entry,
   name,
+  icon,
   mine,
   seat,
 }: {
   entry: ResultEntry;
   name: string;
+  icon: AccountIcon | null;
   mine: boolean;
   seat: number;
 }) {
@@ -38,7 +41,7 @@ function ParticipantResult({
           <Avatar
             name={name}
             fallback={Array.from(name)[0]}
-            palette={playerPalettes[seat % playerPalettes.length]}
+            {...accountIconAvatar(icon, playerPalettes[seat % playerPalettes.length])}
           />
           <Heading level={2} size="title">
             {name}
@@ -76,6 +79,7 @@ export function ResultPage({
   battle,
   participantId,
   names,
+  icons,
   onRematch,
   onTop,
 }: {
@@ -83,6 +87,7 @@ export function ResultPage({
   battle: BattleSnapshot;
   participantId: string;
   names: Map<string, string>;
+  icons: Map<string, AccountIcon | null>;
   onRematch: () => void;
   onTop: () => void;
 }) {
@@ -108,6 +113,7 @@ export function ResultPage({
             battle={battle}
             participantId={participantId}
             names={names}
+            icons={icons}
             onRematch={onRematch}
             onTop={onTop}
           />,
@@ -128,6 +134,7 @@ export function ResultPage({
         names.get(entry.participantId) ??
         (entry.participantId === participantId ? "あなた" : "相手")
       }
+      icon={icons.get(entry.participantId) ?? null}
       mine={entry.participantId === participantId}
       seat={battle.participantIds.indexOf(entry.participantId)}
     />

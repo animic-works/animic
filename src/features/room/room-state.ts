@@ -1,5 +1,6 @@
 import * as v from "valibot";
 
+import { accountIconSchema } from "../account/account-icon";
 import {
   battleStateSchema,
   battleSettingsSchema,
@@ -23,7 +24,13 @@ export function canJoinRoom(state: Pick<RoomState, "members">, participantId: st
   );
 }
 export const participantNameSchema = v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(20));
-const memberSchema = v.object({ id: v.string(), name: participantNameSchema, ready: v.boolean() });
+const memberSchema = v.object({
+  id: v.string(),
+  name: participantNameSchema,
+  ready: v.boolean(),
+  // 作成・参加したときのアイコン。ログインしていない参加者や、選んでいない参加者はnull。
+  icon: v.optional(v.nullable(accountIconSchema), null),
+});
 export const roomStateSchema = v.object({
   creation: v.optional(
     v.nullable(

@@ -11,6 +11,7 @@ import { StatusLabel } from "@animic/react/status-label";
 import { Surface } from "@animic/react/surface";
 import { Text } from "@animic/react/text";
 import { Tile, TileCollection } from "@animic/react/tile-collection";
+import { accountIconAvatar } from "../account/account-icon";
 import { InviteIcon } from "../shared/icons";
 import type { getLobbyPlayers, LobbyPlayer } from "./lobby-players";
 import { playerPalettes } from "./room-presentation";
@@ -54,7 +55,7 @@ function PlayerTile({ player }: { player: LobbyPlayer }) {
         <Avatar
           name={player.name}
           fallback={Array.from(player.name)[0]}
-          palette={playerPalettes[player.seat % playerPalettes.length]}
+          {...accountIconAvatar(player.icon, playerPalettes[player.seat % playerPalettes.length])}
         />
       }
       footer={

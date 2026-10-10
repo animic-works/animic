@@ -482,7 +482,12 @@ describe("採点による1対1の勝敗", () => {
       { participantId: "a", total: 71.4, imageUrl: "https://example.invalid/one.png" },
       { participantId: "b", total: 60, imageUrl: "https://example.invalid/two.png" },
     ]);
-    expect(JSON.parse(serializeBattleResult(scored, "ABCDEFGH"))).toMatchObject({
+    const names = new Map([
+      ["a", "エー"],
+      ["c", "対戦にいない人"],
+    ]);
+    expect(JSON.parse(serializeBattleResult(scored, "ABCDEFGH", names))).toMatchObject({
+      names: { a: "エー" },
       result: { kind: "win", winnerId: "a" },
       scores: [
         { participantId: "a", total: 71.4 },
@@ -501,9 +506,9 @@ it("結果保存には提出画像だけを含め、入力ハッシュや未提�
     accept(success(accept(battle(), "selected"), "selected"), "unused"),
     "unused",
   );
-  expect(() => serializeBattleResult(state, "ABCDEFGH")).toThrow();
+  expect(() => serializeBattleResult(state, "ABCDEFGH", new Map())).toThrow();
   state = reconcileBattle(submitImage(state, "a", "selected", 3000), 15_000);
-  const record = serializeBattleResult(state, "ABCDEFGH");
+  const record = serializeBattleResult(state, "ABCDEFGH", new Map());
   expect(record).toContain("selected.png");
   expect(record).not.toContain("unused.png");
   expect(record).not.toContain("inputHash");
@@ -513,7 +518,7 @@ it("結果保存には提出画像だけを含め、入力ハッシュや未提�
 describe("同じルームでの再戦", () => {
   it("対戦ID・履歴・締切を新しくし、前の提出と結果は変更しない", () => {
     const ended = reconcileBattle(battle(), 15_000);
-    const saved = serializeBattleResult(ended, "ABCDEFGH");
+    const saved = serializeBattleResult(ended, "ABCDEFGH", new Map());
     const next = startNextBattle(ended, ended.id, ended.settings, ended.topic, ["a", "c"], 20_000);
     expect(next.id).not.toBe(ended.id);
     expect(next.previousBattleId).toBe(ended.id);
@@ -523,7 +528,7 @@ describe("同じルームでの再戦", () => {
     expect(next.submissions).toEqual([]);
     expect(next.result).toBeNull();
     expect(next.selectionEndsAt).toBeNull();
-    expect(serializeBattleResult(ended, "ABCDEFGH")).toBe(saved);
+    expect(serializeBattleResult(ended, "ABCDEFGH", new Map())).toBe(saved);
   });
   it("進行中の対戦を再戦操作で置き換えない", () => {
     const current = battle();

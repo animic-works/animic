@@ -69,6 +69,7 @@ export function RoomPage({
   const current = target.kind === shown.screen.kind ? { screen: target, at: received.at } : shown;
   const { screen } = current;
   const names = new Map(room.members.map((member) => [member.id, member.name]));
+  const icons = new Map(room.members.map((member) => [member.id, member.icon]));
   if (!leaving && !silent.has(connection) && !temporary.has(connection))
     return (
       <Dialog
@@ -96,6 +97,7 @@ export function RoomPage({
         receivedAt={current.at}
         entering={shown.entering}
         names={names}
+        icons={icons}
         participantId={participantId}
       />
     );
@@ -105,6 +107,7 @@ export function RoomPage({
         code={room.code}
         battle={screen.battle}
         names={names}
+        icons={icons}
         participantId={participantId}
         onRematch={() => setDismissed(screen.battle.id)}
         onTop={() => navigate("/")}

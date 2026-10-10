@@ -44,6 +44,8 @@ export function createAuth() {
       transaction: false,
     }),
     session: { cookieCache: { enabled: false } },
+    // アイコンはマイページのServer Functionだけで変更し、認証のAPIからは受け付けない。
+    user: { additionalFields: { icon: { type: "string", required: false, input: false } } },
     // IDと秘密情報の両方を設定したサービスだけを有効にする。
     socialProviders: {
       google: {

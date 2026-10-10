@@ -9,6 +9,7 @@ import { Input } from "@animic/react/input";
 import { QrCode } from "@animic/react/qr-code";
 import { Stack } from "@animic/react/stack";
 import { Text } from "@animic/react/text";
+import { accountIconAvatar } from "../account/account-icon";
 import type { LobbyPlayer } from "./lobby-players";
 
 export function InviteDialog({
@@ -128,7 +129,7 @@ export function StartAnywayDialog({
       <Stack>
         {waiting.map((player) => (
           <Cluster key={player.id}>
-            <Avatar name={player.name} size="compact" />
+            <Avatar name={player.name} size="compact" {...accountIconAvatar(player.icon)} />
             <Text variant="label">{player.name}</Text>
             <Text variant="caption" tone="muted">
               準備中
