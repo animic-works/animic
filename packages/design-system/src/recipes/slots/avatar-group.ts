@@ -31,7 +31,7 @@ export const avatarGroup = defineSlotRecipe({
       gap: "2",
       listStyle: "none",
       margin: "0",
-      padding: "1",
+      padding: "0.3rem",
       border: "2px solid token(colors.border.default)",
       borderRadius: "full",
       background: "bg.surface",
@@ -45,7 +45,12 @@ export const avatarGroup = defineSlotRecipe({
       gap: "2",
       minWidth: 0,
       borderRadius: "full",
-      "&[data-current]": { background: "bg.accent.primary" },
+      // 本人の項目は淡いピンクの地に、内側へ白い縁を足して明るくする。
+      "&[data-current]": {
+        background:
+          "color-mix(in srgb, token(colors.bg.accent.primary) 70%, token(colors.neutral.0))",
+        boxShadow: "inset 0 0 0 2px token(colors.neutral.0)",
+      },
     },
     text: { minWidth: 0, display: "grid", _avatarGroupCompact: { display: "none" } },
     name: {
@@ -83,11 +88,12 @@ export const avatarGroup = defineSlotRecipe({
       // 縮めきれない人数では一覧を横にスクロールする。
       compact: {
         item: {
-          flex: "0 1 9.5rem",
-          minWidth: "5.5rem",
-          padding: "0.2rem 0.7rem 0.2rem 0.2rem",
+          flex: "0 1 8.25rem",
+          minWidth: "6rem",
+          gap: "0.4rem",
+          padding: "0.2rem 0.85rem 0.2rem 0.2rem",
           // 本人の項目は状態の文言を省略しない幅を保つ。
-          "&[data-current]": { flex: "0 0 auto", minWidth: "10.5rem", maxWidth: "12rem" },
+          "&[data-current]": { flex: "0 0 auto", minWidth: "9.25rem", maxWidth: "11rem" },
           _avatarGroupCompact: {
             flexBasis: "auto",
             minWidth: 0,
@@ -95,8 +101,14 @@ export const avatarGroup = defineSlotRecipe({
             "&[data-current]": { minWidth: 0 },
           },
         },
-        name: { lineHeight: "1" },
-        detail: { lineHeight: "1", overflow: "hidden", textOverflow: "ellipsis" },
+        // 名前と状態は小さめの文字で2行に収め、一覧の高さを抑える。
+        name: { fontSize: "0.8rem", lineHeight: "1.2" },
+        detail: {
+          fontSize: "0.65rem",
+          lineHeight: "1.2",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        },
       },
       expanded: {
         text: { _avatarGroupCompact: { display: "grid" } },

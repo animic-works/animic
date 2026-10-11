@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@animic/react/button";
 import { Heading } from "@animic/react/heading";
 import { Page } from "@animic/react/page";
@@ -9,13 +9,7 @@ import type { AccountIcon } from "../account/account-icon";
 import { PromptComposer } from "../image-generation/prompt-composer";
 import { GridBackdrop } from "../shared/visuals/grid-backdrop";
 import { getBattleClock, getBattleDeadline, isScoringSlow } from "./battle-clock";
-import {
-  BattlePlayers,
-  BattleProgress,
-  BattleRoomLabel,
-  BattleRules,
-  BattleTimer,
-} from "./battle-header";
+import { BattlePlayers, BattleProgress, BattleRoomLabel, BattleTimer } from "./battle-header";
 import { getBattleImages, type BattleImagePick } from "./battle-images";
 import { BattleImagesPanel } from "./battle-images-panel";
 import { useModifierKey, useQuickSubmit } from "./battle-preferences";
@@ -98,6 +92,15 @@ export function BattlePage({
   entering?: boolean;
 }) {
   const [pick, setPick] = useState<BattleImagePick | null>(null);
+  // 提出するまでは、タブを閉じる・再読み込みする前にブラウザの確認を出す。
+  const leaving = stage === "generating" || stage === "finishing" || stage === "selecting";
+  useEffect(() => {
+    const confirmLeave = (event: BeforeUnloadEvent) => {
+      if (leaving) event.preventDefault();
+    };
+    addEventListener("beforeunload", confirmLeave);
+    return () => removeEventListener("beforeunload", confirmLeave);
+  }, [leaving]);
   const [zoomOpen, setZoomOpen] = useState(false);
   const [expanded, setExpanded] = useState(true);
   const [quick, setQuick] = useQuickSubmit();
@@ -133,8 +136,7 @@ export function BattlePage({
   return (
     <Page decoration={<GridBackdrop />}>
       <Workspace
-        headerStart={<BattleRoomLabel code={code} />}
-        headerDetail={<BattleRules settings={battle.settings} />}
+        headerStart={<BattleRoomLabel code={code} settings={battle.settings} />}
         headerCenter={remaining !== null && <BattleTimer stage={stage} clock={clock} />}
         headerEnd={
           <BattlePlayers
@@ -195,6 +197,7 @@ export function BattlePage({
         open={zoomOpen && !waiting}
         onOpenChange={setZoomOpen}
         imageUrl={battle.topic.imageUrl}
+        compareUrl={images.selected?.imageUrl}
       />
       <SubmitConfirmDialog
         image={confirmed}

@@ -1,3 +1,7 @@
+import { useState } from "react";
+import { Grid } from "@animic/react/grid";
+import { SegmentedControl } from "@animic/react/segmented-control";
+import { TopicViewer, topicZoomLevels } from "./visuals/topic-viewer";
 import { ActionGroup } from "@animic/react/action-group";
 import { Button } from "@animic/react/button";
 import { Dialog } from "@animic/react/dialog";
@@ -20,18 +24,63 @@ export function TopicZoomDialog({
   open,
   onOpenChange,
   imageUrl,
+  compareUrl,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   imageUrl: string;
+  /** 並べて比べる自分の画像。なければ比べる操作を出さない。 */
+  compareUrl?: string;
 }) {
+  const [zoom, setZoom] = useState(1);
+  const [comparing, setComparing] = useState(false);
+  const side = comparing && compareUrl;
   return (
-    <Dialog open={open} onOpenChange={onOpenChange} title="お題" closeButton={false} size="compact">
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        onOpenChange(next);
+        if (!next) setZoom(1);
+      }}
+      title="お題"
+      closeButton={false}
+      size={side ? "expanded" : "standard"}
+      presentation="centered"
+    >
       <Stack>
-        <Media src={imageUrl} alt="お題のイラスト（全体）" aspect="portrait" fit="contain" />
-        <Button appearance="secondary" shape="pill" onClick={() => onOpenChange(false)}>
-          閉じる
-        </Button>
+        <Grid columns={side ? 2 : 1} space="compact" collapse="none">
+          <TopicViewer
+            src={imageUrl}
+            alt="お題のイラスト（全体）"
+            zoom={zoom}
+            onZoomChange={setZoom}
+          />
+          {side && (
+            <TopicViewer src={compareUrl} alt="あなたの画像" zoom={zoom} onZoomChange={setZoom} />
+          )}
+        </Grid>
+        <Cluster justify="between" space="compact">
+          <SegmentedControl
+            label="拡大"
+            appearance="pill"
+            density="compact"
+            value={String(zoom)}
+            options={topicZoomLevels.map((level) => ({
+              value: String(level),
+              label: level === 1 ? "全体" : `${level}倍`,
+            }))}
+            onValueChange={(value) => setZoom(Number(value))}
+          />
+          {compareUrl && (
+            <Switch checked={comparing} onCheckedChange={setComparing} label="自分の画像と並べる" />
+          )}
+          <Button appearance="secondary" shape="pill" onClick={() => onOpenChange(false)}>
+            閉じる
+          </Button>
+        </Cluster>
+        <Text as="p" variant="caption" tone="muted">
+          ホイールかダブルクリックで拡大し、ドラッグで動かせます。
+        </Text>
       </Stack>
     </Dialog>
   );
@@ -80,7 +129,9 @@ export function SubmitConfirmDialog({
         />
         {error && (
           <div role="alert">
-            <Text tone="danger">{error}</Text>
+            <Text variant="caption" tone="danger">
+              {error}
+            </Text>
           </div>
         )}
         <ActionGroup layout="confirm">

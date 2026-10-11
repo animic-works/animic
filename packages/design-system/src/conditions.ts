@@ -22,6 +22,8 @@ export const conditions = {
   dialogExpandedCompact: "@media (max-width: 53.75em), (max-aspect-ratio: 1/1)",
   avatarGroupNarrow: "@media (max-width: 35em)",
   composerCompact: "@media (max-width: 35em)",
+  // プロンプト欄の幅が狭いとき（幅1150px前後の画面の左の列）。部品を一回り小さくする。
+  composerNarrow: "@container animic-composer (max-width: 16.875rem)",
   readoutCompact: "@media (max-width: 35em)",
   readoutNarrow: "@media (max-width: 53.75em)",
   avatarGroupCompact: "@container animic-avatar-group (max-width: 24em)",

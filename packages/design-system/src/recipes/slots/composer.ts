@@ -16,6 +16,8 @@ export const composer = defineSlotRecipe({
   ],
   base: {
     root: {
+      containerType: "inline-size",
+      containerName: "animic-composer",
       display: "grid",
       gridTemplateColumns: "minmax(0, 1fr)",
       gridTemplateRows: "auto auto minmax(8rem, 1fr) auto auto",
@@ -23,26 +25,32 @@ export const composer = defineSlotRecipe({
       minHeight: 0,
       minWidth: 0,
     },
+    // 見出しと入力方法の切り替えは、狭い幅でも同じ行に置く。
     header: {
       display: "flex",
-      flexWrap: "wrap",
+      flexWrap: "nowrap",
       alignItems: "center",
       justifyContent: "space-between",
       gap: "3",
     },
-    title: { minWidth: 0 },
+    // 見出しは折り返さない。
+    title: { minWidth: 0, flexShrink: 0, whiteSpace: "nowrap" },
+    // 入力方法の切り替えは縮めず、見出しの右に置く。
+    controls: { flexShrink: 0 },
     eyebrow: {
       textStyle: "eyebrow.strong",
       color: "accent.primary",
       _composerCompact: { display: "none" },
     },
-    controls: { flexShrink: 0, maxWidth: "100%" },
-    tabs: { minWidth: 0 },
+    // 欄の切り替えは縮めず、入らなければ横にスクロールする。
+    tabs: { minWidth: 0, overflowX: "auto", scrollbarWidth: "none" },
     input: { minHeight: 0, minWidth: 0, display: "flex", flexDirection: "column" },
+    // 検索の2つの操作は横に並べる。
     tools: {
       display: "grid",
       gap: "2",
-      _composerCompact: { gridTemplateColumns: "repeat(2, minmax(0, 1fr))" },
+      gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+      "& > button": { whiteSpace: "nowrap", minWidth: 0 },
     },
     footer: {
       display: "grid",
@@ -53,7 +61,18 @@ export const composer = defineSlotRecipe({
         gap: "4",
       },
     },
-    summary: { minWidth: 0 },
+    // 生成できない理由と生成回数は1行にし、入らない理由は省略する。
+    summary: {
+      minWidth: 0,
+      paddingInlineEnd: "2",
+      "& > * > :first-child": {
+        minWidth: 0,
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap",
+      },
+      "& > * > :last-child": { flexShrink: 0, whiteSpace: "nowrap" },
+    },
     action: { display: "grid", minWidth: 0 },
   },
 });

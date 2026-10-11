@@ -103,8 +103,13 @@ export const segmentedControl = defineSlotRecipe({
       appearance: "pill",
       density: "compact",
       css: {
-        item: { minHeight: "1.5rem", padding: "0.2rem 0.6rem" },
-        label: { textStyle: "caption", fontWeight: "bold" },
+        item: {
+          minHeight: "1.5rem",
+          padding: "0.2rem 0.6rem",
+          whiteSpace: "nowrap",
+          _composerNarrow: { padding: "0.15rem 0.45rem", gap: "1" },
+        },
+        label: { textStyle: "caption", fontWeight: "bold", whiteSpace: "nowrap" },
       },
     },
   ],
@@ -199,10 +204,15 @@ export const segmentedControl = defineSlotRecipe({
         control: { display: "none" },
       },
       chips: {
-        group: { padding: "0", gap: "2", background: "transparent" },
+        // 欄の切り替えは狭い幅でも1行に並べる。
+        group: { padding: "0", gap: "2", background: "transparent", flexWrap: "nowrap" },
         item: {
           minHeight: "1.7rem",
-          padding: "0.25rem 0.6rem",
+          padding: "0.25rem 0.55rem",
+          gap: "2",
+          flexShrink: 0,
+          whiteSpace: "nowrap",
+          _composerNarrow: { padding: "0.2rem 0.45rem", gap: "1", fontSize: "0.8rem" },
           borderRadius: "full",
           borderWidth: "1",
           borderColor: "transparent",

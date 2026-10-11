@@ -69,7 +69,8 @@ export const progress = defineSlotRecipe({
       labeled: {},
       track: {
         root: { gap: "0" },
-        track: { height: "0.375rem", border: "0" },
+        // 過ぎた分も白い地で残し、全体の長さがわかるようにする。
+        track: { height: "0.375rem", border: "0", background: "bg.surface" },
         label: { srOnly: true },
         value: { display: "none" },
       },

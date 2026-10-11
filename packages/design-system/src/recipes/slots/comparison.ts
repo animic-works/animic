@@ -19,20 +19,37 @@ export const comparison = defineSlotRecipe({
   ],
   base: {
     artwork: { minHeight: 0, minWidth: 0, display: "grid", placeItems: "center" },
+    // 左右の見出しは札の有無にかかわらず同じ高さにする。
     caption: {
+      minHeight: "1.75rem",
       display: "flex",
-      flexWrap: "wrap",
+      flexWrap: "nowrap",
       alignItems: "center",
       justifyContent: "center",
       gap: "2",
       textAlign: "center",
       minWidth: 0,
+      // 「お題」と札は縮めず、説明だけを省略する。
+      "& > *": { flexShrink: 0, whiteSpace: "nowrap" },
+      "& > [class*=description]": { flexShrink: 1 },
     },
-    description: { _comparisonCompact: { display: "none" } },
+    // 見出しは1行に保ち、入らない説明は省略する。
+    description: {
+      minWidth: 0,
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      whiteSpace: "nowrap",
+      _comparisonCompact: { display: "none" },
+    },
     decoration: { position: "absolute", inset: "0", pointerEvents: "none" },
     heading: { _comparisonCompact: { display: "none" } },
     preferences: { minWidth: 0 },
-    header: { gridArea: "1 / 1 / 2 / -1", _comparisonCompact: { display: "none" } },
+    header: {
+      gridArea: "1 / 1 / 2 / -1",
+      // 幅が広いときは見出しを左の列だけに置き、右の履歴の列を上から始める。
+      _comparisonWide: { gridArea: "1 / 1 / 2 / 2" },
+      _comparisonCompact: { display: "none" },
+    },
     root: {
       padding: "1.1rem",
       layerStyle: "surface.raised",
@@ -59,7 +76,15 @@ export const comparison = defineSlotRecipe({
       gridArea: "2 / 1",
       minHeight: "0",
       display: "grid",
-      gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+      // 縦長の画像を、画面の高さに収まる幅まで縮める（ヘッダー・見出し・説明の分を引いた高さから求める）。
+      // 履歴が下の段に並ぶ幅では、その分も引く。
+      gridTemplateColumns:
+        "repeat(2, min(calc(50% - 0.75rem), max(10rem, calc((100svh - 25rem) * 13 / 19))))",
+      _comparisonWide: {
+        gridTemplateColumns:
+          "repeat(2, min(calc(50% - 0.75rem), max(10rem, calc((100svh - 18rem) * 13 / 19))))",
+      },
+      justifyContent: "center",
       gridTemplateRows: "auto auto",
       alignItems: "center",
       alignContent: "center",
@@ -110,7 +135,7 @@ export const comparison = defineSlotRecipe({
         flexDirection: "column",
         justifyContent: "space-between",
         alignItems: "stretch",
-        gridArea: "2 / 2",
+        gridArea: "1 / 2 / 3 / 3",
         borderLeft: "2px dashed token(colors.border.default)",
         paddingLeft: "5",
         paddingTop: "0",

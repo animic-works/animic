@@ -160,6 +160,8 @@ export const button = defineRecipe({
         minHeight: "control.0",
         paddingInline: "4",
         paddingBlock: "3",
+        // プロンプト欄が狭いときは、2つ並べた操作が1行に収まるよう詰める。
+        _composerNarrow: { paddingInline: "2", gap: "0.3rem", fontSize: "0.78rem" },
       },
       md: { minHeight: "control.1", paddingInline: "5", paddingBlock: "3" },
       lg: {
@@ -253,7 +255,13 @@ export const button = defineRecipe({
       tone: "green",
       css: {
         "--animic-button-color": "token(colors.green.1)",
-        [buttonAvailable]: { background: "green.0", color: "green.1" },
+        // 白い面の上でも押せる操作とわかるよう、地を濃くし縁を付ける。
+        [buttonAvailable]: {
+          background: "color-mix(in srgb, token(colors.green.0.5) 22%, token(colors.neutral.0))",
+          color: "green.1",
+          boxShadow:
+            "inset 0 0 0 1.5px color-mix(in srgb, token(colors.green.0.5) 45%, transparent)",
+        },
       },
     },
     {
@@ -262,8 +270,10 @@ export const button = defineRecipe({
       css: {
         "--animic-button-color": "token(colors.fg.accent.highlight)",
         [buttonAvailable]: {
-          background: "bg.accent.highlight",
+          background: "color-mix(in srgb, token(colors.yellow.0) 32%, token(colors.neutral.0))",
           color: "fg.accent.highlight",
+          boxShadow:
+            "inset 0 0 0 1.5px color-mix(in srgb, token(colors.yellow.0) 70%, transparent)",
         },
       },
     },

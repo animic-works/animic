@@ -3,6 +3,7 @@ import { focus } from "../control";
 export const tokenInput = defineSlotRecipe({
   className: "token-input",
   slots: [
+    "placeholder",
     "root",
     "content",
     "input",
@@ -49,6 +50,7 @@ export const tokenInput = defineSlotRecipe({
       },
     },
     content: {
+      position: "relative",
       display: "flex",
       flexWrap: "wrap",
       alignContent: "start",
@@ -57,6 +59,17 @@ export const tokenInput = defineSlotRecipe({
       flex: "1 1 auto",
       overflowY: "auto",
       minHeight: "0",
+    },
+    placeholder: {
+      position: "absolute",
+      insetBlockStart: "0",
+      insetInlineStart: "0",
+      insetInlineEnd: "0",
+      padding: "1",
+      color: "fg.subtle",
+      pointerEvents: "none",
+      whiteSpace: "normal",
+      overflowWrap: "anywhere",
     },
     input: {
       flex: "1 1 8rem",
@@ -68,7 +81,8 @@ export const tokenInput = defineSlotRecipe({
       textStyle: "body.md",
       border: "0",
       outline: "none",
-      _placeholder: { color: "fg.subtle" },
+      // 見える案内は`placeholder`のスロットで重ねて出すため、入力欄のものは読み上げ用に残して隠す。
+      _placeholder: { color: "transparent" },
       _disabled: { color: "disabled.fg", cursor: "not-allowed" },
     },
     footer: {

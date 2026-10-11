@@ -6,8 +6,8 @@ export const readout = defineSlotRecipe({
     root: {
       display: "grid",
       justifyItems: "center",
-      minWidth: "9.5rem",
-      padding: "0.25rem 1rem 0.5rem",
+      minWidth: "8rem",
+      padding: "0.2rem 0.9rem 0.35rem",
       border: "2px solid var(--animic-readout-border, token(colors.border.default))",
       borderRadius: "1.25rem",
       background: "var(--animic-readout-background, token(colors.bg.surface))",

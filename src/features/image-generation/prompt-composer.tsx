@@ -1,14 +1,13 @@
 import type { ReactNode } from "react";
 import { useEffect, useId, useRef, useState } from "react";
 import { ActionGroup } from "@animic/react/action-group";
+import { AccountIcon, PictureIcon, SearchIcon } from "../shared/icons";
 import { Button } from "@animic/react/button";
 import { Cluster } from "@animic/react/cluster";
 import { Composer } from "@animic/react/composer";
 import { Dialog } from "@animic/react/dialog";
 import { Heading } from "@animic/react/heading";
-import { IconButton } from "@animic/react/icon-button";
 import { SegmentedControl } from "@animic/react/segmented-control";
-import { Stack } from "@animic/react/stack";
 import { Text } from "@animic/react/text";
 import { useToast } from "@animic/react/toast";
 import {
@@ -73,6 +72,16 @@ type SearchState = { open: boolean; genre: string | null; query: string };
 
 const INITIAL_STATE: ComposerState = { mode: "text", blocks: [[], []], active: 1, draft: "" };
 
+/** キャラの欄はお題のキャラクターの数に固定する（むずかしいは2人）。足りなければ空の欄を足す。 */
+function withCharacters(state: ComposerState, maxCharacters: 1 | 2): ComposerState {
+  const count = maxCharacters + 1;
+  if (state.blocks.length >= count) return state;
+  return {
+    ...state,
+    blocks: [...state.blocks, ...Array.from({ length: count - state.blocks.length }, () => [])],
+  };
+}
+
 // 入力欄の例。添字は欄（0: ベース, 1: キャラ1, 2: キャラ2）
 const PLACEHOLDERS: Record<PromptMode, string[]> = {
   text: [
@@ -134,7 +143,7 @@ export function PromptComposer({
   // 入力していない間は、この対戦の保存（再接続・再読み込みで作り直す前の入力）を出す
   const saved = useSavedPrompt(battleId, maxCharacters);
   const [edited, setEdited] = useState<ComposerState | null>(null);
-  const state = edited ?? saved ?? INITIAL_STATE;
+  const state = withCharacters(edited ?? saved ?? INITIAL_STATE, maxCharacters);
   const toast = useToast();
   const [requesting, setRequesting] = useState(false);
   const [search, setSearch] = useState<SearchState>({ open: false, genre: null, query: "" });
@@ -172,29 +181,12 @@ export function PromptComposer({
 
   const focusInput = () => inputRef.current?.focus();
   const update = (change: (current: ComposerState) => ComposerState) =>
-    setEdited((current) => change(current ?? saved ?? INITIAL_STATE));
+    setEdited((current) =>
+      change(withCharacters(current ?? saved ?? INITIAL_STATE, maxCharacters)),
+    );
 
   function switchTo(index: number) {
     update((current) => ({ ...commitActive(current), active: index }));
-  }
-
-  function addCharacter() {
-    update((current) => {
-      const committed = commitActive(current);
-      return { ...committed, blocks: [...committed.blocks, []], active: committed.blocks.length };
-    });
-    focusInput();
-  }
-
-  function removeCharacter() {
-    update((current) => {
-      const committed = commitActive(current);
-      return {
-        ...committed,
-        blocks: committed.blocks.slice(0, 2),
-        active: committed.active >= 2 ? 1 : committed.active,
-      };
-    });
   }
 
   function toggleEntry(entry: DictionaryEntry) {
@@ -249,7 +241,7 @@ export function PromptComposer({
     const onKeyDown = (event: KeyboardEvent) => shortcutRef.current(event);
     addEventListener("keydown", onKeyDown);
     return () => removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [shortcutRef]);
 
   // 検索の窓に出すジャンル・カード
   const searchHits = browseDictionary(promptDictionary, search.genre, search.query);
@@ -318,7 +310,7 @@ export function PromptComposer({
           />
         }
         tabs={
-          <Cluster>
+          <Cluster layout="nowrap">
             <SegmentedControl
               label="プロンプトの種類"
               appearance="chips"
@@ -327,26 +319,11 @@ export function PromptComposer({
               options={blocks.map((_, index) => ({
                 value: String(index),
                 label: labelOf(index),
-                leadingIcon: index === 0 ? "■" : "●",
+                leadingIcon: index === 0 ? <PictureIcon /> : <AccountIcon />,
                 tone: TAB_TONES[index],
               }))}
               onValueChange={(value) => switchTo(Number(value))}
             />
-            {blocks.length > 2 && (
-              <IconButton
-                label={`${labelOf(2)}を消す`}
-                size="sm"
-                disabled={locked}
-                onClick={removeCharacter}
-              >
-                ×
-              </IconButton>
-            )}
-            {blocks.length - 1 < maxCharacters && (
-              <Button appearance="quiet" size="sm" disabled={locked} onClick={addCharacter}>
-                ＋ {labelOf(blocks.length)}
-              </Button>
-            )}
           </Cluster>
         }
         tools={
@@ -356,43 +333,43 @@ export function PromptComposer({
               tone="green"
               shape="pill"
               size="sm"
-              compactLabel="ベースを検索"
+              leadingIcon={<SearchIcon />}
               aria-haspopup="dialog"
               disabled={locked}
               onClick={() => openSearch(0)}
             >
-              ベースプロンプトを検索
+              ベースを検索
             </Button>
             <Button
               appearance="soft"
               tone="yellow"
               shape="pill"
               size="sm"
-              compactLabel="キャラを検索"
+              leadingIcon={<SearchIcon />}
               aria-haspopup="dialog"
               disabled={locked}
               onClick={() => openSearch(active === 0 ? 1 : active)}
             >
-              キャラプロンプトを検索
+              キャラを検索
             </Button>
           </>
         }
         summary={
-          <Stack space="tight">
-            {blocker.reason && (
+          // 生成できない理由と生成回数を1行に並べる。
+          <Cluster layout="nowrap" justify="between" space="compact">
+            {blocker.reason ? (
               <Text id={reasonId} variant="caption" tone="muted">
                 {blocker.reason}
               </Text>
+            ) : (
+              <Text variant="eyebrow">Generations</Text>
             )}
             {generationSummary ?? (
-              <>
-                {!blocker.reason && <Text variant="eyebrow">Generations</Text>}
-                <Text variant="label.supporting">
-                  生成 <strong>{successCount}</strong> 回
-                </Text>
-              </>
+              <Text variant="label.supporting">
+                生成 <strong>{successCount}</strong> 回
+              </Text>
             )}
-          </Stack>
+          </Cluster>
         }
         action={
           <Button

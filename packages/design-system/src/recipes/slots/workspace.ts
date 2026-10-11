@@ -38,7 +38,9 @@ export const workspace = defineSlotRecipe({
     layout: {
       display: "grid",
       gridTemplateRows: "auto auto minmax(0, 1fr)",
-      minHeight: "max(100svh, 43.25rem)",
+      // 1画面に収める。中身は本体の行の中で縮める（極端に低い画面だけページを伸ばす）。
+      height: "max(100svh, 34rem)",
+      minHeight: "max(100svh, 34rem)",
       _workspaceCompact: { minHeight: "100svh" },
       _workspaceDocked: { height: "100svh", minHeight: 0, background: "bg.surface" },
       _workspaceShort: { minHeight: "100svh" },
@@ -93,7 +95,8 @@ export const workspace = defineSlotRecipe({
       gridTemplateColumns: "clamp(17rem, 25vw, 25rem) minmax(0, 1fr)",
       gap: "1.1rem",
       padding: "1.1rem clamp(1rem, 3vw, 1.75rem) 1.5rem",
-      minHeight: "38rem",
+      // 画面の高さに合わせて縮める（外枠の高さは`layout`で決める）。
+      minHeight: "0",
       gridTemplateRows: "minmax(0, 1fr)",
       _workspaceShort: { minHeight: "0" },
       _workspaceCompact: { minHeight: "0", _workspaceTall: { _workspaceFlow: stackedBody } },
@@ -129,7 +132,7 @@ export const workspace = defineSlotRecipe({
       _workspaceDocked: {
         position: "relative",
         gridRow: "2",
-        minHeight: "min-content",
+        minHeight: 0,
         zIndex: "navigation",
         borderBottom: "0",
         borderEndStartRadius: "0",

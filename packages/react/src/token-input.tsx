@@ -1,5 +1,6 @@
 import { useScrollViewport } from "./use-scroll-viewport";
 import {
+  Children,
   useState,
   useEffect,
   useRef,
@@ -120,6 +121,12 @@ export function TokenInput({ inputRef, ...props }: TokenInputProps) {
         }}
       >
         {props.children}
+        {/* 入力欄は1行のため、語句がなく空のときは折り返して全文が見える案内を重ねる。 */}
+        {!props.value && !Children.count(props.children) && props.placeholder && (
+          <span className={c.placeholder} aria-hidden="true">
+            {props.placeholder}
+          </span>
+        )}
         <Combobox.Input
           ref={inputRef}
           asChild

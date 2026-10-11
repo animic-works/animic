@@ -50,6 +50,14 @@ export const choiceCard = defineSlotRecipe({
       color: "fg.inverse",
       textStyle: "caption",
     },
-    body: { display: "grid", gap: "1", padding: "3", textStyle: "label.supporting" },
+    body: {
+      display: "grid",
+      gap: "1",
+      padding: "3",
+      textStyle: "label.supporting",
+      minWidth: 0,
+      // 各行は折り返さず、入らない分は省略する。
+      "& > *": { minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
+    },
   },
 });

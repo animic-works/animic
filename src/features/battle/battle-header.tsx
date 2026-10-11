@@ -1,7 +1,7 @@
 import { Avatar } from "@animic/react/avatar";
 import { AvatarGroup } from "@animic/react/avatar-group";
 import { Badge } from "@animic/react/badge";
-import { CodeDisplay } from "@animic/react/code-display";
+import { Text } from "@animic/react/text";
 import { Progress } from "@animic/react/progress";
 import { Readout } from "@animic/react/readout";
 import { AppBrand } from "../shared/app-brand";
@@ -13,22 +13,23 @@ import type { BattleStage } from "./battle-screen";
 
 type BattleClock = ReturnType<typeof getBattleClock>;
 
-export function BattleRoomLabel({ code }: { code: string }) {
+export function BattleRoomLabel({
+  code,
+  settings,
+}: {
+  code: string;
+  settings: BattleSnapshot["settings"];
+}) {
+  // ルームコードと対戦条件は1つの札にまとめ、高さと並びをそろえる。
   return (
     <>
-      <AppBrand />
-      <Badge>
-        ルーム <CodeDisplay value={code} presentation="inline" size="sm" />
+      <AppBrand linked={false} />
+      <Badge tone="surface">
+        ルーム <Text variant="code.compact">{code}</Text>
+        {"｜"}
+        {levels[settings.difficulty].label}・{settings.durationSeconds}秒
       </Badge>
     </>
-  );
-}
-
-export function BattleRules({ settings }: { settings: BattleSnapshot["settings"] }) {
-  return (
-    <Badge>
-      {levels[settings.difficulty].label}・{settings.durationSeconds}秒
-    </Badge>
   );
 }
 

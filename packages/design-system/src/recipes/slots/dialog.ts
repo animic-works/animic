@@ -207,6 +207,9 @@ export const dialog = defineSlotRecipe({
             "calc(1.25rem + var(--animic-dialog-close-space, calc(token(sizes.control.0) + token(spacing.3))))",
         },
         title: { textStyle: "heading.panel", paddingRight: "0" },
+        // 見出し・検索欄・閉じる操作を同じ高さの1行にそろえる。
+        headerActions: { "& input": { minHeight: "control.0", paddingBlock: "2" } },
+        close: { insetBlockStart: "1rem", insetInlineEnd: "1.25rem" },
         body: {
           flex: "1 1 auto",
           minHeight: 0,
