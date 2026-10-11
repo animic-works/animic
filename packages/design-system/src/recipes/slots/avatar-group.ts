@@ -4,12 +4,19 @@ export const avatarGroup = defineSlotRecipe({
   className: "avatar-group",
   slots: ["frame", "summary", "root", "item", "text", "name", "detail", "value", "marker"],
   base: {
-    frame: { display: "flex", alignItems: "center", gap: "3", minWidth: 0 },
-    summary: { display: "grid", flexShrink: 0 },
-    root: {
-      flex: "1 1 auto",
+    // 一覧の利用可能幅は外側の枠で測り、一覧は項目の幅に合わせて端へ寄せる。
+    frame: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "end",
+      gap: "3",
+      minWidth: 0,
       containerType: "inline-size",
       containerName: "animic-avatar-group",
+    },
+    summary: { display: "grid", flexShrink: 0 },
+    root: {
+      flex: "0 1 auto",
       minWidth: 0,
       _avatarGroupNarrow: {
         flex: "1 1 auto",
@@ -36,7 +43,6 @@ export const avatarGroup = defineSlotRecipe({
       display: "flex",
       alignItems: "center",
       gap: "2",
-      padding: "0.1rem 0.4rem",
       minWidth: 0,
       borderRadius: "full",
       "&[data-current]": { background: "bg.accent.primary" },
@@ -73,11 +79,30 @@ export const avatarGroup = defineSlotRecipe({
   },
   variants: {
     presentation: {
-      compact: {},
+      // 項目は同じ幅から等しく縮め、状態の文言が変わっても並びをずらさない。
+      // 縮めきれない人数では一覧を横にスクロールする。
+      compact: {
+        item: {
+          flex: "0 1 9.5rem",
+          minWidth: "5.5rem",
+          padding: "0.2rem 0.7rem 0.2rem 0.2rem",
+          // 本人の項目は状態の文言を省略しない幅を保つ。
+          "&[data-current]": { flex: "0 0 auto", minWidth: "10.5rem", maxWidth: "12rem" },
+          _avatarGroupCompact: {
+            flexBasis: "auto",
+            minWidth: 0,
+            padding: "0.2rem",
+            "&[data-current]": { minWidth: 0 },
+          },
+        },
+        name: { lineHeight: "1" },
+        detail: { lineHeight: "1", overflow: "hidden", textOverflow: "ellipsis" },
+      },
       expanded: {
         text: { _avatarGroupCompact: { display: "grid" } },
         frame: { display: "block" },
         root: {
+          flex: "1 1 auto",
           justifyContent: "safe center",
           flexWrap: "nowrap",
           padding: "0.8rem",
@@ -111,4 +136,5 @@ export const avatarGroup = defineSlotRecipe({
       },
     },
   },
+  defaultVariants: { presentation: "compact" },
 });

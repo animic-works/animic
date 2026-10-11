@@ -85,7 +85,9 @@ export function BattlePlayers({
         const name = names.get(id) ?? (current ? "あなた" : "相手");
         return {
           id,
+          // 本人は項目の色で示し、表示名は縮めずに出す。読み上げでは「（あなた）」を付ける。
           name: current ? `${name}（あなた）` : name,
+          displayName: name,
           current,
           detail: current
             ? `${status === "complete" ? "提出済み" : status === "busy" ? "生成中" : "考え中"}・生成 ${successCount}回`
