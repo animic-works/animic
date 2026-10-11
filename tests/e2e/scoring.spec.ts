@@ -326,8 +326,14 @@ test("生成した画像を提出すると、採点ワーカーへR2の生成画
     const waiting = guestView.getByRole("dialog", { name: "提出しました！" });
     await expect(waiting.getByRole("status", { name: "採点しています" })).toBeVisible();
     await expect(waiting.getByText("採点に時間がかかっています")).toHaveCount(0);
-    await guestView.clock.fastForward(31_000);
-    await expect(waiting.getByText("採点に時間がかかっています")).toBeVisible();
+    // 経過時間は配信を受け取ってから数えるため、時計を進めた直後に配信が届くと数え直しになる。
+    // 案内が出るまで、時計を進めて確かめる。
+    await expect
+      .poll(async () => {
+        await guestView.clock.fastForward(31_000);
+        return waiting.getByText("採点に時間がかかっています").isVisible();
+      })
+      .toBe(true);
     // 採点の期限までの残り時間は出さない。
     await expect(waiting.getByText(/\d+:\d{2}/)).toHaveCount(0);
 
