@@ -16,8 +16,7 @@ import { Lead } from "@animic/react/lead";
 import { usePageTransition } from "../navigation/page-transition-provider";
 import { AccountIcon } from "../shared/icons";
 import { AccountMenu } from "./account-menu";
-import { steps } from "./home-content";
-import { matches } from "./home-samples";
+import type { HomeContent } from "./home-content";
 import { Gallery, HowToPlay, Scoring } from "./home-sections";
 import { JoinRoomDialog } from "./join-room-dialog";
 import { StartIcon, JoinIcon, ActionStartIcon, ActionJoinIcon, ArrowIcon } from "./home-icons";
@@ -39,7 +38,7 @@ const sections = [
 
 const sectionIds = sections.map((section) => section.id);
 
-export function HomePage() {
+export function HomePage({ content }: { content: HomeContent }) {
   const { navigate } = usePageTransition();
   const { current: activeSection, navigate: scrollToSection } = useSectionNavigation(sectionIds);
   const [stepIndex, setStepIndex] = useState(0);
@@ -121,15 +120,20 @@ export function HomePage() {
       const direction = event.key === "ArrowLeft" ? -1 : 1;
       if (activeSection === "how") {
         event.preventDefault();
-        setStepIndex((index) => (index + direction + steps.length) % steps.length);
+        setStepIndex(
+          (index) => (index + direction + content.howSteps.length) % content.howSteps.length,
+        );
       } else if (activeSection === "gallery") {
         event.preventDefault();
-        setMatchIndex((index) => (index + direction + matches.length) % matches.length);
+        setMatchIndex(
+          (index) =>
+            (index + direction + content.gallery.length) % Math.max(1, content.gallery.length),
+        );
       }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [activeSection, joinOpen, loginOpen]);
+  }, [activeSection, joinOpen, loginOpen, content.howSteps.length, content.gallery.length]);
 
   return (
     <Page scroll="sections" decoration={<PageBackdrop />}>
@@ -323,9 +327,9 @@ export function HomePage() {
             </LayerItem>
           </Layer>
         </Section>
-        <HowToPlay index={stepIndex} onIndexChange={setStepIndex} />
-        <Scoring />
-        <Gallery index={matchIndex} onIndexChange={setMatchIndex} />
+        <HowToPlay steps={content.howSteps} index={stepIndex} onIndexChange={setStepIndex} />
+        <Scoring steps={content.scoringSteps} weights={content.weights} />
+        <Gallery items={content.gallery} index={matchIndex} onIndexChange={setMatchIndex} />
       </main>
       <LoginDialog open={loginOpen} onOpenChange={setLoginOpen} purpose={loginPurpose} />
       <JoinRoomDialog

@@ -16,9 +16,11 @@ import { Split } from "@animic/react/split";
 import { Stack } from "@animic/react/stack";
 import { Surface } from "@animic/react/surface";
 import { Text } from "@animic/react/text";
-import { defaultScoringWeights, scoringMetrics } from "../scoring/scoring-metrics";
-import { scoringSteps, steps } from "./home-content";
-import { matches } from "./home-samples";
+import { getDifficulty } from "../battle/battle-labels";
+import { scoringMetrics } from "../scoring/scoring-metrics";
+import type { ScoringWeights } from "../scoring/scoring-metrics";
+import { howSteps, scoringSteps } from "./home-content";
+import type { GalleryItem, HomeItem } from "./home-content";
 import {
   HowBackdrop,
   Logo,
@@ -29,16 +31,17 @@ import {
   StepArtwork,
 } from "./visuals/home-artwork";
 
-// 採点方法の説明には、管理画面で変えるまで使う既定の重みを出す。
-const defaultWeights = scoringMetrics.map((metric) => ({
-  ...metric,
-  weight: defaultScoringWeights[metric.key],
-}));
+// 画像を登録していない項目に出すイラスト・重みのグラフの有無は、項目のIDで決める。
+const stepIllustration = (id: string) =>
+  howSteps.find((step) => step.id === id)?.illustration ?? "image";
+const scoringStep = (id: string) => scoringSteps.find((step) => step.id === id);
 
 export function HowToPlay({
+  steps,
   index,
   onIndexChange,
 }: {
+  steps: HomeItem[];
   index: number;
   onIndexChange: (index: number) => void;
 }) {
@@ -71,7 +74,7 @@ export function HowToPlay({
             <Stack space="section">
               <CarouselViewport preview>
                 {steps.map((step, item) => (
-                  <CarouselItem key={step.title} index={item}>
+                  <CarouselItem key={step.id} index={item}>
                     <Surface appearance="illustrated" padding="frame">
                       <Split layout="content-media" collapseOrder="reverse" space="compact">
                         <Center>
@@ -93,7 +96,7 @@ export function HowToPlay({
                             </Stack>
                           </Surface>
                         </Center>
-                        <StepArtwork kind={step.illustration} />
+                        <StepArtwork kind={stepIllustration(step.id)} src={step.image} />
                       </Split>
                     </Surface>
                   </CarouselItem>
@@ -108,7 +111,12 @@ export function HowToPlay({
   );
 }
 
-export function Scoring() {
+export function Scoring({ steps, weights }: { steps: HomeItem[]; weights: ScoringWeights }) {
+  // 採点方法の説明には、管理画面の「採点の重み」で保存した今の重みを出す。
+  const metricWeights = scoringMetrics.map((metric) => ({
+    ...metric,
+    weight: weights[metric.key],
+  }));
   return (
     <Section inset="navigation" align="start" id="score" aria-labelledby="score-title">
       <Stack>
@@ -124,12 +132,15 @@ export function Scoring() {
         </HomeReveal>
         <div role="list">
           <Grid columns={3} space="section" collapse="single">
-            {scoringSteps.map((step, item) => (
-              <div key={step.title} role="listitem">
+            {steps.map((step, item) => (
+              <div key={step.id} role="listitem">
                 <HomeReveal order={item === 0 ? 1 : item === 1 ? 2 : 3} fill>
                   <Surface appearance="illustrated" padding="frame" fill>
                     <Stack space="compact">
-                      <ScoreArtwork kind={step.illustration} />
+                      <ScoreArtwork
+                        kind={scoringStep(step.id)?.illustration ?? "similarity"}
+                        src={step.image}
+                      />
                       <Surface padding="inset">
                         <Stack space="compact">
                           <Heading level={3} size="illustrated">
@@ -138,11 +149,11 @@ export function Scoring() {
                           <Text as="p" variant="body.detail" tone="supporting">
                             {step.description}
                           </Text>
-                          {!step.upcoming && (
+                          {scoringStep(step.id)?.upcoming === false && (
                             <Stack space="compact">
-                              <ScoreWeightsBar weights={defaultWeights} />
+                              <ScoreWeightsBar weights={metricWeights} />
                               <Grid columns={2} space="compact" collapse="none">
-                                {[defaultWeights.slice(0, 3), defaultWeights.slice(3)].map(
+                                {[metricWeights.slice(0, 3), metricWeights.slice(3)].map(
                                   (column) => (
                                     <Text key={column[0].key} as="p" variant="caption">
                                       {column.map((metric, index) => (
@@ -176,13 +187,33 @@ export function Scoring() {
 }
 
 export function Gallery({
+  items,
   index,
   onIndexChange,
 }: {
+  items: GalleryItem[];
   index: number;
   onIndexChange: (index: number) => void;
 }) {
-  const match = matches[index];
+  const match = items[index] ?? items[0];
+  const difficulty = match ? getDifficulty(match.difficulty) : null;
+  const header = (
+    <HomeReveal fill>
+      <Stack space="compact" fill justify="between">
+        <Text variant="eyebrow" tone="accent">
+          GALLERY
+        </Text>
+        <Heading id="gallery-title" level={2} size="section">
+          ギャラリー
+        </Heading>
+        <Text as="p" variant="body.detail" tone="supporting">
+          {match
+            ? "みんなの対戦をのぞいてみよう。お題と提出された1枚を並べて見られます。"
+            : "対戦の例はまだありません。"}
+        </Text>
+      </Stack>
+    </HomeReveal>
+  );
   return (
     <Section
       inset="navigation"
@@ -215,105 +246,100 @@ export function Gallery({
       }
     >
       <Stack space="section">
-        <Carousel
-          label="みんなの対戦"
-          count={matches.length}
-          index={index}
-          onIndexChange={onIndexChange}
-        >
-          <Split
-            layout="content-intrinsic"
-            collapseOrder="reverse"
-            space="section"
-            header={
-              <HomeReveal fill>
-                <Stack space="compact" fill justify="between">
-                  <Text variant="eyebrow" tone="accent">
-                    GALLERY
-                  </Text>
-                  <Heading id="gallery-title" level={2} size="section">
-                    ギャラリー
-                  </Heading>
-                  <Text as="p" variant="body.detail" tone="supporting">
-                    みんなの対戦をのぞいてみよう。お題と提出された1枚を並べて見られます。
-                  </Text>
-                </Stack>
-              </HomeReveal>
-            }
+        {/* 例が1件もなければ、見出しと案内だけを出す（節とフッターは残す） */}
+        {!match || !difficulty ? (
+          header
+        ) : (
+          <Carousel
+            label="みんなの対戦"
+            count={items.length}
+            index={index}
+            onIndexChange={onIndexChange}
           >
-            <HomeReveal order={1}>
-              <Surface appearance="card" padding="content">
-                <Stack>
-                  <Cluster justify="between">
-                    <Text variant="numeric.counter" tone="accent">
-                      {index + 1}
-                      <Text variant="numeric.fraction" tone="subtle">
-                        {" "}
-                        / {matches.length}
+            <Split
+              layout="content-intrinsic"
+              collapseOrder="reverse"
+              space="section"
+              header={header}
+            >
+              <HomeReveal order={1}>
+                <Surface appearance="card" padding="content">
+                  <Stack>
+                    <Cluster justify="between">
+                      <Text variant="numeric.counter" tone="accent">
+                        {index + 1}
+                        <Text variant="numeric.fraction" tone="subtle">
+                          {" "}
+                          / {items.length}
+                        </Text>
                       </Text>
-                    </Text>
-                    <CarouselControls itemLabel="対戦" />
-                  </Cluster>
-                  <div aria-live="polite" aria-atomic="true">
+                      <CarouselControls itemLabel="対戦" />
+                    </Cluster>
+                    <div aria-live="polite" aria-atomic="true">
+                      <Stack space="compact">
+                        <Badge tone="surface" shape="rounded">
+                          {difficulty.label}
+                        </Badge>
+                        <Heading level={3} size="card">
+                          {difficulty.description}
+                        </Heading>
+                      </Stack>
+                    </div>
                     <Stack space="compact">
-                      <Badge tone="surface" shape="rounded">
-                        {match.level}
-                      </Badge>
-                      <Heading level={3} size="card">
-                        {match.rule}
-                      </Heading>
+                      <Separator appearance="dashed" />
+                      <Meter
+                        label="再現度"
+                        value={match.score}
+                        valueText={match.score.toFixed(1)}
+                      />
                     </Stack>
-                  </div>
-                  <Stack space="compact">
-                    <Separator appearance="dashed" />
-                    <Meter label="再現度" value={match.score} valueText={match.score.toFixed(1)} />
                   </Stack>
-                </Stack>
-              </Surface>
-            </HomeReveal>
-            <CarouselViewport transition="replace">
-              <CarouselItem index={index}>
-                <Surface appearance="card" padding="frame">
-                  <HomeReveal order={1} fill>
-                    <Stack fill justify="center">
-                      <ImagePair sizing="intrinsic">
-                        <ImagePairItem label="お題">
-                          <SampleArtwork src={match.topic.src} alt={match.topic.alt} />
-                        </ImagePairItem>
-                        <ImagePairItem
-                          label="提出"
-                          detail={
-                            <Cluster space="compact">
-                              <Text as="p" variant="caption" tone="supporting">
-                                {scoringMetrics.map((metric, row) => (
-                                  <Fragment key={metric.key}>
-                                    {row > 0 && <br />}
-                                    <ScoreWeightSwatch metric={metric.key} />
-                                    {`\u00a0${metric.label}`}
-                                  </Fragment>
-                                ))}
-                              </Text>
-                              <Text as="p" variant="caption" emphasis="strong">
-                                {scoringMetrics.map((metric, row) => (
-                                  <Fragment key={metric.key}>
-                                    {row > 0 && <br />}
-                                    {match.metrics[metric.key].toFixed(1)}
-                                  </Fragment>
-                                ))}
-                              </Text>
-                            </Cluster>
-                          }
-                        >
-                          <SampleArtwork src={match.shot.src} alt={match.shot.alt} />
-                        </ImagePairItem>
-                      </ImagePair>
-                    </Stack>
-                  </HomeReveal>
                 </Surface>
-              </CarouselItem>
-            </CarouselViewport>
-          </Split>
-        </Carousel>
+              </HomeReveal>
+              <CarouselViewport transition="replace">
+                <CarouselItem index={index}>
+                  <Surface appearance="card" padding="frame">
+                    <HomeReveal order={1} fill>
+                      <Stack fill justify="center">
+                        <ImagePair sizing="intrinsic">
+                          <ImagePairItem label="お題">
+                            <SampleArtwork src={match.topicSrc} alt={match.topicAlt} />
+                          </ImagePairItem>
+                          <ImagePairItem
+                            label="提出"
+                            detail={
+                              <Cluster space="compact">
+                                <Text as="p" variant="caption" tone="supporting">
+                                  {scoringMetrics.map((metric, row) => (
+                                    <Fragment key={metric.key}>
+                                      {row > 0 && <br />}
+                                      <ScoreWeightSwatch metric={metric.key} />
+                                      {`\u00a0${metric.label}`}
+                                    </Fragment>
+                                  ))}
+                                </Text>
+                                <Text as="p" variant="caption" emphasis="strong">
+                                  {scoringMetrics.map((metric, row) => (
+                                    <Fragment key={metric.key}>
+                                      {row > 0 && <br />}
+                                      {match.metrics[metric.key].toFixed(1)}
+                                    </Fragment>
+                                  ))}
+                                </Text>
+                              </Cluster>
+                            }
+                          >
+                            <SampleArtwork src={match.shotSrc} alt={match.shotAlt} />
+                          </ImagePairItem>
+                        </ImagePair>
+                      </Stack>
+                    </HomeReveal>
+                  </Surface>
+                </CarouselItem>
+              </CarouselViewport>
+            </Split>
+          </Carousel>
+        )}
       </Stack>
     </Section>
   );

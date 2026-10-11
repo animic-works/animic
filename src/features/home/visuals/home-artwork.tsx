@@ -1,4 +1,5 @@
 import { useId } from "react";
+import type { ReactNode } from "react";
 import { css, keyframes } from "@animic/styled-system/css";
 import { Heading } from "@animic/react/heading";
 import { Text } from "@animic/react/text";
@@ -340,28 +341,62 @@ const stepArtwork = css({
   _artworkNarrow: { height: "[clamp(8rem, calc(min(32rem, 62svh) - 12rem), 20rem)]" },
   _artworkCompact: { height: "[auto]" },
 });
-export function StepArtwork({ kind }: { kind: "room" | "image" | "prompt" | "trophy" }) {
+// 管理画面のカードに出すときは、横幅に合わせた高さにする。
+const artworkPreview = css({ width: "[100%]", height: "[auto]" });
+/** 遊び方の手順の絵。管理画面で画像を登録した手順は、その画像を同じ枠に収める（はみ出す部分は切る）。 */
+/** 遊び方の手順の絵の外枠。管理画面のカードでは横幅に合わせた高さにする。 */
+function StepFrame({
+  preview,
+  viewBox,
+  children,
+}: {
+  preview: boolean;
+  viewBox: string;
+  children: ReactNode;
+}) {
+  return preview ? (
+    <svg className={artworkPreview} viewBox={viewBox} width="100%" aria-hidden="true">
+      {children}
+    </svg>
+  ) : (
+    <svg className={stepArtwork} viewBox={viewBox} width="100%" aria-hidden="true">
+      {children}
+    </svg>
+  );
+}
+
+export function StepArtwork({
+  kind,
+  src,
+  preview = false,
+}: {
+  kind: "room" | "image" | "prompt" | "trophy";
+  src?: string | null;
+  preview?: boolean;
+}) {
   const clip = useId();
   const stripes = useId();
-  if (kind === "room") {
+  const image = src ?? (kind === "room" ? "/images/how-step-1.webp" : null);
+  if (image) {
     return (
-      <svg className={stepArtwork} viewBox="0 0 1600 1095" width="100%" aria-hidden="true">
+      <StepFrame preview={preview} viewBox="0 0 1600 1095">
         <defs>
           <clipPath id={clip}>
             <rect width="1600" height="1095" rx="44" />
           </clipPath>
         </defs>
         <image
-          href="/images/how-step-1.webp"
+          href={image}
           width="1600"
           height="1095"
+          preserveAspectRatio="xMidYMid slice"
           clipPath={`url(#${clip})`}
         />
-      </svg>
+      </StepFrame>
     );
   }
   return (
-    <svg className={stepArtwork} viewBox="0 0 600 410.625" width="100%" aria-hidden="true">
+    <StepFrame preview={preview} viewBox="0 0 600 410.625">
       <defs>
         <pattern
           id={stripes}
@@ -420,7 +455,7 @@ export function StepArtwork({ kind }: { kind: "room" | "image" | "prompt" | "tro
           </>
         )}
       </g>
-    </svg>
+    </StepFrame>
   );
 }
 
@@ -447,9 +482,36 @@ export function SampleArtwork({ src, alt }: { src: string; alt: string }) {
 }
 
 const scoreArtwork = css({ width: "[100%]", height: "[auto]" });
-/** 採点方法のカードの絵。遊び方の絵と同じ縞の地と白いタイルを、横長の比率で描く。 */
-export function ScoreArtwork({ kind }: { kind: "similarity" | "speed" | "attempts" }) {
+/**
+ * 採点方法のカードの絵。遊び方の絵と同じ縞の地と白いタイルを、横長の比率で描く。
+ * 管理画面で画像を登録した項目は、その画像を同じ枠に収める（はみ出す部分は切る）。
+ */
+export function ScoreArtwork({
+  kind,
+  src,
+}: {
+  kind: "similarity" | "speed" | "attempts";
+  src?: string | null;
+}) {
   const stripes = useId();
+  const clip = useId();
+  if (src)
+    return (
+      <svg className={scoreArtwork} viewBox="0 0 600 220" width="100%" aria-hidden="true">
+        <defs>
+          <clipPath id={clip}>
+            <rect width="600" height="220" rx="24" />
+          </clipPath>
+        </defs>
+        <image
+          href={src}
+          width="600"
+          height="220"
+          preserveAspectRatio="xMidYMid slice"
+          clipPath={`url(#${clip})`}
+        />
+      </svg>
+    );
   return (
     <svg className={scoreArtwork} viewBox="0 0 600 220" width="100%" aria-hidden="true">
       <defs>
