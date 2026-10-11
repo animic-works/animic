@@ -423,6 +423,30 @@ test("表現の辞書を初期データから始め、色・サフィックス�
     await expect(card.locator("img")).toHaveAttribute("src", replaced);
     await expect(card).not.toContainText("No Image");
     await expect(search.getByRole("radiogroup", { name: "ジャンル" })).not.toContainText("E2Eの目");
+    // カードの角のボタンで挿絵の全体を重ねて出し、そのまま欄へ出し入れできる。
+    const view = search.getByRole("button", { name: "おさげ（E2E）の挿絵を見る" });
+    await view.click();
+    const viewer = host.getByRole("dialog", { name: "おさげ（E2E）" });
+    await expect(viewer.getByRole("img", { name: "おさげ（E2E）の挿絵" })).toHaveAttribute(
+      "src",
+      replaced,
+    );
+    await expect(viewer).toContainText("e2e braids");
+    await expect(viewer.getByRole("heading", { name: "E2Eの髪のほかの表現" })).toBeVisible();
+    await expect(
+      viewer
+        .getByRole("list", { name: "E2Eの髪のほかの表現" })
+        .getByRole("button", { name: "おさげ（E2E）" }),
+    ).toHaveAttribute("aria-current", "true");
+    await viewer.getByRole("button", { name: "キャラに入れる" }).click();
+    await expect(viewer.getByText("キャラに入っています")).toBeVisible();
+    await viewer.getByRole("button", { name: "キャラから外す" }).click();
+    await expect(viewer.getByRole("button", { name: "キャラに入れる" })).toBeVisible();
+    await host.keyboard.press("Escape");
+    await expect(viewer).toBeHidden();
+    await expect(search).toBeVisible();
+    await expect(view).toBeFocused();
+    await expect(card).toHaveAttribute("aria-pressed", "false");
     await search.getByRole("button", { name: "決定" }).click();
 
     // 候補にもサフィックスを出すが、欄に入るのは表示名だけ。

@@ -1,4 +1,6 @@
+import { AxeBuilder } from "@axe-core/playwright";
 import { test, expect } from "@playwright/test";
+import { expectAccessible } from "./accessibility";
 
 test("候補を閉じた後も入力で再表示し、Shift+Tabでは確定せず前の操作へ戻る", async ({ page }) => {
   await page.goto("/iframe.html?id=interactive-controls--editor&viewMode=story");
@@ -58,6 +60,35 @@ for (const width of [390, 1200])
     const done = dialog.getByRole("button", { name: "決定（1件）" });
     await expect(done).toBeInViewport();
     expect(await dialog.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+    // カードの角の操作は選択と別に、上へ重ねたダイアログを開く。
+    await dialog.getByRole("searchbox").fill("");
+    const view = dialog.getByRole("button", { name: "海を見る" });
+    await view.click();
+    const viewer = page.getByRole("dialog", { name: "海" });
+    await expect(viewer).toBeVisible();
+    const strip = page.getByRole("list", { name: "ほかの候補" });
+    await expect(strip.getByRole("button", { name: "海" })).toHaveAttribute("aria-current", "true");
+    // Tabで止まるのは表示中の項目だけで、開いたときのフォーカスもそこに置く。
+    await expect(strip.getByRole("button", { name: "海" })).toBeFocused();
+    await expect(strip.getByRole("button", { name: "山" })).toHaveAttribute("tabindex", "-1");
+    await expect(strip.getByRole("button", { name: "空（選択中）" })).not.toHaveAttribute(
+      "aria-pressed",
+    );
+    await expectAccessible(
+      new AxeBuilder({ page }).include("[role=dialog]").withTags(["wcag2a", "wcag2aa", "wcag21aa"]),
+    );
+    await strip.getByRole("button", { name: "夜" }).click();
+    await expect(page.getByRole("dialog", { name: "夜" })).toBeVisible();
+    await expect(strip.getByRole("button", { name: "夜" })).toHaveAttribute("aria-current", "true");
+    await expect(strip.getByRole("button", { name: "夜" })).toBeInViewport();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog", { name: "夜" })).toBeHidden();
+    await expect(dialog).toBeVisible();
+    await expect(view).toBeFocused();
+    await expect(dialog.getByRole("button", { name: "海", exact: true })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
     await page.keyboard.press("Escape");
     await expect(trigger).toBeFocused();
   });

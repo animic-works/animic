@@ -21,6 +21,7 @@ import { Stack } from "@animic/react/stack";
 import { Surface } from "@animic/react/surface";
 import { Switch } from "@animic/react/switch";
 import { Text } from "@animic/react/text";
+import { ThumbnailList } from "@animic/react/thumbnail-list";
 import { TokenInput, AdjustableToken } from "@animic/react/token-input";
 
 const meta = { title: "Interactive controls" } satisfies Meta;
@@ -139,6 +140,7 @@ function CollectionExample() {
     [group, setGroup] = useState("all"),
     [query, setQuery] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
+  const [viewing, setViewing] = useState<string | null>(null);
   const words = ["空", "森", "海", "山", "朝", "夜"].filter((word) => word.includes(query));
   return (
     <>
@@ -197,11 +199,34 @@ function CollectionExample() {
                     : [...current, word],
                 )
               }
+              onOpen={() => setViewing(word)}
+              openLabel={`${word}を見る`}
             >
               <Text>{word}</Text>
             </ChoiceCard>
           ))}
         </CollectionBrowser>
+      </Dialog>
+      <Dialog
+        open={open && viewing !== null}
+        onOpenChange={(next) => !next && setViewing(null)}
+        title={viewing ?? ""}
+        presentation="centered"
+      >
+        <ThumbnailList
+          label="ほかの候補"
+          layout="strip"
+          items={words.map((word) => ({
+            id: word,
+            content: <Text variant="caption">{word}</Text>,
+            label: selected.includes(word) ? `${word}（選択中）` : word,
+            badge: word,
+            checked: selected.includes(word),
+          }))}
+          current={viewing ?? ""}
+          onValueChange={setViewing}
+          empty="候補がありません"
+        />
       </Dialog>
     </>
   );

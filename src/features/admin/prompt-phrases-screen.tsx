@@ -259,7 +259,7 @@ function PhraseImageField({
           <Text tone="muted">挿絵はありません</Text>
         )}
         <Text variant="body.sm" tone="muted">
-          PNG・WebP・JPEG（10MBまで）。検索のカードに、中央を横長に切り抜いて出します
+          PNG・WebP・JPEG（10MBまで）。検索のカードには中央を横長に切り抜いて出し、カードの拡大ボタンで全体を出します
         </Text>
         <Cluster>
           <FileButton

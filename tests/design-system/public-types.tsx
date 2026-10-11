@@ -213,6 +213,23 @@ import { TokenInput, AdjustableToken } from "@animic/react/token-input";
 <ThumbnailList label="画像" items={[]} empty="ありません" onValueChange={() => {}} />;
 // @ts-expect-error 一覧の用途と読み上げ名は利用側が指定する。
 <ThumbnailList items={[]} empty="ありません" onValueChange={() => {}} />;
+<ThumbnailList
+  label="画像"
+  layout="strip"
+  items={[{ id: "a", label: "A", checked: true }]}
+  current="a"
+  empty="ありません"
+  onValueChange={() => {}}
+/>;
+// @ts-expect-error 選んだ項目と表示中の項目は同時に指定しない。
+<ThumbnailList
+  label="画像"
+  items={[]}
+  value="a"
+  current="a"
+  empty="ありません"
+  onValueChange={() => {}}
+/>;
 <TokenInput
   label="語句"
   value=""
@@ -351,6 +368,20 @@ const tableColumns: DataTableColumn<{ id: string; count: number }>[] = [
 </TokenInput>;
 
 <ChoiceCard label="候補" media={<Text>画像なし</Text>} selected={false} onSelect={() => {}}>
+  候補
+</ChoiceCard>;
+<ChoiceCard
+  label="候補"
+  src="/image.png"
+  selected={false}
+  onSelect={() => {}}
+  onOpen={() => {}}
+  openLabel="候補の画像を見る"
+>
+  候補
+</ChoiceCard>;
+// @ts-expect-error 開く操作には読み上げ名を必ず渡す。
+<ChoiceCard label="候補" src="/image.png" selected={false} onSelect={() => {}} onOpen={() => {}}>
   候補
 </ChoiceCard>;
 <SegmentedControl

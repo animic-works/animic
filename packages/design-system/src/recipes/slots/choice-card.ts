@@ -2,8 +2,10 @@ import { defineSlotRecipe } from "@pandacss/dev";
 import { focus } from "../control";
 export const choiceCard = defineSlotRecipe({
   className: "choice-card",
-  slots: ["root", "media", "body", "indicator"],
+  slots: ["frame", "root", "media", "body", "indicator", "action"],
   base: {
+    // 選択の操作（root）と、選択とは別の操作（action）を兄弟として重ねる。
+    frame: { position: "relative", display: "grid", width: "100%", minWidth: 0 },
     root: {
       position: "relative",
       display: "grid",
@@ -49,6 +51,26 @@ export const choiceCard = defineSlotRecipe({
       background: "accent.primary",
       color: "fg.inverse",
       textStyle: "caption",
+    },
+    // 画像の左上に重ねる補助の操作。z-indexを使わず、rootより後のDOM順で上に描く。
+    // 角丸（1rem）の弧から出ないよう、端から0.5rem離す。
+    action: {
+      position: "absolute",
+      insetBlockStart: "3",
+      insetInlineStart: "3",
+      width: "2rem",
+      height: "2rem",
+      display: "grid",
+      placeItems: "center",
+      padding: "0",
+      border: "1px solid token(colors.border.default)",
+      borderRadius: "full",
+      background: "color-mix(in srgb, token(colors.bg.surface) 85%, transparent)",
+      color: "fg.default",
+      cursor: "pointer",
+      "& > svg": { width: "icon.0", height: "icon.0" },
+      _hover: { background: "bg.surface", borderColor: "accent.primary" },
+      _focusVisible: focus,
     },
     body: {
       display: "grid",

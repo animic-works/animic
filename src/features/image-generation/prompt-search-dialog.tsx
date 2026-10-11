@@ -69,6 +69,8 @@ export type PromptSearchDialogProps = {
   summary: ReactNode;
   cards: SearchCard[];
   onToggle: (id: string) => void;
+  /** 挿絵の全体を見る（挿絵のあるカードだけ） */
+  onView: (id: string) => void;
   /** 入れる先の欄（例: キャラ1） */
   target: string;
   /** 入っている語数（例: プロンプト 合計3語） */
@@ -139,7 +141,13 @@ export function PromptSearchDialog(props: PromptSearchDialogProps) {
           <ChoiceCard
             key={card.id}
             label={`${card.label}を${props.target}に${card.pressed ? "入れない" : "入れる"}`}
-            {...(card.image ? { src: card.image } : { media: NO_IMAGE })}
+            {...(card.image
+              ? {
+                  src: card.image,
+                  onOpen: () => props.onView(card.id),
+                  openLabel: `${card.label}の挿絵を見る`,
+                }
+              : { media: NO_IMAGE })}
             selected={card.pressed}
             disabled={props.disabled}
             onSelect={() => props.onToggle(card.id)}
