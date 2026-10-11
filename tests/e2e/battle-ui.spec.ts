@@ -177,7 +177,10 @@ test("むずかしいではキャラの欄を最初から2つ出し、足した�
     await expect(page.getByRole("timer")).toBeVisible();
 
     await expect(page.getByRole("radio", { name: "キャラ1", checked: true })).toBeVisible();
-    await page.getByRole("radio", { name: "キャラ2" }).click();
+    await page
+      .getByRole("radiogroup", { name: "プロンプトの種類" })
+      .getByText("キャラ2", { exact: true })
+      .click();
     await expect(page.getByRole("radio", { name: "キャラ2", checked: true })).toBeVisible();
     await expect(page.getByRole("combobox", { name: "プロンプト（キャラ2）" })).toBeVisible();
     await expect(page.getByRole("button", { name: /キャラ2/ })).toHaveCount(0);

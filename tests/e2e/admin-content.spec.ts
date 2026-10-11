@@ -414,7 +414,7 @@ test("表現の辞書を初期データから始め、色・サフィックス�
     await host.goto(`/rooms/${code}`);
     await expect(host.getByRole("timer")).toBeVisible();
 
-    await host.getByRole("button", { name: "キャラプロンプトを検索" }).click();
+    await host.getByRole("button", { name: "キャラを検索" }).click();
     const search = host.getByRole("dialog", { name: "キャラプロンプトを検索" });
     await search.getByRole("radiogroup", { name: "ジャンル" }).getByText("E2Eの髪").click();
     const card = search.getByRole("button", { name: "おさげ（E2E）をキャラに入れる" });

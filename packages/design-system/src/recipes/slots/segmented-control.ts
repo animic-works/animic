@@ -211,8 +211,13 @@ export const segmentedControl = defineSlotRecipe({
         control: { display: "none" },
       },
       chips: {
-        // 欄の切り替えは狭い幅でも1行に並べる。
-        group: { padding: "0", gap: "2", background: "transparent", flexWrap: "nowrap" },
+        // Composerの欄の切り替えは狭い幅でも1行に並べる。ほかの場所では折り返す。
+        group: {
+          padding: "0",
+          gap: "2",
+          background: "transparent",
+          "[data-animic-composer-tabs] &": { flexWrap: "nowrap" },
+        },
         item: {
           minHeight: "1.7rem",
           padding: "0.25rem 0.55rem",

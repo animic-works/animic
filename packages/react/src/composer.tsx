@@ -37,7 +37,9 @@ export function Composer({
           {controls}
         </div>
       </div>
-      <div className={c.tabs}>{tabs}</div>
+      <div className={c.tabs} data-animic-composer-tabs="">
+        {tabs}
+      </div>
       <div className={c.input}>{children}</div>
       <div className={c.tools}>{tools}</div>
       {peek && <div className={c.peek}>{peek}</div>}
