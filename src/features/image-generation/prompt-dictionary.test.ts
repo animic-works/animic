@@ -1,4 +1,5 @@
 import * as v from "valibot";
+import migration from "../../../migrations/0011_phrase-aliases.sql?raw";
 import { describe, expect, it } from "vite-plus/test";
 
 import {
@@ -12,7 +13,7 @@ import {
   wordOf,
 } from "./prompt-dictionary";
 import { initialPromptGroups } from "./prompt-dictionary-seed";
-import { promptGroupSchema } from "./prompt-phrases";
+import { promptGroupSchema, promptPhraseAliasesSchema } from "./prompt-phrases";
 import type { PromptGroup } from "./prompt-phrases";
 
 describe("initialPromptGroups", () => {
@@ -34,6 +35,44 @@ describe("initialPromptGroups", () => {
     ]);
     expect(new Set(ids).size).toBe(ids.length);
     expect(initialPromptGroups[1]?.phrases[13]?.id).toBe("hair-two-tone-hair");
+  });
+});
+
+describe("初期データの別名", () => {
+  const phrases = initialPromptGroups.flatMap((group) => group.phrases);
+
+  it("保存できる値（件数・長さ・重複）で、どの表現の表示名とも同じでない", () => {
+    const labels = new Set(phrases.map((phrase) => normalizeQuery(phrase.label)));
+    expect(phrases.filter((phrase) => phrase.aliases.length > 0)).toHaveLength(149);
+    for (const phrase of phrases) {
+      expect(v.parse(promptPhraseAliasesSchema, phrase.aliases)).toEqual(phrase.aliases);
+      for (const alias of phrase.aliases) expect(labels.has(normalizeQuery(alias))).toBe(false);
+    }
+  });
+
+  it("代表的な別名で入力候補に出る", () => {
+    for (const [query, label] of [
+      ["ツインテ", "ツインテール"],
+      ["すまいる", "笑顔"],
+      ["ねこみみ", "猫耳"],
+    ])
+      expect(searchDictionary(initialPromptGroups, query).map((hit) => hit.label)).toContain(label);
+  });
+
+  it("マイグレーションで、既存の環境の初期データの表現に同じ別名を入れる", () => {
+    const updates = [
+      ...migration.matchAll(
+        /UPDATE `prompt_phrase` SET `aliases` = '([^']*)' WHERE `id` = '([^']+)' AND `aliases` = '\[\]';/g,
+      ),
+    ].map(([, aliases = "", id = ""]) => [id, v.parse(v.array(v.string()), JSON.parse(aliases))]);
+    expect(Object.fromEntries(updates)).toEqual(
+      Object.fromEntries(
+        phrases
+          .filter((phrase) => phrase.aliases.length > 0)
+          .map((phrase) => [phrase.id, phrase.aliases]),
+      ),
+    );
+    expect(updates).toHaveLength(149);
   });
 });
 
@@ -69,6 +108,7 @@ describe("searchDictionary", () => {
             suffix: "（2本の三つ編み）",
             tag: "twin braids",
             note: "肩の前に垂らすことが多い",
+            aliases: [],
             imageId: null,
             sortOrder: 0,
           },
@@ -81,6 +121,95 @@ describe("searchDictionary", () => {
     expect(hit && wordOf(hit, "tag")).toBe("twin braids");
     expect(searchDictionary(groups, "肩")).toEqual([]);
     expect(browseDictionary(groups, null, "肩")).toEqual([]);
+  });
+});
+
+describe("別名", () => {
+  const groups: PromptGroup[] = [
+    {
+      id: "style",
+      label: "髪型",
+      tone: "amber",
+      target: "character",
+      sortOrder: 0,
+      phrases: [
+        {
+          id: "side",
+          label: "サイドテール",
+          suffix: "",
+          tag: "side ponytail",
+          note: "",
+          aliases: ["片側結び"],
+          imageId: null,
+          sortOrder: 0,
+        },
+        {
+          id: "twin",
+          label: "ツインテール",
+          suffix: "",
+          tag: "twintails",
+          note: "",
+          aliases: ["ツインテ", "二つ結い"],
+          imageId: null,
+          sortOrder: 1,
+        },
+      ],
+    },
+  ];
+
+  it("入力候補と検索で別名でも探し、カタカナとひらがなを区別しない。前方一致を先にする", () => {
+    expect(searchDictionary(groups, "二つ結い").map((hit) => hit.id)).toEqual(["twin"]);
+    expect(browseDictionary(groups, null, "二つ").map((hit) => hit.id)).toEqual(["twin"]);
+    // 「ついんて」は表示名と別名の両方に前方一致し、「結び」「結い」は別名の途中にだけある。
+    expect(searchDictionary(groups, "ついんて").map((hit) => hit.id)).toEqual(["twin"]);
+    expect(searchDictionary(groups, "結").map((hit) => hit.id)).toEqual(["side", "twin"]);
+    expect(searchDictionary(groups, "片側").map((hit) => hit.id)).toEqual(["side"]);
+    // 別名にだけ前方一致する表現を、表示名の途中に含むだけの表現より先にする。
+    expect(searchDictionary(groups, "てーる").map((hit) => hit.id)).toEqual(["side", "twin"]);
+    const [style] = groups;
+    const aliased = style && [
+      {
+        ...style,
+        phrases: style.phrases.map((phrase) => ({
+          ...phrase,
+          aliases: phrase.id === "twin" ? ["テール2本"] : [],
+        })),
+      },
+    ];
+    expect(aliased && searchDictionary(aliased, "てーる").map((hit) => hit.id)).toEqual([
+      "twin",
+      "side",
+    ]);
+    // 表示名で出し、欄に入れる語も変えない。
+    const [hit] = searchDictionary(groups, "二つ結い");
+    expect(hit && phraseName(hit)).toBe("ツインテール");
+    expect(hit && wordOf(hit, "tag")).toBe("twintails");
+  });
+
+  it("前後の空白と空の語を除き、検索で同じになる語（かな・大文字小文字の違い）は先の1つだけを残す", () => {
+    expect(
+      v.parse(promptPhraseAliasesSchema, [
+        " ツインテ ",
+        "",
+        "  ",
+        "ついんて",
+        "Twin",
+        "TWIN",
+        "二つ結い",
+      ]),
+    ).toEqual(["ツインテ", "Twin", "二つ結い"]);
+  });
+
+  it("1件20文字・10件を超えると保存しない（除いた後の件数で数える）", () => {
+    expect(v.safeParse(promptPhraseAliasesSchema, ["あ".repeat(20)]).success).toBe(true);
+    expect(v.safeParse(promptPhraseAliasesSchema, ["あ".repeat(21)]).issues?.[0]?.message).toBe(
+      "別名は1件20文字以内で入力してください。",
+    );
+    const ten = Array.from({ length: 10 }, (_, index) => `別名${index}`);
+    expect(v.safeParse(promptPhraseAliasesSchema, [...ten, "別名0", ""]).success).toBe(true);
+    expect(v.safeParse(promptPhraseAliasesSchema, [...ten, "別名10"]).issues?.[0]?.message).toBe(
+      "別名は10件までにしてください。",
+    );
   });
 });
 

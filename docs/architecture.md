@@ -264,7 +264,7 @@ RoomPageはloaderの初期状態を受け取り、`use-room-connection.ts`を通
 
 対戦画面のプロンプト入力は`src/features/image-generation/`の`PromptComposer`が組み立て、語句・重みの操作とプロンプトの構築は`prompt-blocks.ts`、表現の辞書から候補と検索の結果を探す処理と、開いている欄に入れるグループを選ぶ処理（`groupsForBlock`）は`prompt-dictionary.ts`が担当します。入力部品は`@animic/react`を使い、辞書やプロンプトの構文を共通部品へ持ち込みません。表現の辞書は`src/routes/rooms.$code.tsx`のloaderが`listPromptGroups`（`prompt-phrases.functions.ts`）でD1から読み、RoomPage・BattlePageを通して`PromptComposer`へ渡します。参加前の人にも見せてよい情報のため、`listPromptGroups`は認証しません。管理画面での編集は、次にloaderが動いたときから反映します。
 
-D1にグループが1つもなければ、`prompt-phrases.server.ts`の`loadPromptGroups`が`prompt-dictionary-seed.ts`の初期データを登録してから返します。IDは初期データから決まった値にし、`ON CONFLICT DO NOTHING`で入れるため、同時に呼ばれても1回分だけ入ります。D1の1つのクエリに渡せる値は100個までのため、表現は件数を分けた複数のINSERTを1つの`batch`で入れます。
+D1にグループが1つもなければ、`prompt-phrases.server.ts`の`loadPromptGroups`が`prompt-dictionary-seed.ts`の初期データを登録してから返します。IDは初期データから決まった値にし、`ON CONFLICT DO NOTHING`で入れるため、同時に呼ばれても1回分だけ入ります。D1の1つのクエリに渡せる値は100個までのため、表現は件数を分けた複数のINSERTを1つの`batch`で入れます。表現の別名は`prompt_phrase.aliases`にJSONの配列の文字列で持ち、検証と正規化（前後の空白・空の語・重複の除去）は`prompt-phrases.ts`の`promptPhraseAliasesSchema`が担当します。
 
 BattlePageは本人へ配信された生成履歴を表示し、画像IDで選択・提出します。提出確認の対象はDialogを開いた時点のIDに固定し、後から生成が完了しても対象を置き換えません。残り時間は`use-remaining-ms.ts`がサーバー時刻と期限、受信後の経過時間から求めます。画面の切り替え中も表示対象のSnapshotと受信時刻を一緒に保持し、演出の待機で期限を延ばしません。表示する秒数の丸めを残量の計算へ流用しません。提出の確定や未提出の判定はサーバーの状態を使います。ResultPageは`battle-outcome.ts`で勝敗・引き分け・勝負不成立と公開可能な画像・スコアを求めます。相手の生成履歴は補いません。指標ごとの点はルームの状態に含めず、採点された本人がスコアの内訳を開いたときに、`battle`の`getMyScoringMetrics`がセッションの参加者IDで`scoring`の`getScoringMetrics`を呼んで読みます。ログインせずに参加した人も使えるよう、戦績の詳細のServer Functionは使いません。内訳の表示は戦績の詳細と同じ`score-breakdown.tsx`を使います。再戦の操作では同じルームの待機画面へ戻り、ホストが新しい対戦を開始します。
 
@@ -419,7 +419,7 @@ NovelAIはPNGのtEXtチャンクと、アルファ値の最下位ビット（`st
 
 画像生成の画面は、`image-generation`のServer Function（`src/features/image-generation/image-generation-admin.functions.ts`）から生成キューのDOを呼び、モデルを読み書きします。値はValibotの`picklist`で検証し、V5 CuratedとV4.5 Curated以外は保存しません。
 
-バックアップのZIP（`backup.json`と、`topic-images/`のお題の画像・`phrase-images/`の挿絵）は、ブラウザーで`fflate`を使って作成・展開します。書き出しではServer Functionから`backup.json`の内容を受け取り、画像は配信URLから読みます。読み込みでは、ZIPを検証して件数を表示し、運営者が選んだ項目（お題・対戦条件の候補・表現の辞書）について、お題の画像と挿絵を1枚ずつ保存してから、グループ・表現・お題・対戦条件の候補を20件ずつServer Functionへ送ります。選ばなかった項目の画像と書き込みは送りません。D1の1回の呼び出しで使えるクエリ数に収めるためです。書き込みはIDで上書きまたは追加するため、途中で失敗しても同じZIPを同じ項目で読み込み直せば同じ状態になります。グループの色・入れる欄と表現のサフィックス・注釈・挿絵がない前の形式の`backup.json`は、色を`slate`、入れる欄を`both`、サフィックス・注釈を空、挿絵をなしとして読み込みます。
+バックアップのZIP（`backup.json`と、`topic-images/`のお題の画像・`phrase-images/`の挿絵）は、ブラウザーで`fflate`を使って作成・展開します。書き出しではServer Functionから`backup.json`の内容を受け取り、画像は配信URLから読みます。読み込みでは、ZIPを検証して件数を表示し、運営者が選んだ項目（お題・対戦条件の候補・表現の辞書）について、お題の画像と挿絵を1枚ずつ保存してから、グループ・表現・お題・対戦条件の候補を20件ずつServer Functionへ送ります。選ばなかった項目の画像と書き込みは送りません。D1の1回の呼び出しで使えるクエリ数に収めるためです。書き込みはIDで上書きまたは追加するため、途中で失敗しても同じZIPを同じ項目で読み込み直せば同じ状態になります。グループの色・入れる欄と表現のサフィックス・注釈・別名・挿絵がない前の形式の`backup.json`は、色を`slate`、入れる欄を`both`、サフィックス・注釈を空、別名を空の配列、挿絵をなしとして読み込みます。
 
 ### 処理の呼び出し順序
 

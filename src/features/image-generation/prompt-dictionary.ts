@@ -54,7 +54,11 @@ const hitsOf = (groups: readonly PromptGroup[]): DictionaryHit[] =>
 
 const includes = (text: string, q: string) => normalizeQuery(text).includes(q);
 
-/** 入力候補: 画面に出す名前かタグに含む表現を、前方一致を先にしてlimit件まで */
+/** 探す語（画面に出す名前・タグ・別名）のどれかが条件に合うか */
+const someText = (hit: DictionaryHit, test: (text: string) => boolean) =>
+  [phraseName(hit), hit.tag, ...hit.aliases].some((text) => test(normalizeQuery(text)));
+
+/** 入力候補: 画面に出す名前・タグ・別名に含む表現を、前方一致を先にしてlimit件まで */
 export function searchDictionary(
   groups: readonly PromptGroup[],
   query: string,
@@ -62,15 +66,14 @@ export function searchDictionary(
 ): DictionaryHit[] {
   const q = normalizeQuery(query);
   if (!q) return [];
-  const starts = (hit: DictionaryHit) =>
-    normalizeQuery(phraseName(hit)).startsWith(q) || normalizeQuery(hit.tag).startsWith(q);
+  const starts = (hit: DictionaryHit) => someText(hit, (text) => text.startsWith(q));
   return hitsOf(groups)
-    .filter((hit) => includes(phraseName(hit), q) || includes(hit.tag, q))
+    .filter((hit) => someText(hit, (text) => text.includes(q)))
     .toSorted((a, b) => Number(!starts(a)) - Number(!starts(b)))
     .slice(0, limit);
 }
 
-/** 検索の窓: 検索語があればジャンルをまたいで（ジャンル名にも合わせて）探し、なければ選んだジャンル（nullはすべて）を並べる */
+/** 検索の窓: 検索語があればジャンルをまたいで（ジャンル名・別名にも合わせて）探し、なければ選んだジャンル（nullはすべて）を並べる */
 export function browseDictionary(
   groups: readonly PromptGroup[],
   genre: string | null,
@@ -79,7 +82,7 @@ export function browseDictionary(
   const q = normalizeQuery(query);
   if (!q) return hitsOf(genre ? groups.filter((group) => group.id === genre) : groups);
   return hitsOf(groups).filter(
-    (hit) => includes(phraseName(hit), q) || includes(hit.tag, q) || includes(hit.group.label, q),
+    (hit) => someText(hit, (text) => text.includes(q)) || includes(hit.group.label, q),
   );
 }
 

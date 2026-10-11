@@ -11,6 +11,7 @@ import {
   moveDirectionSchema,
   promptGroupLabelSchema,
   promptIdSchema,
+  promptPhraseAliasesSchema,
   promptPhraseLabelSchema,
   promptPhraseNoteSchema,
   promptPhraseSuffixSchema,
@@ -82,6 +83,7 @@ export const savePromptPhrase = createServerFn({ method: "POST" })
       suffix: promptPhraseSuffixSchema,
       tag: promptPhraseTagSchema,
       note: promptPhraseNoteSchema,
+      aliases: promptPhraseAliasesSchema,
     }),
   )
   .handler(async ({ data }) => {
@@ -116,11 +118,18 @@ export const savePromptPhrase = createServerFn({ method: "POST" })
         suffix: data.suffix,
         tag: data.tag,
         note: data.note,
+        aliases: data.aliases,
         sortOrder: (last?.value ?? -1) + 1,
       })
       .onConflictDoUpdate({
         target: promptPhrase.id,
-        set: { label: data.label, suffix: data.suffix, tag: data.tag, note: data.note },
+        set: {
+          label: data.label,
+          suffix: data.suffix,
+          tag: data.tag,
+          note: data.note,
+          aliases: data.aliases,
+        },
       });
     return { error: null };
   });
