@@ -4,11 +4,13 @@ import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
 import type { BattleSettings } from "../../src/features/battle/battle-state";
-import { inspectTopicWebp, parseTopicImageUrl } from "../../src/features/battle/topic-images";
+import { parseTopicImageUrl } from "../../src/features/battle/topic-images";
+import { phraseImageKey, phraseImagePath } from "../../src/features/image-generation/phrase-images";
+import { inspectWebp } from "../../src/lib/webp";
 import { loginAdmin, openAdminMenu } from "./admin";
 import { create, join, snapshot } from "./api";
 import { executeLocalD1 } from "./d1";
-import { deleteLocalTopicImage } from "./r2";
+import { deleteLocalPhraseImage, deleteLocalTopicImage } from "./r2";
 
 const origin = "http://127.0.0.1:4173";
 
@@ -25,14 +27,13 @@ function pngChunk(type: string, data: Buffer) {
 }
 
 // NovelAIの画像と同じく、テキストのチャンク（Comment）にプロンプトを持つ半透明のPNG。
-function pngWithPrompt(prompt: string) {
-  const size = 8;
+function pngWithPrompt(prompt: string, width = 8, height = 8) {
   const header = Buffer.alloc(13);
-  header.writeUInt32BE(size, 0);
-  header.writeUInt32BE(size, 4);
+  header.writeUInt32BE(width, 0);
+  header.writeUInt32BE(height, 4);
   header.set([8, 6, 0, 0, 0], 8);
-  const row = [0, ...Array.from({ length: size }, () => [255, 64, 128, 96]).flat()];
-  const pixels = Buffer.from(Array.from({ length: size }, () => row).flat());
+  const row = Buffer.from([0, ...Array.from({ length: width }, () => [255, 64, 128, 96]).flat()]);
+  const pixels = Buffer.concat(Array.from({ length: height }, () => row));
   return Buffer.concat([
     Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
     pngChunk("IHDR", header),
@@ -82,6 +83,29 @@ async function addTopic(page: Page, fileName: string, prompt: string) {
   return page.url().split("/").at(-1) ?? "";
 }
 
+/** 表示名の表現の挿絵のURL（なければnull）。 */
+async function phraseImageOf(page: Page, label: string) {
+  const groups = await page.evaluate(() => window.animicTest.listPromptGroups());
+  const phrase = groups.flatMap((group) => group.phrases).find((item) => item.label === label);
+  return phrase?.imageId ? phraseImagePath({ phraseId: phrase.id, imageId: phrase.imageId }) : null;
+}
+
+/** 表現に、ブラウザーで作ったWebPを挿絵としてServer Functionから登録する。 */
+async function setPhraseImage(page: Page, phraseId: string) {
+  const error = await page.evaluate(async (id) => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 4;
+    canvas.height = 4;
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp"));
+    if (!blob) throw new Error("WebPを作れませんでした。");
+    const form = new FormData();
+    form.set("id", id);
+    form.set("file", new File([blob], "phrase.webp", { type: "image/webp" }));
+    return (await window.animicTest.savePromptPhraseImage({ data: form })).error;
+  }, phraseId);
+  expect(error).toBeNull();
+}
+
 async function start(page: Page, code: string, settings: BattleSettings) {
   return page.evaluate(
     async (data) => {
@@ -116,7 +140,7 @@ test("画像からお題を非公開で追加し、メタデータを消した�
   expect(served.headers()["content-type"]).toBe("image/webp");
   expect(served.headers()["cache-control"]).toBe("public, max-age=31536000, immutable");
   const bytes = await served.body();
-  expect(inspectTopicWebp(new Uint8Array(bytes))).toBeNull();
+  expect(inspectWebp(new Uint8Array(bytes))).toBeNull();
   expect(bytes.toString("latin1")).not.toContain(secret);
   // 白で塗ってから描くため、透過のチャンクも残らない。
   expect(chunkNames(bytes)).not.toContain("ALPH");
@@ -232,57 +256,208 @@ test("対戦条件の候補と既定値を変えるとロビーに反映し、�
   await host.close();
 });
 
-test("よく使う表現をグループに分けて追加・並べ替え・削除し、同じ語は同じグループに登録しない", async ({
+test("表現の辞書を初期データから始め、色・サフィックス・注釈・挿絵を付けて編集すると、対戦画面の検索と候補に出す", async ({
   page,
+  browser,
 }) => {
+  test.setTimeout(120_000);
+  await executeLocalD1("DELETE FROM prompt_group");
   await loginAdmin(page);
-  await openAdminMenu(page, "よく使う表現");
-  for (const label of ["髪の色", "目"]) {
+  await openAdminMenu(page, "表現の辞書");
+  // D1が空なら、初期データ（22ジャンル）を登録してから表示する。
+  const groups = page.getByRole("radiogroup", { name: "グループ" });
+  await expect(groups.getByRole("radio")).toHaveCount(22);
+  await groups.getByText("髪の色").click();
+  await page.getByRole("button", { name: "グループの名前と色を変える" }).click();
+  const editGroup = page.getByRole("dialog", { name: "グループを編集" });
+  await expect(editGroup.getByRole("radio", { name: "ピンク", exact: true })).toBeChecked();
+  await editGroup.getByRole("button", { name: "やめる" }).click();
+
+  for (const [label, tone] of [
+    ["E2Eの髪", "水色"],
+    ["E2Eの目", "紫"],
+  ] as const) {
     await page.getByRole("button", { name: "グループを追加" }).click();
     const dialog = page.getByRole("dialog", { name: "グループを追加" });
     await dialog.getByLabel("グループの名前").fill(label);
+    await dialog.getByRole("radiogroup", { name: "目印の色" }).getByText(tone).click();
     await dialog.getByRole("button", { name: "保存する" }).click();
     await expect(dialog).toHaveCount(0);
   }
-  const groups = page.getByRole("region", { name: "グループ" });
-  await expect(groups.getByRole("row")).toHaveCount(3);
-  await groups.getByRole("button", { name: "目を上へ" }).click();
-  await expect(groups.getByRole("row").nth(1)).toContainText("目");
+  // 追加したグループを選んだ状態になる。
+  await expect(groups.getByRole("radio")).toHaveCount(24);
+  await expect(page.getByRole("region", { name: "E2Eの目の表現" })).toContainText(
+    "表現がまだありません",
+  );
+  await page.getByRole("button", { name: "E2Eの目を前へ" }).click();
+  await expect(groups.getByRole("radio").nth(22)).toHaveAccessibleName(/^E2Eの目/);
 
-  await groups.getByRole("button", { name: "髪の色", exact: true }).click();
+  await groups.getByText("E2Eの髪").click();
   for (const [label, tag] of [
-    ["ピンクの髪", "pink hair"],
-    ["桃色の髪", "pink hair"],
+    ["おさげ", "e2e braids"],
+    ["三つ編み", "e2e braids"],
   ]) {
     await page.getByRole("button", { name: "表現を追加" }).click();
     const dialog = page.getByRole("dialog", { name: "表現を追加" });
     await dialog.getByLabel("表示名").fill(label);
+    await dialog.getByLabel("サフィックス").fill("（E2E）");
     await dialog.getByLabel("NovelAIへ送る語").fill(tag);
+    await dialog.getByLabel("注釈").fill("E2Eの注釈");
     await dialog.getByRole("button", { name: "保存する" }).click();
-    if (label === "桃色の髪") {
+    if (label === "三つ編み") {
       await expect(dialog.getByRole("alert")).toHaveText(
         "このグループには同じ語の表現があります。",
       );
       await dialog.getByRole("button", { name: "やめる" }).click();
     } else await expect(dialog).toHaveCount(0);
   }
-  const phrases = page.getByRole("region", { name: "髪の色の表現" });
-  await expect(phrases.getByRole("row", { name: /ピンクの髪/ })).toContainText("pink hair");
+  const phrases = page.getByRole("region", { name: "E2Eの髪の表現" });
+  const braids = phrases.getByRole("article", { name: "おさげ（E2E）" });
+  await expect(braids).toContainText("e2e braids");
+  await expect(braids).toContainText("挿絵なし");
 
-  await groups.getByRole("button", { name: "目を削除" }).click();
+  // 挿絵は、メタデータを消して縮めたWebPで配信する。差し替えると前の画像は配信しない。
+  const secret = "e2e illustration prompt";
+  const illustration = (width: number, height: number) => ({
+    name: "illustration.png",
+    mimeType: "image/png",
+    buffer: pngWithPrompt(secret, width, height),
+  });
+  const braidsImage = braids.getByRole("img", { name: "おさげの挿絵" });
+  // カードで選ぶと、すぐに保存する。
+  await braids.locator('input[type="file"]').setInputFiles(illustration(1280, 640));
+  await expect(page.getByRole("status").filter({ hasText: "挿絵を保存しました" })).toBeVisible();
+  const first = (await phraseImageOf(page, "おさげ")) ?? "";
+  await expect(braidsImage).toHaveAttribute("src", first);
+  await expect(braids.getByRole("button", { name: "挿絵を変える" })).toBeVisible();
+  const served = await page.request.get(first);
+  expect(served.status()).toBe(200);
+  expect(served.headers()["content-type"]).toBe("image/webp");
+  expect(served.headers()["cache-control"]).toBe("public, max-age=31536000, immutable");
+  const bytes = await served.body();
+  expect(inspectWebp(new Uint8Array(bytes))).toBeNull();
+  expect(bytes.toString("latin1")).not.toContain(secret);
+  expect(
+    await page.evaluate(async (url) => {
+      const image = new Image();
+      image.src = url;
+      await image.decode();
+      return [image.naturalWidth, image.naturalHeight];
+    }, first),
+  ).toEqual([640, 320]);
+  // 編集のダイアログでは、保存済みの挿絵を出し、選び直して保存できる。
+  await braids.getByRole("button", { name: "おさげを編集" }).click();
+  const editBraids = page.getByRole("dialog", { name: "表現を編集" });
+  const preview = editBraids.getByRole("img", { name: "挿絵のプレビュー" });
+  await expect(preview).toHaveAttribute("src", first);
+  await editBraids.locator('input[type="file"]').setInputFiles(illustration(8, 8));
+  await expect(preview).toHaveAttribute("src", /^blob:/);
+  await editBraids.getByRole("button", { name: "保存する" }).click();
+  await expect(editBraids).toHaveCount(0);
+  const replaced = (await phraseImageOf(page, "おさげ")) ?? "";
+  expect(replaced).not.toBe(first);
+  await expect(braidsImage).toHaveAttribute("src", replaced);
+  expect((await page.request.get(first)).status()).toBe(404);
+
+  // 挿絵のある表現を入れたグループを消すと、挿絵も配信しない。
+  const eyeId = await page.evaluate(async () => {
+    const group = (await window.animicTest.listPromptGroups()).find(
+      (item) => item.label === "E2Eの目",
+    );
+    if (!group) throw new Error("E2Eの目がありません。");
+    const id = crypto.randomUUID();
+    await window.animicTest.savePromptPhrase({
+      data: {
+        id,
+        groupId: group.id,
+        label: "E2Eの赤い目",
+        suffix: "",
+        tag: "e2e red eyes",
+        note: "",
+      },
+    });
+    return id;
+  });
+  await setPhraseImage(page, eyeId);
+  const eyeImage = (await phraseImageOf(page, "E2Eの赤い目")) ?? "";
+  expect((await page.request.get(eyeImage)).status()).toBe(200);
+  await groups.getByText("E2Eの目").click();
+  await page.getByRole("button", { name: "グループを削除" }).click();
   const confirm = page.getByRole("dialog", { name: "グループを削除しますか？" });
   await confirm.getByRole("button", { name: "削除する" }).click();
-  await expect(groups.getByRole("row")).toHaveCount(2);
+  await expect(groups.getByRole("radio")).toHaveCount(23);
+  expect((await page.request.get(eyeImage)).status()).toBe(404);
+
+  // 次に開いた対戦画面の検索と入力候補に、編集した内容が出る。
+  await executeLocalD1(
+    "INSERT OR REPLACE INTO topic (id, difficulty, image_url) VALUES ('e2e-topic', 'easy', 'https://example.invalid/animic-topic.svg')",
+  );
+  const guestContext = await browser.newContext({
+    extraHTTPHeaders: { "CF-Connecting-IP": "203.0.113.32" },
+  });
+  const host = await browser.newPage({
+    reducedMotion: "reduce",
+    extraHTTPHeaders: { "CF-Connecting-IP": "203.0.113.33" },
+  });
+  try {
+    const code = await create(host, "辞書のホスト");
+    await join(await guestContext.newPage(), code, "辞書のゲスト");
+    await expect
+      .poll(async () => (await snapshot(host)).members.filter((member) => member.connected).length)
+      .toBe(2);
+    const started = await start(host, code, {
+      difficulty: "easy",
+      durationSeconds: 600,
+      selectionSeconds: 10,
+    });
+    expect(started.error).toBeNull();
+    await host.goto(`/rooms/${code}`);
+    await expect(host.getByRole("timer")).toBeVisible();
+
+    await host.getByRole("button", { name: "キャラプロンプトを検索" }).click();
+    const search = host.getByRole("dialog", { name: "キャラプロンプトを検索" });
+    await search.getByRole("radiogroup", { name: "ジャンル" }).getByText("E2Eの髪").click();
+    const card = search.getByRole("button", { name: "おさげ（E2E）をキャラに入れる" });
+    await expect(card).toContainText("e2e braids");
+    await expect(card).toContainText("E2Eの注釈");
+    await expect(card.locator("img")).toHaveAttribute("src", replaced);
+    await expect(card).not.toContainText("No Image");
+    await expect(search.getByRole("radiogroup", { name: "ジャンル" })).not.toContainText("E2Eの目");
+    await search.getByRole("button", { name: "決定" }).click();
+
+    // 候補にもサフィックスを出すが、欄に入るのは表示名だけ。
+    const input = host.getByRole("combobox", { name: "プロンプト（キャラ）" });
+    await input.fill("おさげ");
+    await host
+      .getByRole("listbox", { name: "入力候補" })
+      .getByRole("option", { name: /おさげ（E2E）/ })
+      .click();
+    await expect(host.getByRole("button", { name: "「おさげ」を書き直す" })).toBeVisible();
+  } finally {
+    await host.close();
+    await guestContext.close();
+  }
+
+  // 挿絵を外すと、前の画像は配信しない。
+  await groups.getByText("E2Eの髪").click();
+  await braids.getByRole("button", { name: "おさげを編集" }).click();
+  await editBraids.getByRole("button", { name: "挿絵を外す" }).click();
+  await expect(editBraids.getByText("挿絵はありません")).toBeVisible();
+  await editBraids.getByRole("button", { name: "保存する" }).click();
+  await expect(editBraids).toHaveCount(0);
+  expect(await phraseImageOf(page, "おさげ")).toBeNull();
+  await expect(braids).toContainText("挿絵なし");
+  expect((await page.request.get(replaced)).status()).toBe(404);
 });
 
-test("書き出したZIPを読み込むと、消したお題と画像・対戦条件・よく使う表現が元に戻る", async ({
+test("書き出したZIPを読み込むと、選んだ項目（お題と画像・対戦条件・表現の辞書と挿絵）が元に戻る", async ({
   page,
 }) => {
   await executeLocalD1("DELETE FROM prompt_group");
   await loginAdmin(page);
   const topicId = await addTopic(page, "backup.png", "backup prompt");
   const imageUrl = (await page.getByRole("img", { name: "お題の画像" }).getAttribute("src")) ?? "";
-  await page.evaluate(async () => {
+  const phraseId = await page.evaluate(async () => {
     await window.animicTest.saveBattleOptions({
       data: {
         duration: { choices: [40, 80], defaultSeconds: 80 },
@@ -290,11 +465,22 @@ test("書き出したZIPを読み込むと、消したお題と画像・対戦�
       },
     });
     const groupId = crypto.randomUUID();
-    await window.animicTest.savePromptGroup({ data: { id: groupId, label: "服" } });
+    await window.animicTest.savePromptGroup({ data: { id: groupId, label: "服", tone: "cyan" } });
+    const id = crypto.randomUUID();
     await window.animicTest.savePromptPhrase({
-      data: { id: crypto.randomUUID(), groupId, label: "セーラー服", tag: "serafuku" },
+      data: {
+        id,
+        groupId,
+        label: "セーラー服",
+        suffix: "（夏）",
+        tag: "serafuku",
+        note: "E2Eの注釈",
+      },
     });
+    return id;
   });
+  await setPhraseImage(page, phraseId);
+  const phraseImage = (await phraseImageOf(page, "セーラー服")) ?? "";
 
   await openAdminMenu(page, "バックアップ");
   const downloading = page.waitForEvent("download");
@@ -308,7 +494,10 @@ test("書き出したZIPを読み込むと、消したお題と画像・対戦�
     `DELETE FROM topic WHERE id = '${topicId}'; DELETE FROM battle_option; DELETE FROM prompt_group`,
   );
   await deleteLocalTopicImage(imageKey);
+  const phraseImageId = phraseImage.split("/").at(-1) ?? "";
+  await deleteLocalPhraseImage(phraseImageKey({ phraseId, imageId: phraseImageId }));
   expect((await page.request.get(imageUrl)).status()).toBe(404);
+  expect((await page.request.get(phraseImage)).status()).toBe(404);
 
   const file = page.locator('input[type="file"]');
   await file.setInputFiles({
@@ -318,19 +507,47 @@ test("書き出したZIPを読み込むと、消したお題と画像・対戦�
   });
   await expect(page.getByRole("alert")).toHaveText("ZIPファイルを開けませんでした。");
 
-  await file.setInputFiles({ name: "backup.zip", mimeType: "application/zip", buffer: zip });
   const summary = page.getByRole("region", { name: "読み込む内容" });
+  const items = page.getByRole("group", { name: "読み込む項目" });
+  const confirmImport = page.getByRole("dialog", { name: "読み込みますか？" });
+  await file.setInputFiles({ name: "backup.zip", mimeType: "application/zip", buffer: zip });
   await expect(summary.getByRole("row", { name: /^お題/ })).toContainText("1");
   await expect(summary.getByRole("row", { name: /^グループ/ })).toContainText("1");
   await expect(summary.getByRole("row", { name: /^表現/ })).toContainText("1");
+
+  // 表現の辞書だけを選んで読み込むと、お題と対戦条件の候補は変えない。
+  await items.getByText("お題（画像を含む）", { exact: true }).click();
+  await items.getByText("対戦条件の候補", { exact: true }).click();
+  await expect(items.getByRole("checkbox", { name: "お題（画像を含む）" })).not.toBeChecked();
+  await expect(summary.getByRole("row", { name: /^お題/ })).toHaveCount(0);
   await page.getByRole("button", { name: "読み込む" }).click();
-  await page
-    .getByRole("dialog", { name: "読み込みますか？" })
-    .getByRole("button", { name: "読み込む" })
-    .click();
-  await expect(page.getByText("読み込みました")).toBeVisible();
+  await expect(confirmImport).toContainText("表現の辞書（挿絵を含む）を読み込みます。");
+  await confirmImport.getByRole("button", { name: "読み込む" }).click();
+  // 確認のダイアログは、書き込みが終わってから閉じる。
+  await expect(confirmImport).toHaveCount(0);
+  await expect(summary).toHaveCount(0);
+  expect((await page.request.get(phraseImage)).status()).toBe(200);
+  expect((await page.request.get(imageUrl)).status()).toBe(404);
+  const partial = await page.evaluate(async () => ({
+    topics: (await window.animicTest.listAdminTopics()).topics,
+    options: await window.animicTest.getBattleOptions(),
+  }));
+  expect(partial.topics.some((topic) => topic.id === topicId)).toBe(false);
+  expect(partial.options.duration).not.toEqual({ choices: [40, 80], defaultSeconds: 80 });
+
+  // 開き直すと、すべての項目を選んだ状態に戻る。残りも読み込むと元に戻る。
+  await file.setInputFiles({ name: "backup.zip", mimeType: "application/zip", buffer: zip });
+  await expect(items.getByRole("checkbox", { name: "お題（画像を含む）" })).toBeChecked();
+  await page.getByRole("button", { name: "読み込む" }).click();
+  await expect(confirmImport).toContainText(
+    "お題（画像を含む）・対戦条件の候補・表現の辞書（挿絵を含む）を読み込みます。",
+  );
+  await confirmImport.getByRole("button", { name: "読み込む" }).click();
+  await expect(confirmImport).toHaveCount(0);
+  await expect(summary).toHaveCount(0);
 
   expect((await page.request.get(imageUrl)).status()).toBe(200);
+  expect((await page.request.get(phraseImage)).status()).toBe(200);
   const restored = await page.evaluate(async () => ({
     topics: (await window.animicTest.listAdminTopics()).topics,
     options: await window.animicTest.getBattleOptions(),
@@ -343,6 +560,17 @@ test("書き出したZIPを読み込むと、消したお題と画像・対戦�
     status: "unpublished",
   });
   expect(restored.options.duration).toEqual({ choices: [40, 80], defaultSeconds: 80 });
-  expect(restored.groups.map((group) => group.label)).toEqual(["服"]);
-  expect(restored.groups[0]?.phrases.map((phrase) => phrase.tag)).toEqual(["serafuku"]);
+  expect(restored.groups.find((group) => group.label === "服")).toMatchObject({
+    tone: "cyan",
+    phrases: [
+      {
+        id: phraseId,
+        label: "セーラー服",
+        suffix: "（夏）",
+        tag: "serafuku",
+        note: "E2Eの注釈",
+        imageId: phraseImageId,
+      },
+    ],
+  });
 });

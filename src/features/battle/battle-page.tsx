@@ -7,6 +7,7 @@ import { Text } from "@animic/react/text";
 import { Workspace } from "@animic/react/workspace";
 import type { AccountIcon } from "../account/account-icon";
 import { PromptComposer } from "../image-generation/prompt-composer";
+import type { PromptGroup } from "../image-generation/prompt-phrases";
 import { GridBackdrop } from "../shared/visuals/grid-backdrop";
 import { getBattleClock, getBattleDeadline, isScoringSlow } from "./battle-clock";
 import { BattlePlayers, BattleProgress, BattleRoomLabel, BattleTimer } from "./battle-header";
@@ -79,6 +80,7 @@ export function BattlePage({
   names,
   icons,
   participantId,
+  promptGroups,
   receivedAt,
   entering = false,
 }: {
@@ -88,6 +90,7 @@ export function BattlePage({
   names: Map<string, string>;
   icons: Map<string, AccountIcon | null>;
   participantId: string;
+  promptGroups: PromptGroup[];
   receivedAt: number | null;
   entering?: boolean;
 }) {
@@ -165,6 +168,7 @@ export function BattlePage({
             <PromptComposer
               key={battle.id}
               battleId={battle.id}
+              dictionary={promptGroups}
               maxCharacters={battle.settings.difficulty === "hard" ? 2 : 1}
               successCount={images.succeeded.length}
               pending={images.pendings.length > 0}

@@ -27,15 +27,16 @@ import {
 import type { PromptBlocks, PromptMode } from "./prompt-blocks";
 import {
   browseDictionary,
-  hitId,
   matchRange,
   normalizeQuery,
-  promptDictionary,
+  phraseName,
   searchDictionary,
   wordOf,
 } from "./prompt-dictionary";
-import type { DictionaryEntry, DictionaryHit } from "./prompt-dictionary";
+import type { DictionaryHit } from "./prompt-dictionary";
+import { phraseImagePath } from "./phrase-images";
 import { PromptField } from "./prompt-field";
+import type { PromptGroup, PromptPhrase } from "./prompt-phrases";
 import { PromptSearchDialog } from "./prompt-search-dialog";
 import { savePrompt, useSavedPrompt } from "./prompt-storage";
 import type { SearchCard, SearchGenre } from "./prompt-search-dialog";
@@ -44,6 +45,8 @@ export type PromptComposerProps = {
   /** 入力をこのタブに保存する単位。別の対戦の保存は使わない */
   battleId: string;
   summary?: ReactNode;
+  /** 入力候補と検索に使う表現の辞書 */
+  dictionary: readonly PromptGroup[];
   /** キャラの欄の上限（むずかしいは2） */
   maxCharacters: 1 | 2;
   /** 成功した生成の回数（Generationsの表示） */
@@ -103,9 +106,6 @@ const MODE_OPTIONS = [
 
 const TAB_TONES = ["green", "yellow", "cyan"] as const;
 
-const ALL_HITS = browseDictionary(promptDictionary, null, "");
-const HITS_BY_ID = new Map(ALL_HITS.map((hit) => [hitId(hit), hit]));
-
 /** 書きかけを確定してから、選んでいる欄を変える */
 function commitActive(state: ComposerState): ComposerState {
   const current = state.blocks[state.active];
@@ -132,6 +132,7 @@ const isMode = (value: string): value is PromptMode => value === "text" || value
 export function PromptComposer({
   battleId,
   summary: generationSummary,
+  dictionary,
   maxCharacters,
   successCount,
   pending,
@@ -166,15 +167,17 @@ export function PromptComposer({
     prompt,
   });
   const total = countTokens(blocks);
+  const allHits = browseDictionary(dictionary, null, "");
+  const hitsById = new Map(allHits.map((hit) => [hit.id, hit]));
   const query = draftQuery(draft);
   const suggestions = locked
     ? []
-    : searchDictionary(promptDictionary, query).map((hit) => ({
-        id: hitId(hit),
-        label: hit.ja,
+    : searchDictionary(dictionary, query).map((hit) => ({
+        id: hit.id,
+        label: phraseName(hit),
         tag: hit.tag,
         genre: hit.group.label,
-        labelMatch: matchRange(hit.ja, query),
+        labelMatch: matchRange(phraseName(hit), query),
         tagMatch: matchRange(hit.tag, query),
       }));
   const reasonId = `${baseId}-reason`;
@@ -189,11 +192,11 @@ export function PromptComposer({
     update((current) => ({ ...commitActive(current), active: index }));
   }
 
-  function toggleEntry(entry: DictionaryEntry) {
+  function toggleEntry(phrase: PromptPhrase) {
     update((current) => {
       const committed = commitActive(current);
       const list = committed.blocks[committed.active] ?? [];
-      return withTokens(committed, togglePhrase(list, wordOf(entry, committed.mode)));
+      return withTokens(committed, togglePhrase(list, wordOf(phrase, committed.mode)));
     });
   }
 
@@ -244,20 +247,20 @@ export function PromptComposer({
   }, [shortcutRef]);
 
   // 検索の窓に出すジャンル・カード
-  const searchHits = browseDictionary(promptDictionary, search.genre, search.query);
+  const searchHits = browseDictionary(dictionary, search.genre, search.query);
   const inPrompt = (hit: DictionaryHit) => hasToken(tokens, wordOf(hit, mode));
   const genres: SearchGenre[] = [
     {
       key: null,
       label: "すべて",
       tone: "ink",
-      count: ALL_HITS.length,
-      picked: ALL_HITS.filter(inPrompt).length,
+      count: allHits.length,
+      picked: allHits.filter(inPrompt).length,
     },
-    ...promptDictionary.map((group) => {
-      const hits = ALL_HITS.filter((hit) => hit.group.key === group.key);
+    ...dictionary.map((group) => {
+      const hits = allHits.filter((hit) => hit.group.id === group.id);
       return {
-        key: group.key,
+        key: group.id,
         label: group.label,
         tone: group.tone,
         count: hits.length,
@@ -266,12 +269,14 @@ export function PromptComposer({
     }),
   ];
   const cards: SearchCard[] = searchHits.map((hit) => ({
-    id: hitId(hit),
-    label: hit.ja,
+    id: hit.id,
+    label: phraseName(hit),
     tag: hit.tag,
+    image: hit.imageId ? phraseImagePath({ phraseId: hit.id, imageId: hit.imageId }) : null,
+    note: hit.note,
     genre: hit.group.label,
     pressed: inPrompt(hit),
-    labelMatch: matchRange(hit.ja, search.query),
+    labelMatch: matchRange(phraseName(hit), search.query),
     tagMatch: matchRange(hit.tag, search.query),
   }));
   const trimmedQuery = search.query.trim();
@@ -407,7 +412,7 @@ export function PromptComposer({
           lengthText={`${tokens.length}語（合計 ${total}語）`}
           suggestions={suggestions}
           onPick={(id) => {
-            const hit = HITS_BY_ID.get(id);
+            const hit = hitsById.get(id);
             if (!hit) return;
             update((current) => {
               const picked = pickSuggestion(
@@ -485,7 +490,7 @@ export function PromptComposer({
         summary={summary}
         cards={cards}
         onToggle={(id) => {
-          const hit = HITS_BY_ID.get(id);
+          const hit = hitsById.get(id);
           if (hit) toggleEntry(hit);
         }}
         target={activeLabel}

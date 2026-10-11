@@ -1,5 +1,5 @@
 import { Split } from "@animic/react/split";
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { Button } from "@animic/react/button";
 import { Cluster } from "@animic/react/cluster";
 import { DataTable } from "@animic/react/data-table";
@@ -8,15 +8,24 @@ import { FileButton } from "@animic/react/file-button";
 import { Heading } from "@animic/react/heading";
 import { Stack } from "@animic/react/stack";
 import { Surface } from "@animic/react/surface";
+import { Switch } from "@animic/react/switch";
 import { Text } from "@animic/react/text";
 import { useToast } from "@animic/react/toast";
 import { AdminGuide, AdminHead } from "./admin-parts";
 import { errorMessage } from "./admin-format";
 import { applyBackupFile, createBackupFile, openBackupFile } from "./backup-transfer";
-import type { OpenedBackup } from "./backup-transfer";
+import type { BackupSelection, OpenedBackup } from "./backup-transfer";
 import { downloadBlob } from "./download";
 
 type Progress = { done: number; total: number };
+
+const ALL_ITEMS: BackupSelection = { topics: true, battleOptions: true, promptDictionary: true };
+const ITEM_LABELS: Record<keyof BackupSelection, string> = {
+  topics: "お題（画像を含む）",
+  battleOptions: "対戦条件の候補",
+  promptDictionary: "表現の辞書（挿絵を含む）",
+};
+const ITEMS = ["topics", "battleOptions", "promptDictionary"] as const;
 
 export function BackupScreen() {
   const toast = useToast();
@@ -32,7 +41,10 @@ export function BackupScreen() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState<Progress | null>(null);
+  const [selection, setSelection] = useState<BackupSelection>(ALL_ITEMS);
+  const selectionLabel = useId();
   const busy = exporting || importing || reading;
+  const selected = ITEMS.filter((item) => selection[item]);
 
   async function exportBackup() {
     if (operation.current) return;
@@ -62,6 +74,7 @@ export function BackupScreen() {
     setOpened(null);
     setOpenError(null);
     setFailed(false);
+    setSelection(ALL_ITEMS);
     setReading(true);
     try {
       const result = await openBackupFile(file);
@@ -83,7 +96,7 @@ export function BackupScreen() {
     setOpenError(null);
     setFailed(false);
     try {
-      await applyBackupFile(opened, (done, total) => setImportProgress({ done, total }));
+      await applyBackupFile(opened, selection, (done, total) => setImportProgress({ done, total }));
       setConfirmOpen(false);
       toast.show({ title: "読み込みました" });
       setFileName(null);
@@ -105,7 +118,7 @@ export function BackupScreen() {
       <AdminHead
         eyebrow="Admin"
         title="バックアップ"
-        description="お題（画像を含む）・対戦条件・よく使う表現を1つのZIPで書き出し、読み込みます。"
+        description="お題（画像を含む）・対戦条件・表現の辞書（挿絵を含む）を1つのZIPで書き出し、読み込みます。"
       />
       <Split layout="main-aside">
         <Stack>
@@ -170,14 +183,36 @@ export function BackupScreen() {
               )}
               {summary && (
                 <Stack>
+                  <div role="group" aria-labelledby={selectionLabel}>
+                    <Stack space="compact">
+                      <Text variant="label" id={selectionLabel}>
+                        読み込む項目
+                      </Text>
+                      {ITEMS.map((item) => (
+                        <Switch
+                          key={item}
+                          label={ITEM_LABELS[item]}
+                          checked={selection[item]}
+                          disabled={busy}
+                          onCheckedChange={(checked) =>
+                            setSelection({ ...selection, [item]: checked })
+                          }
+                        />
+                      ))}
+                    </Stack>
+                  </div>
                   <DataTable
                     label="読み込む内容"
                     getRowKey={(row) => row.label}
-                    empty="読み込む内容はありません。"
+                    empty="読み込む項目を選んでください。"
                     rows={[
-                      { label: "お題", ...summary.topics },
-                      { label: "グループ", ...summary.promptGroups },
-                      { label: "表現", ...summary.promptPhrases },
+                      ...(selection.topics ? [{ label: "お題", ...summary.topics }] : []),
+                      ...(selection.promptDictionary
+                        ? [
+                            { label: "グループ", ...summary.promptGroups },
+                            { label: "表現", ...summary.promptPhrases },
+                          ]
+                        : []),
                     ]}
                     columns={[
                       { id: "kind", header: "種類", rowHeader: true, cell: (row) => row.label },
@@ -186,10 +221,15 @@ export function BackupScreen() {
                     ]}
                   />
                   <Text variant="body.sm" tone="muted">
-                    対戦条件は、ZIPの内容に置き換えます。ZIPにないものは削除しません。
+                    {selection.battleOptions && "対戦条件の候補は、ZIPの内容に置き換えます。"}
+                    ZIPにないものは削除しません。選ばなかった項目は変えません。
                   </Text>
                   <Cluster>
-                    <Button loading={busy} onClick={() => setConfirmOpen(true)}>
+                    <Button
+                      loading={busy}
+                      disabled={selected.length === 0}
+                      onClick={() => setConfirmOpen(true)}
+                    >
                       読み込む
                     </Button>
                   </Cluster>
@@ -200,14 +240,14 @@ export function BackupScreen() {
         </Stack>
         <AdminGuide
           items={[
-            { term: "含まれるもの", body: "お題と画像、対戦条件の候補、よく使う表現。" },
+            { term: "含まれるもの", body: "お題と画像、対戦条件の候補、表現の辞書と挿絵。" },
             {
               term: "含まれないもの",
               body: "採点ワーカー・採点ジョブ・対戦結果・参加者の情報・生成した画像・画像生成のモデル。",
             },
             {
               term: "読み込み",
-              body: "同じIDのものは上書きし、ないものは追加します。ZIPにないものは削除しません。",
+              body: "読み込む項目を選べます。同じIDのものは上書きし、ないものは追加します。ZIPにないものは削除しません。",
             },
           ]}
         />
@@ -222,7 +262,7 @@ export function BackupScreen() {
         dismissible={!importing}
         closeButton={!importing}
         title="読み込みますか？"
-        description="同じIDのお題・グループ・表現を上書きします。"
+        description={`${selected.map((item) => ITEM_LABELS[item]).join("・")}を読み込みます。同じIDのものは上書きします。`}
         footer={
           <Cluster justify="end">
             <Button

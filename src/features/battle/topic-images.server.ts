@@ -1,11 +1,7 @@
 import { env } from "cloudflare:workers";
 
-import {
-  inspectTopicWebp,
-  readTopicImageParams,
-  topicImageKey,
-  topicImagePath,
-} from "./topic-images";
+import { inspectWebp } from "../../lib/webp";
+import { readTopicImageParams, topicImageKey, topicImagePath } from "./topic-images";
 import type { TopicImageId } from "./topic-images";
 
 const contentType = "image/webp";
@@ -20,7 +16,7 @@ export function topicImageUrl(id: TopicImageId) {
 
 /** WebPを確かめてR2へ保存する。保存できなければ理由を返す。 */
 export async function putTopicImage(id: TopicImageId, bytes: Uint8Array) {
-  const error = inspectTopicWebp(bytes);
+  const error = inspectWebp(bytes);
   if (error) return error;
   await env.TOPIC_IMAGES.put(topicImageKey(id), bytes, { httpMetadata: { contentType } });
   return null;

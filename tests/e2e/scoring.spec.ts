@@ -229,7 +229,12 @@ test("失敗・読めない出力・期限切れ・画像の取得失敗は1回�
 });
 
 /** 2人で対戦を始め、それぞれ生成した画像を提出する。提出画像の絶対URLを参加者IDごとに返す。 */
-async function submitBoth(host: Page, guest: Page, code: string) {
+async function submitBoth(
+  host: Page,
+  guest: Page,
+  code: string,
+  { afterStart }: { afterStart?: () => Promise<unknown> } = {},
+) {
   const started = await host.evaluate(
     async (data) => {
       await window.animicTest.setRoomSettings({ data });
@@ -242,6 +247,7 @@ async function submitBoth(host: Page, guest: Page, code: string) {
     },
   );
   expect(started.error).toBeNull();
+  await afterStart?.();
   const battleId = (await snapshot(host)).battle?.id ?? "";
   const imageUrls = new Map<string, string>();
   for (const participant of [host, guest]) {
@@ -298,7 +304,9 @@ async function withScoringRoom(
   } finally {
     await hostContext.close();
     await guestContext.close();
-    await executeLocalD1("DELETE FROM topic WHERE id = 'e2e-scoring-topic'");
+    await executeLocalD1(
+      "DELETE FROM topic WHERE id = 'e2e-scoring-topic'; DELETE FROM scoring_weight",
+    );
   }
 }
 
@@ -310,13 +318,23 @@ async function expectLoaded(image: Locator) {
     .toBeGreaterThan(0);
 }
 
-test("生成した画像を提出すると、採点ワーカーへR2の生成画像を渡し、採点の結果で勝敗が決まる", async ({
+test("生成した画像を提出すると、採点ワーカーへR2の生成画像を渡し、対戦を始めたときの重みで計算した再現度で勝敗が決まる", async ({
   browser,
   request,
 }) => {
   test.setTimeout(90_000);
   await withScoringRoom(browser, ["203.0.113.37", "203.0.113.38"], async (host, guest, code) => {
-    const { battleId, imageUrls } = await submitBoth(host, guest, code);
+    // この対戦は、始める前に保存した重み（構図だけ）で採点する。
+    await executeLocalD1(
+      `DELETE FROM scoring_weight; INSERT INTO scoring_weight (id, weights, created_at) VALUES ('e2e-before-start', '{"ccip":0,"pixai":0,"siglip2":0,"dinov2":0,"depth":100}', ${Date.now() - 1000})`,
+    );
+    const { battleId, imageUrls } = await submitBoth(host, guest, code, {
+      // 対戦の後に変えた重みは、この対戦の採点に使わない。
+      afterStart: () =>
+        executeLocalD1(
+          `INSERT INTO scoring_weight (id, weights, created_at) VALUES ('e2e-after-start', '{"ccip":35,"pixai":25,"siglip2":20,"dinov2":10,"depth":10}', ${Date.now() + 1000})`,
+        ),
+    });
     const hostId = await participantId(host);
     // 全員が提出したら採点中になる。採点の開始から30秒を過ぎたら、時間がかかっていることも伝える。
     // ログインせずに参加したゲストの画面で、採点中の表示と結果の内訳を確かめる。
@@ -358,18 +376,18 @@ test("生成した画像を提出すると、採点ワーカーへR2の生成画
       const submission = Buffer.from(claimed.sourceImages[1]?.base64 ?? "", "base64");
       expect(submission.toString("latin1", 0, 4)).toBe("RIFF");
       expect(submission.toString("latin1", 8, 12)).toBe("WEBP");
-      const total = submitter === hostId ? 71.4 : 60;
+      // 構図だけで計算するため、採点ノードのtotal（既定の重み）ではホストが負ける点にする。
       const metrics =
         submitter === hostId
-          ? { pixai: { raw: 0.7, score: 70 } }
+          ? { pixai: { raw: 0.7, score: 70 }, depth: { raw: 0.8, score: 71.4 } }
           : {
               ccip: { skipped: "no person in one of the images", raw: 0.17 },
               pixai: { raw: 0.78, score: 74.8 },
               siglip2: { raw: 0.91, score: 71 },
               dinov2: { raw: 0.63, score: 88.5 },
-              depth: { raw: 0.78, score: 67 },
+              depth: { raw: 0.78, score: 60 },
             };
-      const reported = similarity(JSON.stringify({ total, ...metrics }));
+      const reported = similarity(JSON.stringify({ total: 0, ...metrics }));
       expect(
         (await post(request, worker, `jobs/${claimed.jobId}/complete`, reported)).status(),
       ).toBe(200);
@@ -536,7 +554,9 @@ test("画像選択の猶予までに提出しなければ、最後に完成し�
       );
       const submitter = String(inputs?.participant_id);
       expect(inputs?.image_url).toBe(imageUrls.get(submitter));
-      const reported = similarity(JSON.stringify({ total: submitter === hostId ? 80 : 50 }));
+      // 指標の点から再現度を計算する。点のない指標は除いて割り直す。
+      const depth = { score: submitter === hostId ? 80 : 50 };
+      const reported = similarity(JSON.stringify({ total: 0, depth }));
       expect(
         (await post(request, worker, `jobs/${claimed.jobId}/complete`, reported)).status(),
       ).toBe(200);
@@ -549,6 +569,8 @@ test("画像選択の猶予までに提出しなければ、最後に完成し�
   } finally {
     await hostContext.close();
     await guestContext.close();
-    await executeLocalD1("DELETE FROM topic WHERE id = 'e2e-scoring-topic'");
+    await executeLocalD1(
+      "DELETE FROM topic WHERE id = 'e2e-scoring-topic'; DELETE FROM scoring_weight",
+    );
   }
 });

@@ -16,7 +16,7 @@ import { Split } from "@animic/react/split";
 import { Stack } from "@animic/react/stack";
 import { Surface } from "@animic/react/surface";
 import { Text } from "@animic/react/text";
-import { scoringMetrics } from "../scoring/scoring-metrics";
+import { defaultScoringWeights, scoringMetrics } from "../scoring/scoring-metrics";
 import { scoringSteps, steps } from "./home-content";
 import { matches } from "./home-samples";
 import {
@@ -28,6 +28,12 @@ import {
   ScoreWeightsBar,
   StepArtwork,
 } from "./visuals/home-artwork";
+
+// 採点方法の説明には、管理画面で変えるまで使う既定の重みを出す。
+const defaultWeights = scoringMetrics.map((metric) => ({
+  ...metric,
+  weight: defaultScoringWeights[metric.key],
+}));
 
 export function HowToPlay({
   index,
@@ -134,9 +140,9 @@ export function Scoring() {
                           </Text>
                           {!step.upcoming && (
                             <Stack space="compact">
-                              <ScoreWeightsBar weights={scoringMetrics} />
+                              <ScoreWeightsBar weights={defaultWeights} />
                               <Grid columns={2} space="compact" collapse="none">
-                                {[scoringMetrics.slice(0, 3), scoringMetrics.slice(3)].map(
+                                {[defaultWeights.slice(0, 3), defaultWeights.slice(3)].map(
                                   (column) => (
                                     <Text key={column[0].key} as="p" variant="caption">
                                       {column.map((metric, index) => (

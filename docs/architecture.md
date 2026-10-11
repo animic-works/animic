@@ -258,11 +258,13 @@ Panda Native Specは、デザインシステムの定義から生成する機械
 
 画面の要件は[ゲーム仕様](product.md#対象範囲)に従い、ルートは`src/routes/`で定義します。認証・ルーム・対戦のServer Functions、D1スキーマ、DOは画面の表示から独立させます。ブラウザ側のWebSocket接続・再接続は`src/features/room/room-connection.ts`に置きます。`use-room-connection.ts`は配信のバージョンと受信時刻を同じSnapshotに保持し、Reactの購読へ渡します。古いloaderの応答で新しい配信を上書きせず、表示は呼び出し側に委ねます。
 
-公開アプリはトップページ`/`、ルーム作成`/start`、ルーム`/rooms/$code`、マイページ`/mypage`、戦績の詳細`/mypage/matches/$battleId`、規約`/terms`・`/privacy`で構成します。`/admin`配下はお題・対戦条件・よく使う表現・画像生成・採点ワーカー・採点ジョブ・バックアップの管理画面です。トップの参加コード入力はサーバーへ存在を確認し、見つからない場合は入力欄のエラーとして扱います。ルームURLの直接アクセスではloaderが形式・正規化・存在・本人の参加状態を確認し、存在しない場合は404にします。ルームに参加していない場合はRoomEntryで表示名を入力し、作成・参加のServer Functionを呼びます。作成前にはGoogleまたはDiscordでログインし、招待からの参加では任意のログインまたは匿名セッションを使います。作成要求の再送には同じ要求IDを使います。名前・役割・画面段階はクエリパラメータや端末内の参加者IDから決めません。
+公開アプリはトップページ`/`、ルーム作成`/start`、ルーム`/rooms/$code`、マイページ`/mypage`、戦績の詳細`/mypage/matches/$battleId`、規約`/terms`・`/privacy`で構成します。`/admin`配下はお題・対戦条件・表現の辞書・画像生成・採点ワーカー・採点ジョブ・採点の重み・バックアップの管理画面です。トップの参加コード入力はサーバーへ存在を確認し、見つからない場合は入力欄のエラーとして扱います。ルームURLの直接アクセスではloaderが形式・正規化・存在・本人の参加状態を確認し、存在しない場合は404にします。ルームに参加していない場合はRoomEntryで表示名を入力し、作成・参加のServer Functionを呼びます。作成前にはGoogleまたはDiscordでログインし、招待からの参加では任意のログインまたは匿名セッションを使います。作成要求の再送には同じ要求IDを使います。名前・役割・画面段階はクエリパラメータや端末内の参加者IDから決めません。
 
 RoomPageはloaderの初期状態を受け取り、`use-room-connection.ts`を通してWebSocket配信を購読します。ルーム参加者・ホスト・準備・設定はサーバーのSnapshotから表示し、開始・設定変更・準備・退出はServer Functionsへ渡します。ロビーの設定変更は`use-room-settings.ts`が即時に表示し、入力順に保存します。保存したバージョンへ配信が追いついたらサーバーの値を使い、保存失敗は呼び出し元へ返して後続の操作を妨げないようにします。難易度・生成時間・画像選択の猶予を設定し、接続中の参加者が2人以上のときに対戦を開始します。結果は2人なら勝ち負け、3人以上なら順位で表示します。`battle-screen.ts`は本人の参加資格と対戦状態から待機・生成中・生成完了待ち・画像選択・提出後の待機・結果を判定します。採点中は提出後の表示に、採点中であることと、時間がかかっている場合の案内を加えます。途中参加者は次の対戦を待ちます。再接続ではサーバーの状態を復元し、接続資格を失った場合は終了案内を表示します。
 
-対戦画面のプロンプト入力は`src/features/image-generation/`の`PromptComposer`が組み立て、語句・重みの操作とプロンプトの構築は`prompt-blocks.ts`、候補と検索に使う辞書は`prompt-dictionary.ts`が担当します。入力部品は`@animic/react`を使い、辞書やプロンプトの構文を共通部品へ持ち込みません。
+対戦画面のプロンプト入力は`src/features/image-generation/`の`PromptComposer`が組み立て、語句・重みの操作とプロンプトの構築は`prompt-blocks.ts`、表現の辞書から候補と検索の結果を探す処理は`prompt-dictionary.ts`が担当します。入力部品は`@animic/react`を使い、辞書やプロンプトの構文を共通部品へ持ち込みません。表現の辞書は`src/routes/rooms.$code.tsx`のloaderが`listPromptGroups`（`prompt-phrases.functions.ts`）でD1から読み、RoomPage・BattlePageを通して`PromptComposer`へ渡します。参加前の人にも見せてよい情報のため、`listPromptGroups`は認証しません。管理画面での編集は、次にloaderが動いたときから反映します。
+
+D1にグループが1つもなければ、`prompt-phrases.server.ts`の`loadPromptGroups`が`prompt-dictionary-seed.ts`の初期データを登録してから返します。IDは初期データから決まった値にし、`ON CONFLICT DO NOTHING`で入れるため、同時に呼ばれても1回分だけ入ります。D1の1つのクエリに渡せる値は100個までのため、表現は件数を分けた複数のINSERTを1つの`batch`で入れます。
 
 BattlePageは本人へ配信された生成履歴を表示し、画像IDで選択・提出します。提出確認の対象はDialogを開いた時点のIDに固定し、後から生成が完了しても対象を置き換えません。残り時間は`use-remaining-ms.ts`がサーバー時刻と期限、受信後の経過時間から求めます。画面の切り替え中も表示対象のSnapshotと受信時刻を一緒に保持し、演出の待機で期限を延ばしません。表示する秒数の丸めを残量の計算へ流用しません。提出の確定や未提出の判定はサーバーの状態を使います。ResultPageは`battle-outcome.ts`で勝敗・引き分け・勝負不成立と公開可能な画像・スコアを求めます。相手の生成履歴は補いません。指標ごとの点はルームの状態に含めず、採点された本人がスコアの内訳を開いたときに、`battle`の`getMyScoringMetrics`がセッションの参加者IDで`scoring`の`getScoringMetrics`を呼んで読みます。ログインせずに参加した人も使えるよう、戦績の詳細のServer Functionは使いません。内訳の表示は戦績の詳細と同じ`score-breakdown.tsx`を使います。再戦の操作では同じルームの待機画面へ戻り、ホストが新しい対戦を開始します。
 
@@ -292,12 +294,13 @@ APIの結合検証は画面のレイアウトやフォームに依存させま�
 | お題の情報・難易度・公開状態・画像の参照先                              | D1             |
 | お題の画像（管理画面で登録したもの）                                    | R2             |
 | 生成画像                                                                | R2             |
-| ロビーで選べる対戦条件の候補・よく使う表現                              | D1             |
+| 表現の挿絵                                                              | R2             |
+| ロビーで選べる対戦条件の候補・表現の辞書                                | D1             |
 | 運営者が選んだ画像生成のモデル                                          | 生成キューのDO |
 | ルームの参加者・ホスト・準備状態・次の対戦の設定                        | ルームのDO     |
 | 対戦の開始時刻・生成終了時刻・生成履歴の情報・生成回数・提出・採点状態  | ルームのDO     |
 | 確定した対戦結果の保存・共有用の参照・参加者ごとの戦績                  | D1             |
-| 採点ワーカー・リンクコード・採点ジョブ・採点結果                        | D1             |
+| 採点ワーカー・リンクコード・採点ジョブ・採点結果・採点の重み            | D1             |
 
 DOの状態はSQLiteストレージに永続化し、再起動・再接続後にも復元します。対戦中の状態はDOで管理し、同じ状態をD1側で独立して更新しません。確定結果は対戦IDで識別してD1へ保存します。保存待ちの情報をDOに保持し、再試行しても結果が重複しないようにします。対戦の確定と保存待ちの記録をDO内の同じトランザクションで保存し、D1の`battle_result`へ対戦IDを主キーとして挿入します。同じバッチで、保存する結果から求めた参加者ごとの戦績（順位・最終スコア・提出画像）を`battle_record`へ挿入し、マイページの一覧と成績は保存済みのJSONを読まずに求めます。D1への通信前に次の再試行を予約し、保存済みの対戦IDは上書きしません。ルームが閉じた後も保存待ちの記録は再試行の対象にします。
 
@@ -337,7 +340,7 @@ DOの状態はSQLiteストレージに永続化し、再起動・再接続後に
 | -------------------------------- | -------------------------------------------------------------------------------------------- |
 | `src/features/room/`             | ルーム作成・招待・参加者・ホスト・準備状態・次の対戦の設定・対戦条件の候補                   |
 | `src/features/battle/`           | お題の管理と選定・対戦開始・生成終了・画像選択と提出・勝敗の確定・結果表示・戦績の保存と表示 |
-| `src/features/image-generation/` | よく使う表現・生成サービスの呼び出し・生成要求と履歴                                         |
+| `src/features/image-generation/` | 表現の辞書・生成サービスの呼び出し・生成要求と履歴                                           |
 | `src/features/home/`             | トップページ・参加コード入力・セクション間の案内                                             |
 | `src/features/account/`          | マイページ・表示名とアイコンの変更・ログイン導線に使うアートワーク                           |
 | `src/features/legal/`            | 規約・プライバシーポリシー・目次                                                             |
@@ -351,7 +354,7 @@ DOの状態はSQLiteストレージに永続化し、再起動・再接続後に
 
 この分割はコードの役割によるものです。featureごとにWorkerやDOを分割することは要求しません。結果画面は`battle`、招待リンクのコピーとQR表示は`room`に含めます。
 
-`admin`は管理画面の表示とバックアップの手順を担当し、データの読み書きは担当するfeatureのServer Functionsとサーバー処理を使います。お題の管理用のServer Functionsは`battle`、対戦条件の候補は`room`、よく使う表現と画像生成のモデルは`image-generation`に置きます。
+`admin`は管理画面の表示とバックアップの手順を担当し、データの読み書きは担当するfeatureのServer Functionsとサーバー処理を使います。お題の管理用のServer Functionsは`battle`、対戦条件の候補は`room`、表現の辞書と画像生成のモデルは`image-generation`に置きます。
 
 ## 依存関係とクライアント・サーバーの分離
 
@@ -401,15 +404,17 @@ NovelAIはPNGのtEXtチャンクと、アルファ値の最下位ビット（`st
 
 ### 管理画面
 
-管理画面は`src/routes/admin/route.tsx`の枠（左のメニュー）の中に、お題・対戦条件・よく使う表現・画像生成・採点ワーカー・採点ジョブ・バックアップの画面を並べます。仕様は[ゲーム仕様](product.md#管理画面)、画像の保存先とバックアップの方式を選んだ理由は[ADR 0007](decisions/0007-topic-images-and-backup.md)を参照してください。
+管理画面は`src/routes/admin/route.tsx`の枠（左のメニュー）の中に、お題・対戦条件・表現の辞書・画像生成・採点ワーカー・採点ジョブ・採点の重み・バックアップの画面を並べます。仕様は[ゲーム仕様](product.md#管理画面)、画像の保存先とバックアップの方式を選んだ理由は[ADR 0007](decisions/0007-topic-images-and-backup.md)を参照してください。
 
 お題の画像はR2のバケット（binding `TOPIC_IMAGES`）の`topics/<お題ID>/<画像ID>`に保存し、`src/routes/topic-images.$topicId.$imageId.ts`のServer Routeで配信します。配信ではセッションを確かめず、`Cache-Control: public, max-age=31536000, immutable`を付けます。画像を差し替えると画像IDを変えて新しいURLにし、古い画像は過去の対戦結果のために消しません。`topic.image_url`には`BETTER_AUTH_URL`を基にした配信URLを保存し、対戦の状態と採点ジョブが絶対URLを使えるようにします。画面へ渡すときは、生成画像と同じく同じオリジンのパスにします。
 
-画像のメタデータは管理画面で消します。ブラウザーで画像を白で塗ったcanvasに描き直してWebPにし、Server FunctionへFormDataで送ります。サーバーは`src/features/battle/topic-images.ts`でWebPのチャンクを確かめ、EXIF・XMP・アニメーションがあれば保存しません。お題の画像はWorkersでは変換しません。
+表現の挿絵はR2のバケット（binding `PHRASE_IMAGES`）の`phrases/<表現ID>/<画像ID>`に保存し、`prompt_phrase.image_id`に画像IDを記録して、`src/routes/phrase-images.$phraseId.$imageId.ts`のServer Routeで配信します。配信の方式はお題の画像と同じです。対戦画面の検索のカードは同じオリジンのパスで読むため、絶対URLは保存しません。過去の対戦結果から参照されないため、差し替え・挿絵を外す・表現やグループの削除・バックアップの読み込みによる上書きの後に、どの表現も使っていない前の画像をR2から消します（`src/features/image-generation/phrase-images.server.ts`）。
+
+画像のメタデータは管理画面で消します。ブラウザーで画像を白で塗ったcanvasに描き直してWebPにし（`src/lib/webp-file.ts`）、Server FunctionへFormDataで送ります。挿絵は検索のカードに小さく出すため、長い辺を640pxまでに縮めます。サーバーは`src/lib/webp.ts`でWebPのチャンクを確かめ、EXIF・XMP・アニメーションがあれば保存しません。管理画面で登録する画像はWorkersでは変換しません。
 
 画像生成の画面は、`image-generation`のServer Function（`src/features/image-generation/image-generation-admin.functions.ts`）から生成キューのDOを呼び、モデルを読み書きします。値はValibotの`picklist`で検証し、V5 CuratedとV4.5 Curated以外は保存しません。
 
-バックアップのZIP（`backup.json`と`topic-images/`の画像）は、ブラウザーで`fflate`を使って作成・展開します。書き出しではServer Functionから`backup.json`の内容を受け取り、画像は配信URLから読みます。読み込みでは、ZIPを検証して件数を表示し、画像を1枚ずつ保存してから、グループ・表現・お題・対戦条件の候補を20件ずつServer Functionへ送ります。D1の1回の呼び出しで使えるクエリ数に収めるためです。書き込みはIDで上書きまたは追加するため、途中で失敗しても同じZIPを読み込み直せば同じ状態になります。
+バックアップのZIP（`backup.json`と、`topic-images/`のお題の画像・`phrase-images/`の挿絵）は、ブラウザーで`fflate`を使って作成・展開します。書き出しではServer Functionから`backup.json`の内容を受け取り、画像は配信URLから読みます。読み込みでは、ZIPを検証して件数を表示し、運営者が選んだ項目（お題・対戦条件の候補・表現の辞書）について、お題の画像と挿絵を1枚ずつ保存してから、グループ・表現・お題・対戦条件の候補を20件ずつServer Functionへ送ります。選ばなかった項目の画像と書き込みは送りません。D1の1回の呼び出しで使えるクエリ数に収めるためです。書き込みはIDで上書きまたは追加するため、途中で失敗しても同じZIPを同じ項目で読み込み直せば同じ状態になります。グループの色と表現のサフィックス・注釈・挿絵がない前の形式の`backup.json`は、色を`slate`、サフィックス・注釈を空、挿絵をなしとして読み込みます。
 
 ### 処理の呼び出し順序
 
@@ -420,6 +425,7 @@ NovelAIはPNGのtEXtチャンクと、アルファ値の最下位ビット（`st
 | お題・保存済み結果の取得   | loaderまたはUI → 担当featureのServer Function → D1                                                            |
 | 表示名・アイコンの変更     | マイページ → `account`のServer Function → D1                                                                  |
 | お題の画像の登録           | 管理画面（ブラウザーでWebPに変換）→ `battle`のServer Function → R2・D1                                        |
+| 表現の挿絵の登録           | 管理画面（ブラウザーでWebPに変換）→ `image-generation`のServer Function → R2・D1                              |
 | バックアップ               | 管理画面（ブラウザーでZIPを作成・展開）→ 担当featureのServer Function → D1・R2                                |
 | 画像生成のモデルの切り替え | 管理画面 → `image-generation`のServer Function → 生成キューのDO                                               |
 | ルーム・対戦状態の配信     | ルームのDO → WebSocket → UI                                                                                   |
@@ -450,7 +456,7 @@ WebSocketは状態の配信に使い、開始・生成・提出などの操作�
 
 ### DBアクセスの配置
 
-`src/lib/`にはD1接続など、複数の機能で使う処理を置き、機能固有のDrizzleスキーマ・クエリは担当するfeature内に置きます。お題と保存済み結果は`battle`、DO内のルームと対戦の永続化は`room`、採点ワーカー・採点ジョブ・採点結果は`scoring`が担当します。DBクライアントと業務処理を一律の共通repository層に集約しません。
+`src/lib/`にはD1接続など、複数の機能で使う処理を置き、機能固有のDrizzleスキーマ・クエリは担当するfeature内に置きます。お題と保存済み結果は`battle`、DO内のルームと対戦の永続化は`room`、採点ワーカー・採点ジョブ・採点結果・採点の重みは`scoring`が担当します。DBクライアントと業務処理を一律の共通repository層に集約しません。
 
 `src/server.ts`では、通常のリクエストをTanStack Startに渡し、採点ワーカー向けAPIを`scoring`に渡し、WebSocket接続をDOに転送し、DOクラスをexportします。アプリをフロントエンドと独立した業務APIサーバーへ分割しません。
 

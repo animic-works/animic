@@ -33,11 +33,24 @@ export const scoringJob = sqliteTable(
     finishedAt: integer("finished_at", { mode: "timestamp_ms" }),
     rawResult: text("raw_result"),
     error: text("error"),
+    /** 再現度の計算に使う重み（JSON）。対戦を始めたときの重みを、登録のときに写す。`null`は採点ノードの`total`を使う。 */
+    weights: text("weights"),
   },
   (table) => [
     index("scoring_job_state_created_at_idx").on(table.state, table.createdAt),
     index("scoring_job_battle_id_idx").on(table.battleId),
   ],
+);
+
+/** 再現度の指標の重み（JSON）。変えるたびに行を足し、対戦を始めた時刻より前の最新の行を、その対戦の採点に使う。 */
+export const scoringWeight = sqliteTable(
+  "scoring_weight",
+  {
+    id: text("id").primaryKey(),
+    weights: text("weights").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (table) => [index("scoring_weight_created_at_idx").on(table.createdAt)],
 );
 
 export const scoringResult = sqliteTable(

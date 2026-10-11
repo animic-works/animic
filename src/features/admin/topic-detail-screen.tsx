@@ -16,7 +16,8 @@ import { Surface } from "@animic/react/surface";
 import { Text } from "@animic/react/text";
 import { Textarea } from "@animic/react/textarea";
 import { useToast } from "@animic/react/toast";
-import { topicNoteSchema, topicSourceImageTypes, topicTitleSchema } from "../battle/topic-admin";
+import { sourceImageTypes, toWebp } from "../../lib/webp-file";
+import { topicNoteSchema, topicTitleSchema } from "../battle/topic-admin";
 import {
   deleteTopic,
   getAdminTopic,
@@ -24,7 +25,6 @@ import {
   setTopicStatus,
   updateTopic,
 } from "../battle/topic-admin.functions";
-import { toTopicWebp } from "../battle/topic-image-file";
 import { toImageSrc } from "../battle/image-src";
 import { errorMessage, formatDateTime } from "./admin-format";
 import { AdminError, AdminHead } from "./admin-parts";
@@ -112,7 +112,7 @@ export function TopicDetailScreen({ topic, onBack, onChanged, onDeleted }: Topic
     if (!file) return;
     setReplacing(true);
     try {
-      const blob = await toTopicWebp(file);
+      const blob = await toWebp(file);
       const form = new FormData();
       form.set("id", topic.id);
       form.set("file", new File([blob], "topic.webp", { type: "image/webp" }));
@@ -298,7 +298,7 @@ export function TopicDetailScreen({ topic, onBack, onChanged, onDeleted }: Topic
         <Stack>
           <FileButton
             label="新しい画像"
-            accept={topicSourceImageTypes.join(",")}
+            accept={sourceImageTypes.join(",")}
             loading={replacing}
             onFile={(file) => {
               setReplaceError(null);
