@@ -40,7 +40,12 @@ export const thumbnailList = defineSlotRecipe({
       overflowY: "auto",
       _thumbnailCompact: { flexWrap: "nowrap", overflowX: "auto", paddingBottom: "1" },
     },
-    item: { width: "calc(50% - 0.25rem)", flexShrink: 0, _thumbnailCompact: { width: "3.5rem" } },
+    // 横1列の大きさと比率は、高さに余裕がある配置で親が変数で広げられる。
+    item: {
+      width: "calc(50% - 0.25rem)",
+      flexShrink: 0,
+      _thumbnailCompact: { width: "var(--animic-thumbnail-size, 3.5rem)" },
+    },
     button: {
       display: "grid",
       position: "relative",
@@ -49,7 +54,7 @@ export const thumbnailList = defineSlotRecipe({
       transition: "transform 200ms cubic-bezier(.3,1.6,.5,1), box-shadow 200ms ease",
       "&:hover:not(:disabled)": { transform: "translateY(-3px) rotate(-2deg)" },
       _motionReduce: { transition: "none", "&:hover:not(:disabled)": { transform: "none" } },
-      _thumbnailCompact: { aspectRatio: "1" },
+      _thumbnailCompact: { aspectRatio: "var(--animic-thumbnail-aspect, 1)" },
       placeItems: "center",
       padding: "0",
       border: "2px solid token(colors.border.default)",

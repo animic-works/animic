@@ -108,8 +108,15 @@ export const segmentedControl = defineSlotRecipe({
           padding: "0.2rem 0.6rem",
           whiteSpace: "nowrap",
           _composerNarrow: { padding: "0.15rem 0.45rem", gap: "1" },
+          "[data-animic-composer-controls] &": { _composerDockedShort: { gap: "0" } },
         },
-        label: { textStyle: "caption", fontWeight: "bold", whiteSpace: "nowrap" },
+        // 背の低い画面の下端の編集欄では、Composerの切り替えはアイコンだけを見せる（文言は読み上げに残す）。
+        label: {
+          textStyle: "caption",
+          fontWeight: "bold",
+          whiteSpace: "nowrap",
+          "[data-animic-composer-controls] &": { _composerDockedShort: { srOnly: true } },
+        },
       },
     },
   ],

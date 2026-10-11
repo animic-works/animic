@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Button } from "@animic/react/button";
 import { Heading } from "@animic/react/heading";
 import { Page } from "@animic/react/page";
 import { Stack } from "@animic/react/stack";
@@ -156,11 +155,6 @@ export function BattlePage({
         expanded={expanded}
         onExpandedChange={setExpanded}
         editorLabel="プロンプト欄"
-        collapsedEditor={
-          <Button appearance="soft" shape="pill" size="sm" onClick={() => setExpanded(true)}>
-            プロンプト欄を開く
-          </Button>
-        }
         editor={
           stage === "finishing" || stage === "selecting" ? (
             <SelectionNotice stage={stage} seconds={clock.seconds} empty={noImage} />
@@ -175,6 +169,8 @@ export function BattlePage({
               locked={stage !== "generating" || locked}
               onGenerate={generate}
               modifierKey={modifierKey}
+              collapsed={!expanded}
+              onExpand={() => setExpanded(true)}
             />
           )
         }

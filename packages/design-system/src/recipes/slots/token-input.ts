@@ -48,6 +48,8 @@ export const tokenInput = defineSlotRecipe({
         borderColor: "transparent",
         minHeight: "7rem",
       },
+      // 下端の編集欄では、残りの高さに合わせて縮める。
+      _composerDocked: { minHeight: "4.5rem", padding: "0.6rem 0.75rem" },
     },
     content: {
       position: "relative",
@@ -91,6 +93,7 @@ export const tokenInput = defineSlotRecipe({
       alignItems: "center",
       gap: "3",
       paddingTop: "3",
+      _composerDocked: { paddingTop: "1" },
       textStyle: "caption",
       color: "fg.supporting",
     },

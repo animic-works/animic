@@ -22,6 +22,7 @@ export const workspace = defineSlotRecipe({
     "header",
     "start",
     "detail",
+    "inlineDetail",
     "center",
     "end",
     "progress",
@@ -63,6 +64,8 @@ export const workspace = defineSlotRecipe({
       },
     },
     detail: { _workspaceCompact: { display: "none" } },
+    // 札の中の補足。狭い幅では省略し、ロゴと札を1行に収める。
+    inlineDetail: { _workspaceNarrow: { display: "none" } },
     start: {
       display: "flex",
       alignItems: "center",
@@ -140,6 +143,8 @@ export const workspace = defineSlotRecipe({
         padding: "0.9rem 0.875rem max(0.75rem, env(safe-area-inset-bottom, 0px))",
         boxShadow: "0 -14px 34px -20px rgb(11 27 43 / 0.4)",
       },
+      // 背の低い画面では、つまみの下の余白を詰める。
+      _workspaceDockedShort: { paddingTop: "0.6rem" },
     },
     grip: {
       display: "none",
@@ -183,18 +188,51 @@ export const workspace = defineSlotRecipe({
       _workspaceCompact: { _workspaceTall: { order: -1 } },
       _workspaceDocked: {
         gridRow: "1",
-        padding: "0.625rem 0.875rem 1rem",
+        padding: "0.625rem 0.875rem 0.5rem",
         alignContent: "start",
       },
+      _workspaceDockedShort: { paddingTop: "0.375rem" },
     },
   },
   variants: {
     expanded: {
+      // 畳んだ編集欄は内容の高さにし、空いた高さを比較の領域へ回す。
+      // 編集欄の中身は、利用側が畳んだときの表示に切り替える（`collapsedContent`では差し替える）。
       false: {
+        body: {
+          _workspaceVertical: { _workspaceDocked: { gridTemplateRows: "minmax(0, 1fr) auto" } },
+        },
         editor: { _workspaceDocked: { height: "auto", minHeight: "0", paddingTop: "1.3rem" } },
+        // 比較の領域の高さを測り、画像をその高さまで大きくして上から詰める。
+        // 履歴は画像の下の1行に並べる（Comparisonが変数を読む）。
+        main: {
+          _workspaceDocked: {
+            alignContent: "start",
+            containerType: "size",
+            // 画像の下の見出し・履歴・提出の操作と余白の分（約14.5rem）を引いた高さ。
+            "--animic-comparison-media-block": "calc(100cqh - 14.5rem)",
+            "--animic-comparison-tools-columns": "minmax(0, 1fr)",
+            // 履歴は縦長の比率で一回り大きく並べる（ThumbnailListが変数を読む）。
+            // 画像が幅で頭打ちになる縦長の画面では、残りの高さまで履歴を大きくする。
+            "--animic-thumbnail-size":
+              "clamp(4.25rem, calc((100cqh - (50cqw - 0.875rem - 5px) * 19 / 13 - 9rem) * 13 / 19), 6.5rem)",
+            "--animic-thumbnail-aspect": "13 / 19",
+          },
+        },
+      },
+      true: {},
+    },
+    collapsedContent: { true: {}, false: {} },
+  },
+  compoundVariants: [
+    {
+      expanded: false,
+      collapsedContent: true,
+      css: {
         collapsed: { _workspaceDocked: { display: "grid" } },
         editorBody: { _workspaceDocked: { display: "none" } },
       },
     },
-  },
+  ],
+  defaultVariants: { expanded: true, collapsedContent: false },
 });

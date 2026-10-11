@@ -14,8 +14,10 @@ export const readout = defineSlotRecipe({
       boxShadow: "soft.1",
       _readoutNarrow: { minWidth: "8rem", padding: "0.35rem 0.4rem 0.4rem" },
       _readoutCompact: {
+        // 狭い画面でも、枠と文字・ラベルと数字の間に余白を残す。
         minWidth: "6.3rem",
-        padding: "0.2rem 0.6rem 0.4rem",
+        rowGap: "0.15rem",
+        padding: "0.45rem 0.85rem 0.5rem",
         borderRadius: "1rem",
       },
     },

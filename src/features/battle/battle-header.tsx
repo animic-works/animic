@@ -4,6 +4,7 @@ import { Badge } from "@animic/react/badge";
 import { Text } from "@animic/react/text";
 import { Progress } from "@animic/react/progress";
 import { Readout } from "@animic/react/readout";
+import { WorkspaceHeaderDetail } from "@animic/react/workspace";
 import { AppBrand } from "../shared/app-brand";
 import { accountIconAvatar, type AccountIcon } from "../account/account-icon";
 import { levels, playerPalettes } from "../room/room-presentation";
@@ -21,13 +22,16 @@ export function BattleRoomLabel({
   settings: BattleSnapshot["settings"];
 }) {
   // ルームコードと対戦条件は1つの札にまとめ、高さと並びをそろえる。
+  // 狭い画面では、ロゴとルームコードを1行に収めるため対戦条件を省略する。
   return (
     <>
       <AppBrand linked={false} />
       <Badge tone="surface">
         ルーム <Text variant="code.compact">{code}</Text>
-        {"｜"}
-        {levels[settings.difficulty].label}・{settings.durationSeconds}秒
+        <WorkspaceHeaderDetail>
+          {"｜"}
+          {levels[settings.difficulty].label}・{settings.durationSeconds}秒
+        </WorkspaceHeaderDetail>
       </Badge>
     </>
   );

@@ -83,6 +83,8 @@ export const avatarGroup = defineSlotRecipe({
     },
   },
   variants: {
+    // 狭い幅で全員の名前を並べきれない人数（4人以上）。アバターだけにする。
+    crowded: { true: {}, false: {} },
     presentation: {
       // 項目は同じ幅から等しく縮め、状態の文言が変わっても並びをずらさない。
       // 縮めきれない人数では一覧を横にスクロールする。
@@ -148,5 +150,38 @@ export const avatarGroup = defineSlotRecipe({
       },
     },
   },
-  defaultVariants: { presentation: "compact" },
+  compoundVariants: [
+    // 人数が多ければ、狭い画面ではアバターだけを均等に並べる（状態は輪と印で示す）。
+    {
+      presentation: "compact",
+      crowded: true,
+      css: {
+        text: { _avatarGroupNarrow: { display: "none" } },
+        item: {
+          _avatarGroupNarrow: {
+            flexBasis: "auto",
+            minWidth: 0,
+            padding: "0.2rem",
+            "&[data-current]": { minWidth: 0 },
+          },
+        },
+      },
+    },
+    // 人数が少なければ、狭い幅でも名前と状態を出し、項目を左から並べる。
+    {
+      presentation: "compact",
+      crowded: false,
+      css: {
+        root: { _avatarGroupNarrow: { justifyContent: "start" } },
+        text: { _avatarGroupCompact: { display: "grid" } },
+        item: {
+          _avatarGroupCompact: {
+            flex: "0 1 auto",
+            padding: "0.2rem 0.85rem 0.2rem 0.2rem",
+          },
+        },
+      },
+    },
+  ],
+  defaultVariants: { presentation: "compact", crowded: true },
 });

@@ -32,6 +32,8 @@ export const comparison = defineSlotRecipe({
       // 「お題」と札は縮めず、説明だけを省略する。
       "& > *": { flexShrink: 0, whiteSpace: "nowrap" },
       "& > [class*=description]": { flexShrink: 1 },
+      // 背の低い狭い画面では画像の幅が見出しより狭いため、札を次の行へ折り返す。
+      _comparisonShort: { flexWrap: "wrap", rowGap: "1", alignContent: "start" },
     },
     // 見出しは1行に保ち、入らない説明は省略する。
     description: {
@@ -43,7 +45,8 @@ export const comparison = defineSlotRecipe({
     },
     decoration: { position: "absolute", inset: "0", pointerEvents: "none" },
     heading: { _comparisonCompact: { display: "none" } },
-    preferences: { minWidth: 0 },
+    // 狭い画面では幅がないため、設定は提出の確認の中だけで変える。
+    preferences: { minWidth: 0, _comparisonCompact: { display: "none" } },
     header: {
       gridArea: "1 / 1 / 2 / -1",
       // 幅が広いときは見出しを左の列だけに置き、右の履歴の列を上から始める。
@@ -61,7 +64,7 @@ export const comparison = defineSlotRecipe({
         borderRadius: "0",
         background: "transparent",
         boxShadow: "none",
-        gap: "3",
+        gap: "2",
       },
       display: "grid",
       gridTemplateColumns: "minmax(0, 1fr)",
@@ -99,8 +102,16 @@ export const comparison = defineSlotRecipe({
         paddingInline: "0",
         alignItems: "start",
         justifyContent: "center",
-        gridTemplateColumns: "repeat(2, min(calc(50% - 5px), calc(25svh * 13 / 19)))",
+        // 高さの上限は、配置する側（畳んだ編集欄など）が変数で広げられる。
+        // 見出し（「あなたの画像」）が収まる幅は下回らない。
+        gridTemplateColumns:
+          "repeat(2, min(calc(50% - 5px), max(5.75rem, calc(var(--animic-comparison-media-block, 25svh) * 13 / 19))))",
         gap: "0.625rem",
+      },
+      // 背の低い画面では、下の編集欄の高さを残すため画像を小さくする。
+      _comparisonShort: {
+        gridTemplateColumns:
+          "repeat(2, min(calc(50% - 5px), max(5.75rem, calc(var(--animic-comparison-media-block, 17svh) * 13 / 19))))",
       },
     },
     first: {
@@ -143,7 +154,9 @@ export const comparison = defineSlotRecipe({
       },
       _comparisonCompact: {
         display: "grid",
-        gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1.8fr)",
+        // 高さに余裕がある配置では、配置する側が変数で履歴を1行に広げる（提出の操作はその下）。
+        gridTemplateColumns:
+          "var(--animic-comparison-tools-columns, minmax(0, 1fr) minmax(0, 1.8fr))",
         alignItems: "center",
         gap: "3",
         paddingTop: "0",

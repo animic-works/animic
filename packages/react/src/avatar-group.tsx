@@ -25,7 +25,7 @@ export function AvatarGroup({
 }) {
   const { ref: scrollingRef, scrollbars: scrollingBars } =
     useScrollViewport<HTMLOListElement>(label);
-  const c = avatarGroup({ presentation });
+  const c = avatarGroup({ presentation, crowded: members.length > 3 });
   return (
     <div className={c.frame}>
       {summary && <div className={c.summary}>{summary}</div>}

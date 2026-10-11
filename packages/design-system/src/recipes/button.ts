@@ -159,17 +159,18 @@ export const button = defineRecipe({
         textStyle: "label.supporting",
         minHeight: "control.0",
         paddingInline: "4",
-        paddingBlock: "3",
+        // 下端に固定した編集欄など、高さを詰める領域は親から変数で指定する。
+        paddingBlock: "var(--animic-button-padding-block, token(spacing.3))",
         // プロンプト欄が狭いときは、2つ並べた操作が1行に収まるよう詰める。
         _composerNarrow: { paddingInline: "2", gap: "0.3rem", fontSize: "0.78rem" },
       },
       md: { minHeight: "control.1", paddingInline: "5", paddingBlock: "3" },
       lg: {
-        minHeight: "3.75rem",
+        minHeight: "var(--animic-button-min-height, 3.75rem)",
         textStyle: "label",
         fontSize: "1.05rem",
         paddingInline: "6",
-        paddingBlock: "4",
+        paddingBlock: "var(--animic-button-padding-block, token(spacing.4))",
       },
       hero: {
         textStyle: "label.action",
@@ -237,10 +238,11 @@ export const button = defineRecipe({
     },
     icons: {
       true: {
-        "& > [data-animic-button-icon]": {
-          display: "inline-flex",
-          flexShrink: 0,
-          alignItems: "center",
+        "& > [data-animic-button-icon]": { flexShrink: 0, alignItems: "center" },
+        "& > [data-animic-button-icon=start]": { display: "inline-flex" },
+        // ショートカットの案内など、後ろのアイコンを親の領域が隠せるようにする。
+        "& > [data-animic-button-icon=end]": {
+          display: "var(--animic-button-trailing-icon-display, inline-flex)",
         },
         "& > [data-animic-button-label]": { flex: "0 1 auto", minWidth: 0 },
       },

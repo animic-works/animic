@@ -22,6 +22,9 @@ export const conditions = {
   dialogExpandedCompact: "@media (max-width: 53.75em), (max-aspect-ratio: 1/1)",
   avatarGroupNarrow: "@media (max-width: 35em)",
   composerCompact: "@media (max-width: 35em)",
+  // Workspaceの下端に固定した編集欄の中（Workspaceの`workspaceDocked`と同じ条件）。
+  composerDocked: "@media (max-width: 35em) and (height > 30em)",
+  composerDockedShort: "@media (max-width: 35em) and (height > 30em) and (height <= 45em)",
   // プロンプト欄の幅が狭いとき（幅1150px前後の画面の左の列）。部品を一回り小さくする。
   composerNarrow: "@container animic-composer (max-width: 16.875rem)",
   readoutCompact: "@media (max-width: 35em)",
@@ -36,8 +39,11 @@ export const conditions = {
   podiumCompact: "@media (max-width: 35em)",
   comparisonStageCompact: "@container animic-comparison-stage (max-width: 53.75em)",
   noticeCompact: "@container animic-notice (max-width: 35em)",
-  workspaceDocked: "@media (max-width: 35em) and (height > 40em)",
-  workspaceFlow: "@media (width > 35em), (height <= 40em)",
+  // 縦長の狭い画面（高さ480pxを超える）では、編集欄を下端に固定して1画面に収める。
+  workspaceDocked: "@media (max-width: 35em) and (height > 30em)",
+  workspaceFlow: "@media (width > 35em), (height <= 30em)",
+  // 下端の編集欄のうち、高さ720px以下の画面。比較画像と余白を詰めて編集欄の高さを残す。
+  workspaceDockedShort: "@media (max-width: 35em) and (height > 30em) and (height <= 45em)",
   workspaceCompact: "@container animic-workspace (max-width: 53.75em)",
   workspaceNarrow: "@container animic-workspace (max-width: 35em)",
   workspaceVertical: "@container animic-workspace (width < 40em)",
@@ -48,6 +54,7 @@ export const conditions = {
   comparisonWide: "@media (min-width: 75em)",
   comparisonNarrow: "@media (max-width: 53.75em)",
   comparisonCompact: "@media (max-width: 35em)",
+  comparisonShort: "@media (max-width: 35em) and (height <= 45em)",
   tokenInputCompact: "@media (max-width: 51.25em)",
   articleCompact: "@media (max-width: 35em)",
   documentCompact: "@media (max-width: 35em)",

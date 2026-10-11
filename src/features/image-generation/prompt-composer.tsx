@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useEffect, useId, useRef, useState } from "react";
 import { ActionGroup } from "@animic/react/action-group";
-import { AccountIcon, PictureIcon, SearchIcon } from "../shared/icons";
+import { AccountIcon, ChevronUpIcon, PictureIcon, SearchIcon } from "../shared/icons";
 import { Button } from "@animic/react/button";
 import { Cluster } from "@animic/react/cluster";
 import { Composer } from "@animic/react/composer";
@@ -59,6 +59,10 @@ export type PromptComposerProps = {
   onGenerate: (prompt: string) => Promise<void>;
   /** ショートカットの案内に出す修飾キー */
   modifierKey: "⌘" | "Ctrl";
+  /** 狭い画面で下端に畳んでいる（入力の要約と生成の操作だけを出す） */
+  collapsed?: boolean;
+  /** 畳んだ要約から入力欄を開く */
+  onExpand?: () => void;
 };
 
 type ComposerState = {
@@ -139,6 +143,8 @@ export function PromptComposer({
   locked,
   onGenerate,
   modifierKey,
+  collapsed = false,
+  onExpand,
 }: PromptComposerProps) {
   const baseId = useId();
   // 入力していない間は、この対戦の保存（再接続・再読み込みで作り直す前の入力）を出す
@@ -169,6 +175,7 @@ export function PromptComposer({
   const total = countTokens(blocks);
   const allHits = browseDictionary(dictionary, null, "");
   const hitsById = new Map(allHits.map((hit) => [hit.id, hit]));
+  const words = preview.flat().map((token) => token.text);
   const query = draftQuery(draft);
   const suggestions = locked
     ? []
@@ -294,6 +301,21 @@ export function PromptComposer({
   return (
     <>
       <Composer
+        collapsed={collapsed}
+        peek={
+          onExpand && (
+            <Button
+              appearance="soft"
+              shape="pill"
+              size="sm"
+              aria-expanded={false}
+              trailingIcon={<ChevronUpIcon />}
+              onClick={onExpand}
+            >
+              プロンプト {words.length}語{words.length > 0 && ` — ${words.join("、")}`}
+            </Button>
+          )
+        }
         eyebrow="01 — PROMPT"
         title={
           <Heading level={1} size="panel">

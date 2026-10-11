@@ -127,3 +127,22 @@ export function SearchIcon() {
     </svg>
   );
 }
+
+/** 上向きの山形。畳んだ欄を開く操作に使う。 */
+export function ChevronUpIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="m6 15 6-6 6 6" />
+    </svg>
+  );
+}

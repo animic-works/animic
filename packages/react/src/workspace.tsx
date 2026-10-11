@@ -8,11 +8,16 @@ export interface WorkspaceProps {
   headerEnd: ReactNode;
   progress: ReactNode;
   editor: ReactNode;
+  /** 畳んだときに編集欄の代わりに出す内容。省略すると、畳んでも`editor`を出したままにする。 */
   collapsedEditor?: ReactNode;
   editorLabel: string;
   expanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
   children: ReactNode;
+}
+/** ヘッダーの札の中で、狭い幅では省略する補足（対戦条件など）。 */
+export function WorkspaceHeaderDetail({ children }: { children: ReactNode }) {
+  return <span className={workspace().inlineDetail}>{children}</span>;
 }
 export function Workspace(props: WorkspaceProps) {
   const { ref: editorScrollRef, scrollbars: editorScrollBars } = useScrollViewport<HTMLDivElement>(
@@ -20,7 +25,10 @@ export function Workspace(props: WorkspaceProps) {
   );
   const { ref: contentScrollRef, scrollbars: contentScrollBars } =
     useScrollViewport<HTMLElement>("作業内容");
-  const c = workspace({ expanded: props.expanded });
+  const c = workspace({
+    expanded: props.expanded,
+    collapsedContent: props.collapsedEditor !== undefined,
+  });
   const id = useId();
   const start = useRef<number | null>(null);
   const dragged = useRef(false);
@@ -68,7 +76,9 @@ export function Workspace(props: WorkspaceProps) {
                 dragged.current = false;
               }}
             />
-            <div className={c.collapsed}>{props.collapsedEditor}</div>
+            {props.collapsedEditor !== undefined && (
+              <div className={c.collapsed}>{props.collapsedEditor}</div>
+            )}
             <div
               id={id}
               className={c.editorBody}
