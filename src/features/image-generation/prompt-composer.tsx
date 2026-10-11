@@ -27,6 +27,7 @@ import {
 import type { PromptBlocks, PromptMode } from "./prompt-blocks";
 import {
   browseDictionary,
+  convertBlocks,
   matchRange,
   normalizeQuery,
   phraseName,
@@ -332,7 +333,12 @@ export function PromptComposer({
             value={mode}
             disabled={locked}
             onValueChange={(value) => {
-              if (isMode(value)) update((current) => ({ ...current, mode: value }));
+              if (!isMode(value)) return;
+              update((current) => ({
+                ...current,
+                mode: value,
+                blocks: convertBlocks(current.blocks, dictionary, current.mode, value),
+              }));
             }}
           />
         }

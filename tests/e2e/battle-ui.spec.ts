@@ -86,10 +86,18 @@ test("対戦画面でプロンプトを入力し、候補・重み・検索・�
     await input.press("Enter");
     await expect(page.getByRole("button", { name: "「ツインテール」を書き直す" })).toBeVisible();
 
-    // タグの入力に切り替えると、区切りの案内が英語のタグの例になる。
-    await page.getByRole("radiogroup", { name: "入力方法" }).getByText("タグ").click();
+    // タグの入力に切り替えると、区切りの案内が英語のタグの例になり、辞書にある語句はタグの表記になる。
+    const modes = page.getByRole("radiogroup", { name: "入力方法" });
+    await modes.getByText("タグ").click();
     await expect(page.getByRole("radio", { name: "タグ" })).toBeChecked();
     await expect(input).toHaveAttribute("placeholder", /「,」/);
+    await expect(page.getByRole("button", { name: "「pink hair」を書き直す" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "「twintails」を書き直す" })).toBeVisible();
+    // 文章に戻すと、日本語の表記に戻る。
+    await modes.getByText("文章").click();
+    await expect(page.getByRole("button", { name: "「ピンクの髪」を書き直す" })).toBeVisible();
+    await modes.getByText("タグ").click();
+    await expect(page.getByRole("button", { name: "「pink hair」を書き直す" })).toBeVisible();
 
     // ベースの欄に切り替える。
     await page
