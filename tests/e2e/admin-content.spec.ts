@@ -574,3 +574,87 @@ test("書き出したZIPを読み込むと、選んだ項目（お題と画像�
     ],
   });
 });
+
+test("トップページの遊び方・ギャラリー・OGP画像を管理画面で編集すると、トップページに出す", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await executeLocalD1(
+    "DELETE FROM home_item; DELETE FROM site_setting; DELETE FROM gallery_item WHERE id NOT LIKE 'initial-%'",
+  );
+  const secret = "e2e home prompt";
+  const image = (name: string, width: number, height: number) => ({
+    name,
+    mimeType: "image/png",
+    buffer: pngWithPrompt(secret, width, height),
+  });
+  try {
+    await loginAdmin(page);
+    await openAdminMenu(page, "トップページ");
+
+    // 遊び方の手順2の題名・本文・画像を変える。
+    await page.getByRole("button", { name: "手順2を編集" }).click();
+    const item = page.getByRole("dialog", { name: "項目を編集" });
+    await item.getByLabel("題名").fill("E2Eの手順");
+    await item.getByLabel("本文").fill("E2Eの本文");
+    await item.locator('input[type="file"]').setInputFiles(image("step.png", 160, 110));
+    await expect(item.getByRole("img", { name: "画像のプレビュー" })).toHaveAttribute(
+      "src",
+      /^blob:/,
+    );
+    await item.getByRole("button", { name: "保存する" }).click();
+    await expect(item).toHaveCount(0);
+
+    // ギャラリーに例を足す。点数が範囲外なら保存しない。
+    await page.getByRole("button", { name: "例を追加" }).click();
+    const gallery = page.getByRole("dialog", { name: "ギャラリーの例を追加" });
+    await gallery.getByRole("radiogroup", { name: "難易度" }).getByText("むずかしい").click();
+    await gallery.getByLabel("再現度").fill("101");
+    for (const label of ["キャラクター", "タグ", "内容", "画像の特徴", "構図"])
+      await gallery.getByLabel(label, { exact: true }).fill("50");
+    await gallery
+      .locator('input[type="file"]')
+      .nth(0)
+      .setInputFiles(image("topic.png", 83, 121));
+    await gallery.getByLabel("お題の画像の説明").fill("E2Eのお題");
+    await gallery
+      .locator('input[type="file"]')
+      .nth(1)
+      .setInputFiles(image("shot.png", 83, 121));
+    await gallery.getByLabel("提出の画像の説明").fill("E2Eの提出");
+    await gallery.getByRole("button", { name: "保存する" }).click();
+    await expect(gallery.getByText("再現度は0〜100で入力してください。")).toBeVisible();
+    await gallery.getByLabel("再現度").fill("88.8");
+    await gallery.getByRole("button", { name: "保存する" }).click();
+    await expect(gallery).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "ギャラリー（7件）" })).toBeVisible();
+
+    // OGP画像は1200×630だけを受け付け、メタデータを消したPNGで配信する。
+    const og = page.getByRole("region", { name: "OGP画像" });
+    await og.locator('input[type="file"]').setInputFiles(image("og.png", 1200, 600));
+    await expect(
+      page.getByRole("status").filter({ hasText: "1200×630の画像を選んでください（1200×600）。" }),
+    ).toBeVisible();
+    await og.locator('input[type="file"]').setInputFiles(image("og.png", 1200, 630));
+    await expect(
+      page.getByRole("status").filter({ hasText: "OGP画像を保存しました" }),
+    ).toBeVisible();
+
+    await page.goto("/");
+    await expect(page.getByRole("heading", { name: "E2Eの手順", includeHidden: true })).toHaveCount(
+      1,
+    );
+    await expect(page.getByText("1 / 7")).toBeVisible();
+    const ogImage = await page.locator('meta[property="og:image"]').getAttribute("content");
+    expect(ogImage).toMatch(/^https:\/\/animic\.party\/site-images\/[0-9a-f-]{36}$/);
+    const served = await page.request.get(new URL(ogImage ?? "").pathname);
+    expect(served.headers()["content-type"]).toBe("image/png");
+    const bytes = await served.body();
+    expect(bytes.readUInt32BE(16)).toBe(1200);
+    expect(bytes.includes(secret)).toBe(false);
+  } finally {
+    await executeLocalD1(
+      "DELETE FROM home_item; DELETE FROM site_setting; DELETE FROM gallery_item WHERE id NOT LIKE 'initial-%'",
+    );
+  }
+});

@@ -252,13 +252,13 @@ Panda Native Specは、デザインシステムの定義から生成する機械
 
 ## 検索とSNS共有
 
-検索と共有の対象は[ゲーム仕様](product.md#検索とsns共有)に従います。トップ固有のcanonicalとOGPは`src/routes/index.tsx`で設定します。robots.txtとsitemap.xmlは`public/`に置き、サイトマップには公開する正規URLだけを記載します。`src/server.ts`では`animic.party`のトップだけを検索対象とし、それ以外のホスト・パスのページ・APIレスポンスに`X-Robots-Tag: noindex`を付けます。一般公開する説明ページを追加する際は、検索対象の判定とサイトマップを合わせて更新します。画像・CSS・JavaScriptなどの静的アセットは取得を許可し、トップの表示と共有に利用できるようにします。robots.txtでクロールを禁止するだけでは検索除外を保証できず、非公開情報の保護には認証・認可が必要です。
+検索と共有の対象は[ゲーム仕様](product.md#検索とsns共有)に従います。トップ固有のcanonicalとOGPは`src/routes/index.tsx`で設定し、OGP画像のURLはloaderで読んだトップページの内容から作ります。robots.txtとsitemap.xmlは`public/`に置き、サイトマップには公開する正規URLだけを記載します。`src/server.ts`では`animic.party`のトップだけを検索対象とし、それ以外のホスト・パスのページ・APIレスポンスに`X-Robots-Tag: noindex`を付けます。一般公開する説明ページを追加する際は、検索対象の判定とサイトマップを合わせて更新します。画像・CSS・JavaScriptなどの静的アセットは取得を許可し、トップの表示と共有に利用できるようにします。robots.txtでクロールを禁止するだけでは検索除外を保証できず、非公開情報の保護には認証・認可が必要です。
 
 ## 画面とAPIの構成
 
 画面の要件は[ゲーム仕様](product.md#対象範囲)に従い、ルートは`src/routes/`で定義します。認証・ルーム・対戦のServer Functions、D1スキーマ、DOは画面の表示から独立させます。ブラウザ側のWebSocket接続・再接続は`src/features/room/room-connection.ts`に置きます。`use-room-connection.ts`は配信のバージョンと受信時刻を同じSnapshotに保持し、Reactの購読へ渡します。古いloaderの応答で新しい配信を上書きせず、表示は呼び出し側に委ねます。
 
-公開アプリはトップページ`/`、ルーム作成`/start`、ルーム`/rooms/$code`、マイページ`/mypage`、戦績の詳細`/mypage/matches/$battleId`、規約`/terms`・`/privacy`で構成します。`/admin`配下はお題・対戦条件・表現の辞書・画像生成・採点ワーカー・採点ジョブ・採点の重み・バックアップの管理画面です。トップの参加コード入力はサーバーへ存在を確認し、見つからない場合は入力欄のエラーとして扱います。ルームURLの直接アクセスではloaderが形式・正規化・存在・本人の参加状態を確認し、存在しない場合は404にします。ルームに参加していない場合はRoomEntryで表示名を入力し、作成・参加のServer Functionを呼びます。作成前にはGoogleまたはDiscordでログインし、招待からの参加では任意のログインまたは匿名セッションを使います。作成要求の再送には同じ要求IDを使います。名前・役割・画面段階はクエリパラメータや端末内の参加者IDから決めません。
+公開アプリはトップページ`/`、ルーム作成`/start`、ルーム`/rooms/$code`、マイページ`/mypage`、戦績の詳細`/mypage/matches/$battleId`、規約`/terms`・`/privacy`で構成します。`/admin`配下はお題・対戦条件・表現の辞書・トップページ・画像生成・採点ワーカー・採点ジョブ・採点の重み・バックアップの管理画面です。トップの参加コード入力はサーバーへ存在を確認し、見つからない場合は入力欄のエラーとして扱います。ルームURLの直接アクセスではloaderが形式・正規化・存在・本人の参加状態を確認し、存在しない場合は404にします。ルームに参加していない場合はRoomEntryで表示名を入力し、作成・参加のServer Functionを呼びます。作成前にはGoogleまたはDiscordでログインし、招待からの参加では任意のログインまたは匿名セッションを使います。作成要求の再送には同じ要求IDを使います。名前・役割・画面段階はクエリパラメータや端末内の参加者IDから決めません。
 
 RoomPageはloaderの初期状態を受け取り、`use-room-connection.ts`を通してWebSocket配信を購読します。ルーム参加者・ホスト・準備・設定はサーバーのSnapshotから表示し、開始・設定変更・準備・退出はServer Functionsへ渡します。ロビーの設定変更は`use-room-settings.ts`が即時に表示し、入力順に保存します。保存したバージョンへ配信が追いついたらサーバーの値を使い、保存失敗は呼び出し元へ返して後続の操作を妨げないようにします。難易度・生成時間・画像選択の猶予を設定し、接続中の参加者が2人以上のときに対戦を開始します。結果は2人なら勝ち負け、3人以上なら順位で表示します。`battle-screen.ts`は本人の参加資格と対戦状態から待機・生成中・生成完了待ち・画像選択・提出後の待機・結果を判定します。採点中は提出後の表示に、採点中であることと、時間がかかっている場合の案内を加えます。途中参加者は次の対戦を待ちます。再接続ではサーバーの状態を復元し、接続資格を失った場合は終了案内を表示します。
 
@@ -294,7 +294,8 @@ APIの結合検証は画面のレイアウトやフォームに依存させま�
 | お題の情報・難易度・公開状態・画像の参照先                              | D1             |
 | お題の画像（管理画面で登録したもの）                                    | R2             |
 | 生成画像                                                                | R2             |
-| 表現の挿絵                                                              | R2             |
+| 表現の挿絵・トップページの画像（管理画面で登録したもの）                | R2             |
+| トップページの遊び方・採点方法・ギャラリー・OGP画像の参照先             | D1             |
 | ロビーで選べる対戦条件の候補・表現の辞書                                | D1             |
 | 運営者が選んだ画像生成のモデル                                          | 生成キューのDO |
 | ルームの参加者・ホスト・準備状態・次の対戦の設定                        | ルームのDO     |
@@ -341,7 +342,7 @@ DOの状態はSQLiteストレージに永続化し、再起動・再接続後に
 | `src/features/room/`             | ルーム作成・招待・参加者・ホスト・準備状態・次の対戦の設定・対戦条件の候補                   |
 | `src/features/battle/`           | お題の管理と選定・対戦開始・生成終了・画像選択と提出・勝敗の確定・結果表示・戦績の保存と表示 |
 | `src/features/image-generation/` | 表現の辞書・生成サービスの呼び出し・生成要求と履歴                                           |
-| `src/features/home/`             | トップページ・参加コード入力・セクション間の案内                                             |
+| `src/features/home/`             | トップページ・参加コード入力・セクション間の案内・トップページの内容の保存と配信             |
 | `src/features/account/`          | マイページ・表示名とアイコンの変更・ログイン導線に使うアートワーク                           |
 | `src/features/legal/`            | 規約・プライバシーポリシー・目次                                                             |
 | `src/features/navigation/`       | 画面遷移の演出とルーターへの接続                                                             |
@@ -404,11 +405,13 @@ NovelAIはPNGのtEXtチャンクと、アルファ値の最下位ビット（`st
 
 ### 管理画面
 
-管理画面は`src/routes/admin/route.tsx`の枠（左のメニュー）の中に、お題・対戦条件・表現の辞書・画像生成・採点ワーカー・採点ジョブ・採点の重み・バックアップの画面を並べます。仕様は[ゲーム仕様](product.md#管理画面)、画像の保存先とバックアップの方式を選んだ理由は[ADR 0007](decisions/0007-topic-images-and-backup.md)を参照してください。
+管理画面は`src/routes/admin/route.tsx`の枠（左のメニュー）の中に、お題・対戦条件・表現の辞書・トップページ・画像生成・採点ワーカー・採点ジョブ・採点の重み・バックアップの画面を並べます。仕様は[ゲーム仕様](product.md#管理画面)、画像の保存先とバックアップの方式を選んだ理由は[ADR 0007](decisions/0007-topic-images-and-backup.md)を参照してください。
 
 お題の画像はR2のバケット（binding `TOPIC_IMAGES`）の`topics/<お題ID>/<画像ID>`に保存し、`src/routes/topic-images.$topicId.$imageId.ts`のServer Routeで配信します。配信ではセッションを確かめず、`Cache-Control: public, max-age=31536000, immutable`を付けます。画像を差し替えると画像IDを変えて新しいURLにし、古い画像は過去の対戦結果のために消しません。`topic.image_url`には`BETTER_AUTH_URL`を基にした配信URLを保存し、対戦の状態と採点ジョブが絶対URLを使えるようにします。画面へ渡すときは、生成画像と同じく同じオリジンのパスにします。
 
 表現の挿絵はR2のバケット（binding `PHRASE_IMAGES`）の`phrases/<表現ID>/<画像ID>`に保存し、`prompt_phrase.image_id`に画像IDを記録して、`src/routes/phrase-images.$phraseId.$imageId.ts`のServer Routeで配信します。配信の方式はお題の画像と同じです。対戦画面の検索のカードは同じオリジンのパスで読むため、絶対URLは保存しません。過去の対戦結果から参照されないため、差し替え・挿絵を外す・表現やグループの削除・バックアップの読み込みによる上書きの後に、どの表現も使っていない前の画像をR2から消します（`src/features/image-generation/phrase-images.server.ts`）。
+
+トップページの内容は`src/routes/index.tsx`のloaderが`getHomeContent`（`src/features/home/home-content.functions.ts`）で読みます。遊び方・採点方法の項目は`home_item`に固定のIDで保存し、行のない項目は`home-content.ts`の既定の文言を使います。ギャラリーの例は`gallery_item`、OGP画像は`site_setting`に保存します。ギャラリーの初期データはマイグレーションで登録し、画像は`public/images/`のパスのまま参照します。管理画面で登録した画像は、R2のバケット（binding `SITE_IMAGES`）の`images/<画像ID>`に保存し、`src/routes/site-images.$imageId.ts`のServer Routeで配信します。遊び方・採点方法・ギャラリーの画像はお題の画像と同じくブラウザーでWebPにし、OGP画像はSNSでの対応の広いPNGにします。サーバーはWebPとPNG（大きさとメタデータのチャンク、`src/lib/png.ts`）を確かめてから保存し、差し替え・取り外し・削除の後に、どこからも使われていない前の画像をR2から消します（`src/features/home/site-images.server.ts`）。
 
 画像のメタデータは管理画面で消します。ブラウザーで画像を白で塗ったcanvasに描き直してWebPにし（`src/lib/webp-file.ts`）、Server FunctionへFormDataで送ります。挿絵は検索のカードに小さく出すため、長い辺を640pxまでに縮めます。サーバーは`src/lib/webp.ts`でWebPのチャンクを確かめ、EXIF・XMP・アニメーションがあれば保存しません。管理画面で登録する画像はWorkersでは変換しません。
 

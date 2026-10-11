@@ -17,10 +17,12 @@ import { Route as TermsRouteImport } from './routes/terms'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminBackupRouteImport } from './routes/admin/backup'
 import { Route as AdminBattleOptionsRouteImport } from './routes/admin/battle-options'
+import { Route as AdminHomeRouteImport } from './routes/admin/home'
 import { Route as AdminImageGenerationRouteImport } from './routes/admin/image-generation'
 import { Route as AdminPromptsRouteImport } from './routes/admin/prompts'
 import { Route as MypageIndexRouteImport } from './routes/mypage/index'
 import { Route as RoomsCodeRouteImport } from './routes/rooms.$code'
+import { Route as SiteImagesImageIdRouteImport } from './routes/site-images.$imageId'
 import { Route as AdminScoringJobsRouteImport } from './routes/admin/scoring/jobs'
 import { Route as AdminScoringWeightsRouteImport } from './routes/admin/scoring/weights'
 import { Route as AdminScoringWorkersRouteImport } from './routes/admin/scoring/workers'
@@ -73,6 +75,11 @@ const AdminBattleOptionsRoute = AdminBattleOptionsRouteImport.update({
   path: '/battle-options',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminHomeRoute = AdminHomeRouteImport.update({
+  id: '/home',
+  path: '/home',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminImageGenerationRoute = AdminImageGenerationRouteImport.update({
   id: '/image-generation',
   path: '/image-generation',
@@ -91,6 +98,11 @@ const MypageIndexRoute = MypageIndexRouteImport.update({
 const RoomsCodeRoute = RoomsCodeRouteImport.update({
   id: '/rooms/$code',
   path: '/rooms/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SiteImagesImageIdRoute = SiteImagesImageIdRouteImport.update({
+  id: '/site-images/$imageId',
+  path: '/site-images/$imageId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminScoringJobsRoute = AdminScoringJobsRouteImport.update({
@@ -160,9 +172,11 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/admin/backup': typeof AdminBackupRoute
   '/admin/battle-options': typeof AdminBattleOptionsRoute
+  '/admin/home': typeof AdminHomeRoute
   '/admin/image-generation': typeof AdminImageGenerationRoute
   '/admin/prompts': typeof AdminPromptsRoute
   '/rooms/$code': typeof RoomsCodeRoute
+  '/site-images/$imageId': typeof SiteImagesImageIdRoute
   '/admin/': typeof AdminIndexRoute
   '/mypage/': typeof MypageIndexRoute
   '/admin/scoring/jobs': typeof AdminScoringJobsRoute
@@ -184,9 +198,11 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/admin/backup': typeof AdminBackupRoute
   '/admin/battle-options': typeof AdminBattleOptionsRoute
+  '/admin/home': typeof AdminHomeRoute
   '/admin/image-generation': typeof AdminImageGenerationRoute
   '/admin/prompts': typeof AdminPromptsRoute
   '/rooms/$code': typeof RoomsCodeRoute
+  '/site-images/$imageId': typeof SiteImagesImageIdRoute
   '/admin': typeof AdminIndexRoute
   '/mypage': typeof MypageIndexRoute
   '/admin/scoring/jobs': typeof AdminScoringJobsRoute
@@ -210,9 +226,11 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/admin/backup': typeof AdminBackupRoute
   '/admin/battle-options': typeof AdminBattleOptionsRoute
+  '/admin/home': typeof AdminHomeRoute
   '/admin/image-generation': typeof AdminImageGenerationRoute
   '/admin/prompts': typeof AdminPromptsRoute
   '/rooms/$code': typeof RoomsCodeRoute
+  '/site-images/$imageId': typeof SiteImagesImageIdRoute
   '/admin/': typeof AdminIndexRoute
   '/mypage/': typeof MypageIndexRoute
   '/admin/scoring/jobs': typeof AdminScoringJobsRoute
@@ -237,9 +255,11 @@ export interface FileRouteTypes {
     | '/terms'
     | '/admin/backup'
     | '/admin/battle-options'
+    | '/admin/home'
     | '/admin/image-generation'
     | '/admin/prompts'
     | '/rooms/$code'
+    | '/site-images/$imageId'
     | '/admin/'
     | '/mypage/'
     | '/admin/scoring/jobs'
@@ -261,9 +281,11 @@ export interface FileRouteTypes {
     | '/terms'
     | '/admin/backup'
     | '/admin/battle-options'
+    | '/admin/home'
     | '/admin/image-generation'
     | '/admin/prompts'
     | '/rooms/$code'
+    | '/site-images/$imageId'
     | '/admin'
     | '/mypage'
     | '/admin/scoring/jobs'
@@ -286,9 +308,11 @@ export interface FileRouteTypes {
     | '/terms'
     | '/admin/backup'
     | '/admin/battle-options'
+    | '/admin/home'
     | '/admin/image-generation'
     | '/admin/prompts'
     | '/rooms/$code'
+    | '/site-images/$imageId'
     | '/admin/'
     | '/mypage/'
     | '/admin/scoring/jobs'
@@ -311,6 +335,7 @@ export interface RootRouteChildren {
   StartRoute: typeof StartRoute
   TermsRoute: typeof TermsRoute
   RoomsCodeRoute: typeof RoomsCodeRoute
+  SiteImagesImageIdRoute: typeof SiteImagesImageIdRoute
   MypageIndexRoute: typeof MypageIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   GeneratedImagesBattleIdGenerationIdRoute: typeof GeneratedImagesBattleIdGenerationIdRoute
@@ -377,6 +402,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminBattleOptionsRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/home': {
+      id: '/admin/home'
+      path: '/home'
+      fullPath: '/admin/home'
+      preLoaderRoute: typeof AdminHomeRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/image-generation': {
       id: '/admin/image-generation'
       path: '/image-generation'
@@ -403,6 +435,13 @@ declare module '@tanstack/react-router' {
       path: '/rooms/$code'
       fullPath: '/rooms/$code'
       preLoaderRoute: typeof RoomsCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/site-images/$imageId': {
+      id: '/site-images/$imageId'
+      path: '/site-images/$imageId'
+      fullPath: '/site-images/$imageId'
+      preLoaderRoute: typeof SiteImagesImageIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/scoring/jobs': {
@@ -488,6 +527,7 @@ declare module '@tanstack/react-router' {
 interface AdminRouteRouteChildren {
   AdminBackupRoute: typeof AdminBackupRoute
   AdminBattleOptionsRoute: typeof AdminBattleOptionsRoute
+  AdminHomeRoute: typeof AdminHomeRoute
   AdminImageGenerationRoute: typeof AdminImageGenerationRoute
   AdminPromptsRoute: typeof AdminPromptsRoute
   AdminIndexRoute: typeof AdminIndexRoute
@@ -502,6 +542,7 @@ interface AdminRouteRouteChildren {
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminBackupRoute: AdminBackupRoute,
   AdminBattleOptionsRoute: AdminBattleOptionsRoute,
+  AdminHomeRoute: AdminHomeRoute,
   AdminImageGenerationRoute: AdminImageGenerationRoute,
   AdminPromptsRoute: AdminPromptsRoute,
   AdminIndexRoute: AdminIndexRoute,
@@ -524,6 +565,7 @@ const rootRouteChildren: RootRouteChildren = {
   StartRoute: StartRoute,
   TermsRoute: TermsRoute,
   RoomsCodeRoute: RoomsCodeRoute,
+  SiteImagesImageIdRoute: SiteImagesImageIdRoute,
   MypageIndexRoute: MypageIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   GeneratedImagesBattleIdGenerationIdRoute:
