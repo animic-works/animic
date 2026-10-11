@@ -27,6 +27,7 @@ export function Media(props: MediaProps) {
       <figure className={c.viewport}>
         <img
           className={c.image}
+          draggable={false}
           src={props.src}
           alt={props.alt}
           data-entering={props.entering || undefined}

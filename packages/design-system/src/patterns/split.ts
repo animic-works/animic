@@ -106,7 +106,8 @@ export const split = definePattern({
           ...placeColumns(["balanced-aside"]),
           gridTemplateColumns: select(["balanced-aside"], "minmax(0, 1.55fr) minmax(0, 1fr)"),
           gap: select(["balanced-aside"], "clamp(1.25rem, 2.5vw, 1.75rem)"),
-          alignItems: select(["balanced-aside"], "start"),
+          // 既定は上揃え。`align="stretch"`なら左右の列の高さをそろえる。
+          alignItems: select(["balanced-aside"], align === "stretch" ? "stretch" : "start"),
         },
         _splitAsymmetric: {
           ...placeColumns(["main-aside", "aside-main"]),

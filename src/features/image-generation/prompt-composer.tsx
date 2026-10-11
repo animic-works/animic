@@ -1,12 +1,13 @@
 import type { ReactNode } from "react";
 import { useEffect, useId, useRef, useState } from "react";
+import { ActionGroup } from "@animic/react/action-group";
+import { AccountIcon, ChevronUpIcon, PictureIcon, SearchIcon } from "../shared/icons";
 import { Button } from "@animic/react/button";
 import { Cluster } from "@animic/react/cluster";
 import { Composer } from "@animic/react/composer";
+import { Dialog } from "@animic/react/dialog";
 import { Heading } from "@animic/react/heading";
-import { IconButton } from "@animic/react/icon-button";
 import { SegmentedControl } from "@animic/react/segmented-control";
-import { Stack } from "@animic/react/stack";
 import { Text } from "@animic/react/text";
 import { useToast } from "@animic/react/toast";
 import {
@@ -37,9 +38,12 @@ import { phraseImagePath } from "./phrase-images";
 import { PromptField } from "./prompt-field";
 import type { PromptGroup, PromptPhrase } from "./prompt-phrases";
 import { PromptSearchDialog } from "./prompt-search-dialog";
+import { savePrompt, useSavedPrompt } from "./prompt-storage";
 import type { SearchCard, SearchGenre } from "./prompt-search-dialog";
 
 export type PromptComposerProps = {
+  /** 入力をこのタブに保存する単位。別の対戦の保存は使わない */
+  battleId: string;
   summary?: ReactNode;
   /** 入力候補と検索に使う表現の辞書 */
   dictionary: readonly PromptGroup[];
@@ -55,6 +59,10 @@ export type PromptComposerProps = {
   onGenerate: (prompt: string) => Promise<void>;
   /** ショートカットの案内に出す修飾キー */
   modifierKey: "⌘" | "Ctrl";
+  /** 狭い画面で下端に畳んでいる（入力の要約と生成の操作だけを出す） */
+  collapsed?: boolean;
+  /** 畳んだ要約から入力欄を開く */
+  onExpand?: () => void;
 };
 
 type ComposerState = {
@@ -70,6 +78,16 @@ type ComposerState = {
 type SearchState = { open: boolean; genre: string | null; query: string };
 
 const INITIAL_STATE: ComposerState = { mode: "text", blocks: [[], []], active: 1, draft: "" };
+
+/** キャラの欄はお題のキャラクターの数に固定する（むずかしいは2人）。足りなければ空の欄を足す。 */
+function withCharacters(state: ComposerState, maxCharacters: 1 | 2): ComposerState {
+  const count = maxCharacters + 1;
+  if (state.blocks.length >= count) return state;
+  return {
+    ...state,
+    blocks: [...state.blocks, ...Array.from({ length: count - state.blocks.length }, () => [])],
+  };
+}
 
 // 入力欄の例。添字は欄（0: ベース, 1: キャラ1, 2: キャラ2）
 const PLACEHOLDERS: Record<PromptMode, string[]> = {
@@ -116,6 +134,7 @@ const isMode = (value: string): value is PromptMode => value === "text" || value
 
 // 左のパネル: 入力方法の切り替え、ベース／キャラのタブ、プロンプト欄、検索、生成の回数とボタン
 export function PromptComposer({
+  battleId,
   summary: generationSummary,
   dictionary,
   maxCharacters,
@@ -124,13 +143,23 @@ export function PromptComposer({
   locked,
   onGenerate,
   modifierKey,
+  collapsed = false,
+  onExpand,
 }: PromptComposerProps) {
   const baseId = useId();
-  const [state, setState] = useState(INITIAL_STATE);
+  // 入力していない間は、この対戦の保存（再接続・再読み込みで作り直す前の入力）を出す
+  const saved = useSavedPrompt(battleId, maxCharacters);
+  const [edited, setEdited] = useState<ComposerState | null>(null);
+  const state = withCharacters(edited ?? saved ?? INITIAL_STATE, maxCharacters);
   const toast = useToast();
   const [requesting, setRequesting] = useState(false);
   const [search, setSearch] = useState<SearchState>({ open: false, genre: null, query: "" });
+  const [clearing, setClearing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (edited) savePrompt(battleId, edited);
+  }, [battleId, edited]);
 
   const { mode, blocks, active, draft } = state;
   const tokens = blocks[active] ?? [];
@@ -146,6 +175,7 @@ export function PromptComposer({
   const total = countTokens(blocks);
   const allHits = browseDictionary(dictionary, null, "");
   const hitsById = new Map(allHits.map((hit) => [hit.id, hit]));
+  const words = preview.flat().map((token) => token.text);
   const query = draftQuery(draft);
   const suggestions = locked
     ? []
@@ -161,29 +191,12 @@ export function PromptComposer({
 
   const focusInput = () => inputRef.current?.focus();
   const update = (change: (current: ComposerState) => ComposerState) =>
-    setState((current) => change(current));
+    setEdited((current) =>
+      change(withCharacters(current ?? saved ?? INITIAL_STATE, maxCharacters)),
+    );
 
   function switchTo(index: number) {
     update((current) => ({ ...commitActive(current), active: index }));
-  }
-
-  function addCharacter() {
-    update((current) => {
-      const committed = commitActive(current);
-      return { ...committed, blocks: [...committed.blocks, []], active: committed.blocks.length };
-    });
-    focusInput();
-  }
-
-  function removeCharacter() {
-    update((current) => {
-      const committed = commitActive(current);
-      return {
-        ...committed,
-        blocks: committed.blocks.slice(0, 2),
-        active: committed.active >= 2 ? 1 : committed.active,
-      };
-    });
   }
 
   function toggleEntry(phrase: PromptPhrase) {
@@ -238,7 +251,7 @@ export function PromptComposer({
     const onKeyDown = (event: KeyboardEvent) => shortcutRef.current(event);
     addEventListener("keydown", onKeyDown);
     return () => removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [shortcutRef]);
 
   // 検索の窓に出すジャンル・カード
   const searchHits = browseDictionary(dictionary, search.genre, search.query);
@@ -288,6 +301,21 @@ export function PromptComposer({
   return (
     <>
       <Composer
+        collapsed={collapsed}
+        peek={
+          onExpand && (
+            <Button
+              appearance="soft"
+              shape="pill"
+              size="sm"
+              aria-expanded={false}
+              trailingIcon={<ChevronUpIcon />}
+              onClick={onExpand}
+            >
+              プロンプト {words.length}語{words.length > 0 && ` — ${words.join("、")}`}
+            </Button>
+          )
+        }
         eyebrow="01 — PROMPT"
         title={
           <Heading level={1} size="panel">
@@ -309,7 +337,7 @@ export function PromptComposer({
           />
         }
         tabs={
-          <Cluster>
+          <Cluster layout="nowrap">
             <SegmentedControl
               label="プロンプトの種類"
               appearance="chips"
@@ -318,26 +346,11 @@ export function PromptComposer({
               options={blocks.map((_, index) => ({
                 value: String(index),
                 label: labelOf(index),
-                leadingIcon: index === 0 ? "■" : "●",
+                leadingIcon: index === 0 ? <PictureIcon /> : <AccountIcon />,
                 tone: TAB_TONES[index],
               }))}
               onValueChange={(value) => switchTo(Number(value))}
             />
-            {blocks.length > 2 && (
-              <IconButton
-                label={`${labelOf(2)}を消す`}
-                size="sm"
-                disabled={locked}
-                onClick={removeCharacter}
-              >
-                ×
-              </IconButton>
-            )}
-            {blocks.length - 1 < maxCharacters && (
-              <Button appearance="quiet" size="sm" disabled={locked} onClick={addCharacter}>
-                ＋ {labelOf(blocks.length)}
-              </Button>
-            )}
           </Cluster>
         }
         tools={
@@ -347,43 +360,43 @@ export function PromptComposer({
               tone="green"
               shape="pill"
               size="sm"
-              compactLabel="ベースを検索"
+              leadingIcon={<SearchIcon />}
               aria-haspopup="dialog"
               disabled={locked}
               onClick={() => openSearch(0)}
             >
-              ベースプロンプトを検索
+              ベースを検索
             </Button>
             <Button
               appearance="soft"
               tone="yellow"
               shape="pill"
               size="sm"
-              compactLabel="キャラを検索"
+              leadingIcon={<SearchIcon />}
               aria-haspopup="dialog"
               disabled={locked}
               onClick={() => openSearch(active === 0 ? 1 : active)}
             >
-              キャラプロンプトを検索
+              キャラを検索
             </Button>
           </>
         }
         summary={
-          <Stack space="tight">
-            {blocker.reason && (
+          // 生成できない理由と生成回数を1行に並べる。
+          <Cluster layout="nowrap" justify="between" space="compact">
+            {blocker.reason ? (
               <Text id={reasonId} variant="caption" tone="muted">
                 {blocker.reason}
               </Text>
+            ) : (
+              <Text variant="eyebrow">Generations</Text>
             )}
             {generationSummary ?? (
-              <>
-                {!blocker.reason && <Text variant="eyebrow">Generations</Text>}
-                <Text variant="label.supporting">
-                  生成 <strong>{successCount}</strong> 回
-                </Text>
-              </>
+              <Text variant="label.supporting">
+                生成 <strong>{successCount}</strong> 回
+              </Text>
             )}
-          </Stack>
+          </Cluster>
         }
         action={
           <Button
@@ -455,14 +468,38 @@ export function PromptComposer({
               ),
             )
           }
-          onClear={() => {
-            update((current) => ({ ...withTokens(current, []), draft: "" }));
-            focusInput();
-          }}
+          onClear={() => setClearing(true)}
           onSubmitShortcut={() => void generate()}
           inputRef={inputRef}
         />
       </Composer>
+      <Dialog
+        open={clearing && !locked}
+        onOpenChange={(open) => !open && setClearing(false)}
+        title={`${activeLabel}のプロンプトを空にしますか？`}
+        description={`${activeLabel}の語句と書きかけを消します。ほかの欄は消しません。`}
+        closeButton={false}
+        presentation="centered"
+        size="compact"
+      >
+        <ActionGroup layout="confirm">
+          <Button appearance="secondary" shape="pill" size="lg" onClick={() => setClearing(false)}>
+            やめる
+          </Button>
+          <Button
+            shape="pill"
+            size="lg"
+            onClick={() => {
+              update((current) => ({ ...withTokens(current, []), draft: "" }));
+              setClearing(false);
+              // 閉じた確認の窓がフォーカスを戻した後に、入力欄へ移す
+              requestAnimationFrame(focusInput);
+            }}
+          >
+            空にする
+          </Button>
+        </ActionGroup>
+      </Dialog>
       <PromptSearchDialog
         open={search.open && !locked}
         onOpenChange={(open) => setSearch((current) => ({ ...current, open }))}

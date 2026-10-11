@@ -27,28 +27,3 @@ export function EmptyImageArtwork() {
     </svg>
   );
 }
-
-const approximation = css({
-  position: "absolute",
-  top: "[50%]",
-  left: "[50%]",
-  translate: "[-50% -50%]",
-  width: "[2.2rem]",
-  height: "[1.7rem]",
-  _artworkCompact: { width: "[1.1rem]" },
-});
-export function ApproximationMark() {
-  return (
-    <svg
-      className={approximation}
-      viewBox="0 0 36 28"
-      fill="none"
-      stroke="#ff2d87"
-      strokeWidth="4"
-      strokeLinecap="round"
-      aria-hidden="true"
-    >
-      <path d="M5 9c9-10 17 10 26 0M5 20c9-10 17 10 26 0" />
-    </svg>
-  );
-}

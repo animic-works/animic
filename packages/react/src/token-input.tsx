@@ -1,5 +1,6 @@
 import { useScrollViewport } from "./use-scroll-viewport";
 import {
+  Children,
   useState,
   useEffect,
   useRef,
@@ -18,6 +19,7 @@ export interface TokenInputProps {
   onValueChange: (value: string, composing: boolean) => void;
   onCommit: () => void;
   commitOnBlur?: boolean;
+  /** 入力欄が空のときのBackspace。押し続けたときの繰り返し（`repeat`）では呼ばない */
   onEmptyBackspace?: () => void;
   onSubmitShortcut?: () => void;
   font?: "body" | "code";
@@ -102,7 +104,8 @@ export function TokenInput({ inputRef, ...props }: TokenInputProps) {
       combobox.setOpen(false);
     } else if (event.key === "Backspace" && !props.value && props.onEmptyBackspace) {
       event.preventDefault();
-      props.onEmptyBackspace();
+      // 押し続けたときの繰り返しでは呼ばない。書き直しに戻した語句を消し終えても、前の語句まで消し続けないようにする
+      if (!event.repeat) props.onEmptyBackspace();
     }
   };
   return (
@@ -118,6 +121,12 @@ export function TokenInput({ inputRef, ...props }: TokenInputProps) {
         }}
       >
         {props.children}
+        {/* 入力欄は1行のため、語句がなく空のときは折り返して全文が見える案内を重ねる。 */}
+        {!props.value && !Children.count(props.children) && props.placeholder && (
+          <span className={c.placeholder} aria-hidden="true">
+            {props.placeholder}
+          </span>
+        )}
         <Combobox.Input
           ref={inputRef}
           asChild
@@ -169,9 +178,13 @@ export function TokenInput({ inputRef, ...props }: TokenInputProps) {
         )}
         {props.suggestions.map((option) => (
           <Combobox.Item item={option} key={option.value} className={c.option}>
-            <Combobox.ItemText>{option.labelContent ?? option.label}</Combobox.ItemText>
-            <span>{option.description}</span>
-            {option.detail && <span>{option.detail}</span>}
+            <Combobox.ItemText className={c.optionLabel}>
+              {option.labelContent ?? option.label}
+            </Combobox.ItemText>
+            <span className={c.optionMeta}>
+              <span>{option.description}</span>
+              {option.detail && <span>{option.detail}</span>}
+            </span>
             {combobox.highlightedValue === option.value && <kbd className={c.shortcut}>Tab</kbd>}
           </Combobox.Item>
         ))}
@@ -217,7 +230,7 @@ export function AdjustableToken({
       >
         {label}
       </button>
-      {value && <span>{value}</span>}
+      {value && <span className={c.value}>{value}</span>}
       <span className={c.actions}>
         <button
           type="button"

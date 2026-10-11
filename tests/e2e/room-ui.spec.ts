@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { openLobby } from "../fixtures/room-presentation";
+import { signIn } from "./api";
 import { executeLocalD1 } from "./d1";
 
 test.use({ reducedMotion: "reduce" });
@@ -100,4 +101,28 @@ test("ホストが退出するとトップへ戻り、残った参加者にホ�
   } finally {
     await guestContext.close();
   }
+});
+
+test("ロビーから戻ろうとすると退出の確認を出し、やめればロビーに残り、退出すれば戻る", async ({
+  page,
+}) => {
+  await signIn(page.context());
+  await page.goto("/");
+  await page.getByRole("button", { name: "スタート", exact: true }).first().click();
+  await page.getByRole("button", { name: "ルームを作る", exact: true }).click();
+  const heading = page.getByRole("heading", { name: "ルームコード", exact: true });
+  await expect(heading).toBeVisible();
+  const room = page.url();
+  const dialog = page.getByRole("dialog", { name: "ルームを出ますか？", exact: true });
+
+  await page.goBack();
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "やめる", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page).toHaveURL(room);
+  await expect(heading).toBeVisible();
+
+  await page.goBack();
+  await dialog.getByRole("button", { name: "退出する", exact: true }).click();
+  await expect(page).toHaveURL(/\/start$/);
 });

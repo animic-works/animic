@@ -15,7 +15,7 @@ import type { BattleSnapshot } from "./battle-state";
 import type { useBattleEntrance } from "./use-battle-entrance";
 import { TopicReveal } from "./visuals/battle-entrance";
 import { ImageArrival } from "./visuals/image-arrival";
-import { ApproximationMark, EmptyImageArtwork } from "./visuals/generation-artwork";
+import { EmptyImageArtwork } from "./visuals/generation-artwork";
 
 type BattleImages = ReturnType<typeof getBattleImages>;
 
@@ -65,15 +65,16 @@ export function BattleImagesPanel({
               お題とあなたの画像
             </Heading>
           </Stack>
-          <Badge>
-            {submitted
-              ? `#${numberOf(submitted.id)} を提出しました`
-              : selected
-                ? `#${numberOf(selected.id)} を提出候補にしています`
+          {/* 選んでいる画像は比較の枠で見えるため、案内は提出済み・選べないときだけ出す。 */}
+          {(submitted || !selected) && (
+            <Badge>
+              {submitted
+                ? `#${numberOf(submitted.id)} を提出しました`
                 : noImage
                   ? "時間切れのため提出できません"
                   : "画像を1枚選んでください"}
-          </Badge>
+            </Badge>
+          )}
         </Cluster>
       }
       first={
@@ -87,9 +88,10 @@ export function BattleImagesPanel({
         </TopicReveal>
       }
       firstCaption={
-        <Text variant="label.supporting">
-          お題 <Badge tone="inverse">{level.word}</Badge>
-        </Text>
+        <>
+          <Text variant="label.supporting">お題</Text>
+          <Badge tone="inverse">{level.word}</Badge>
+        </>
       }
       second={
         selected ? (
@@ -139,17 +141,16 @@ export function BattleImagesPanel({
       }
       secondCaption={
         <Text variant="label.supporting">
-          あなたの画像{selected && ` #${numberOf(selected.id)}`}
+          あなたの画像 {selected && <Badge tone="inverse">#{numberOf(selected.id)}</Badge>}
         </Text>
       }
-      decoration={<ApproximationMark />}
       description={
-        <Text variant="caption" tone="supporting">
+        <Text variant="label.supporting" tone="supporting">
           {level.description}
         </Text>
       }
       historyHeading={
-        <Text variant="label.supporting">
+        <Text variant="label">
           履歴 <Text variant="eyebrow.strong">HISTORY</Text>
         </Text>
       }
@@ -160,6 +161,7 @@ export function BattleImagesPanel({
             id: item.id,
             entering: arrival === item.id,
             label: `${numberOf(item.id)}回目${item.status === "pending" ? "・生成中" : item.status === "failed" ? "・失敗" : "の画像"}`,
+            badge: `#${numberOf(item.id)}${item.status === "failed" ? " 失敗" : ""}`,
             src: item.status === "succeeded" ? item.imageUrl : undefined,
             content:
               item.status === "pending" ? (
@@ -184,11 +186,7 @@ export function BattleImagesPanel({
       actions={
         noImage ? null : (
           <Stack space="compact">
-            {error && (
-              <div role="alert">
-                <Text tone="danger">{error}</Text>
-              </div>
-            )}
+            {/* 失敗は、列の幅や高さを変えないようボタンの文言とトーストで伝える。 */}
             <Button
               shape="pill"
               size="sm"
@@ -210,7 +208,7 @@ export function BattleImagesPanel({
               >
                 <path d="m5 12 4 4L19 6" />
               </svg>
-              {pending ? "提出しています…" : "この1枚で提出"}
+              {pending ? "提出しています…" : error ? "もう一度提出" : "この1枚で提出"}
             </Button>
           </Stack>
         )

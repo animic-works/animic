@@ -1,5 +1,6 @@
 import type { AvatarProps } from "@animic/react/avatar";
 import * as v from "valibot";
+import type { LoginProvider } from "../../lib/login-providers";
 
 type AvatarPalette = NonNullable<AvatarProps["palette"]>;
 
@@ -44,4 +45,9 @@ export function accountIconAvatar(
   const illustration = accountIconIllustrations.find((item) => icon === `illustration:${item}`);
   if (illustration) return { src: illustrationSrc(illustration), palette: fallback };
   return { palette: fallback };
+}
+
+/** アイコンを選んでいない人の色。ログインに使ったサービスに合わせ、Googleはピンク・Discordは紫にする。 */
+export function providerPalette(provider: LoginProvider | null) {
+  return provider === "discord" ? ("violet" as const) : ("pink" as const);
 }

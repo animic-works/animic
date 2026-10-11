@@ -40,7 +40,9 @@ export function RecordItem(props: RecordItemProps) {
     <>
       {props.leading && <div className={c.leading}>{props.leading}</div>}
       {props.image !== undefined && (
-        <div className={c.image}>{props.image && <img src={props.image} alt="" />}</div>
+        <div className={c.image}>
+          {props.image && <img src={props.image} alt="" draggable={false} />}
+        </div>
       )}
       {props.avatar && <div className={c.avatar}>{props.avatar}</div>}
       <div className={c.body}>{props.children}</div>

@@ -38,6 +38,18 @@ export const imagePair = definePattern({
         margin: "0",
         minWidth: 0,
       },
+      // 画像の右下に重ねる補足（採点の内訳など）。狭い画面では画像を隠しすぎるため出さない。
+      "& > [data-animic-image-pair-layout] > figure > [data-animic-image-pair-detail]": {
+        position: "absolute",
+        insetBlockEnd: "3",
+        insetInlineEnd: "3",
+        zIndex: 1,
+        layerStyle: "surface.raised",
+        borderRadius: "1",
+        paddingBlock: "2",
+        paddingInline: "3",
+        _imagePairCompact: { display: "none" },
+      },
       "& > [data-animic-image-pair-layout] > figure > figcaption": {
         position: "absolute",
         insetBlockStart: "3",

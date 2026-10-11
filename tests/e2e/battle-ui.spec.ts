@@ -147,7 +147,10 @@ test("対戦画面でプロンプトを入力し、候補・重み・検索・�
   }
 });
 
-test("むずかしいではキャラ2の欄を足して消せる", async ({ page, browser }) => {
+test("むずかしいではキャラの欄を最初から2つ出し、足したり消したりさせない", async ({
+  page,
+  browser,
+}) => {
   // Wranglerでのお題の登録と2人の接続を含むため、既定の30秒より長くする。
   test.setTimeout(60_000);
   // ほかのテストで「この難易度のお題がありません」を確かめるため、このテストの中だけお題を置く。
@@ -174,14 +177,13 @@ test("むずかしいではキャラ2の欄を足して消せる", async ({ page
     await expect(page.getByRole("timer")).toBeVisible();
 
     await expect(page.getByRole("radio", { name: "キャラ1", checked: true })).toBeVisible();
-    await page.getByRole("button", { name: "＋ キャラ2" }).click();
+    await page
+      .getByRole("radiogroup", { name: "プロンプトの種類" })
+      .getByText("キャラ2", { exact: true })
+      .click();
     await expect(page.getByRole("radio", { name: "キャラ2", checked: true })).toBeVisible();
     await expect(page.getByRole("combobox", { name: "プロンプト（キャラ2）" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "＋ キャラ2" })).toHaveCount(0);
-
-    await page.getByRole("button", { name: "キャラ2を消す" }).click();
-    await expect(page.getByRole("radio", { name: "キャラ2", exact: true })).toHaveCount(0);
-    await expect(page.getByRole("radio", { name: "キャラ1", checked: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: /キャラ2/ })).toHaveCount(0);
   } finally {
     await guestContext.close();
     await executeLocalD1("DELETE FROM topic WHERE id = 'e2e-topic-hard'");

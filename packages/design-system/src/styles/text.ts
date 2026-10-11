@@ -189,12 +189,12 @@ export const textStyles = defineTextStyles({
   "numeric.timer": {
     value: {
       fontFamily: "dela",
-      fontSize: "2rem",
+      fontSize: "1.6rem",
       fontWeight: "regular",
       lineHeight: "1.15",
       letterSpacing: "0",
       fontVariantNumeric: "tabular-nums",
-      _readoutNarrow: { fontSize: "1.8rem" },
+      _readoutNarrow: { fontSize: "1.6rem" },
       _readoutCompact: { fontSize: "1.4rem" },
     },
   },

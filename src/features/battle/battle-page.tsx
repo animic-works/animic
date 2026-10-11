@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Button } from "@animic/react/button";
+import { useEffect, useState } from "react";
+import { Badge } from "@animic/react/badge";
 import { Heading } from "@animic/react/heading";
 import { Page } from "@animic/react/page";
 import { Stack } from "@animic/react/stack";
@@ -9,14 +9,8 @@ import type { AccountIcon } from "../account/account-icon";
 import { PromptComposer } from "../image-generation/prompt-composer";
 import type { PromptGroup } from "../image-generation/prompt-phrases";
 import { GridBackdrop } from "../shared/visuals/grid-backdrop";
-import { getBattleClock, getBattleDeadline } from "./battle-clock";
-import {
-  BattlePlayers,
-  BattleProgress,
-  BattleRoomLabel,
-  BattleRules,
-  BattleTimer,
-} from "./battle-header";
+import { getBattleClock, getBattleDeadline, isScoringSlow } from "./battle-clock";
+import { BattlePlayers, BattleProgress, BattleRoomLabel, BattleTimer } from "./battle-header";
 import { getBattleImages, type BattleImagePick } from "./battle-images";
 import { BattleImagesPanel } from "./battle-images-panel";
 import { useModifierKey, useQuickSubmit } from "./battle-preferences";
@@ -47,9 +41,7 @@ function SelectionNotice({
 }) {
   return (
     <Stack align="center" justify="center" fill>
-      <Text variant="eyebrow.strong" tone="accent">
-        TIME UP
-      </Text>
+      <Text variant="eyebrow.strong">TIME UP</Text>
       <Heading level={2} size="title">
         {empty ? "時間切れ" : "生成終了！"}
       </Heading>
@@ -57,19 +49,23 @@ function SelectionNotice({
         <Text variant="label">提出できる画像がありません</Text>
       ) : (
         <>
-          <Text variant="label">
-            {stage === "finishing" ? (
-              "生成の完了を待っています"
-            ) : (
-              <>
-                残り <Text variant="numeric.display">{seconds}</Text> 秒で1枚提出
-              </>
-            )}
-          </Text>
-          <Text variant="body.sm" align="center" tone="supporting">
+          {stage === "finishing" ? (
+            <Text variant="label">生成の完了を待っています</Text>
+          ) : (
+            <Badge tone="inverse" size="md">
+              残り{" "}
+              <Text variant="numeric.display" tone="highlight">
+                {seconds}
+              </Text>{" "}
+              秒で1枚提出
+            </Badge>
+          )}
+          <Text variant="body.sm" align="center">
             履歴から選んで「この1枚で提出」
             <br />
             生成中の画像も、完成すれば選べます
+            <br />
+            選ばなければ最後に完成した1枚を提出
           </Text>
         </>
       )}
@@ -99,6 +95,15 @@ export function BattlePage({
   entering?: boolean;
 }) {
   const [pick, setPick] = useState<BattleImagePick | null>(null);
+  // 提出するまでは、タブを閉じる・再読み込みする前にブラウザの確認を出す。
+  const leaving = stage === "generating" || stage === "finishing" || stage === "selecting";
+  useEffect(() => {
+    const confirmLeave = (event: BeforeUnloadEvent) => {
+      if (leaving) event.preventDefault();
+    };
+    addEventListener("beforeunload", confirmLeave);
+    return () => removeEventListener("beforeunload", confirmLeave);
+  }, [leaving]);
   const [zoomOpen, setZoomOpen] = useState(false);
   const [expanded, setExpanded] = useState(true);
   const [quick, setQuick] = useQuickSubmit();
@@ -117,6 +122,12 @@ export function BattlePage({
   const noImage = hasNoImageToSubmit(stage, battle.myGenerations);
   const remaining = useRemainingMs(battle.serverTime, getBattleDeadline(battle, stage), receivedAt);
   const clock = getBattleClock(battle, stage, remaining);
+  // 採点の期限までの残り時間は出さず、時間がかかっていることだけを伝える。
+  const scoringRemaining = useRemainingMs(
+    battle.serverTime,
+    stage === "scoring" ? battle.scoringEndsAt : null,
+    receivedAt,
+  );
   const generate = useBattleGeneration({ code, battleId: battle.id });
   const submission = useBattleSubmission({ code, battleId: battle.id, locked });
   const confirmed = images.succeeded.find((item) => item.id === submission.confirmId);
@@ -128,8 +139,7 @@ export function BattlePage({
   return (
     <Page decoration={<GridBackdrop />}>
       <Workspace
-        headerStart={<BattleRoomLabel code={code} />}
-        headerDetail={<BattleRules settings={battle.settings} />}
+        headerStart={<BattleRoomLabel code={code} settings={battle.settings} />}
         headerCenter={remaining !== null && <BattleTimer stage={stage} clock={clock} />}
         headerEnd={
           <BattlePlayers
@@ -146,17 +156,14 @@ export function BattlePage({
         expanded={expanded}
         onExpandedChange={setExpanded}
         editorLabel="プロンプト欄"
-        collapsedEditor={
-          <Button appearance="soft" shape="pill" size="sm" onClick={() => setExpanded(true)}>
-            プロンプト欄を開く
-          </Button>
-        }
+        editorTone={stage === "finishing" || stage === "selecting" ? "caution" : "default"}
         editor={
           stage === "finishing" || stage === "selecting" ? (
             <SelectionNotice stage={stage} seconds={clock.seconds} empty={noImage} />
           ) : (
             <PromptComposer
               key={battle.id}
+              battleId={battle.id}
               dictionary={promptGroups}
               maxCharacters={battle.settings.difficulty === "hard" ? 2 : 1}
               successCount={images.succeeded.length}
@@ -164,6 +171,8 @@ export function BattlePage({
               locked={stage !== "generating" || locked}
               onGenerate={generate}
               modifierKey={modifierKey}
+              collapsed={!expanded}
+              onExpand={() => setExpanded(true)}
             />
           )
         }
@@ -190,6 +199,7 @@ export function BattlePage({
         open={zoomOpen && !waiting}
         onOpenChange={setZoomOpen}
         imageUrl={battle.topic.imageUrl}
+        compareUrl={images.selected?.imageUrl}
       />
       <SubmitConfirmDialog
         image={confirmed}
@@ -204,6 +214,8 @@ export function BattlePage({
       <SubmissionWaitDialog
         open={waiting}
         battle={battle}
+        scoring={stage === "scoring"}
+        slow={isScoringSlow(scoringRemaining)}
         submitted={images.submitted}
         submittedNumber={images.submitted ? images.numberOf(images.submitted.id) : 0}
         opponentName={opponentId === undefined ? null : (names.get(opponentId) ?? "相手")}

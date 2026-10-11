@@ -6,7 +6,6 @@ import { create, join, snapshot } from "./api";
 import { executeLocalD1 } from "./d1";
 import { getNovelAiCalls, novelAiFailMarker, novelAiSlowMarker } from "./fake-novelai";
 
-const origin = "http://127.0.0.1:4173";
 type GenerationRequest = { code: string; battleId: string; generationId: string; prompt: string };
 
 // 匿名参加の回数制限を、ほかのファイルのテストと分ける。
@@ -90,9 +89,8 @@ test("生成した画像をR2に保存して本人にだけ配信し、同じID�
     const [generated] = (await battle(page)).myGenerations;
     if (generated?.status !== "succeeded") throw new Error("生成が成功していません。");
     expect(generated.id).toBe(request.generationId);
-    expect(generated.imageUrl).toBe(
-      `${origin}/generated-images/${battleId}/${request.generationId}`,
-    );
+    // 画面には、開いているページと同じオリジンのパスで配信する。
+    expect(generated.imageUrl).toBe(`/generated-images/${battleId}/${request.generationId}`);
     expect((await getNovelAiCalls(marker)).count).toBe(1);
 
     // 同じ処理IDの再送はNovelAIを呼ばず、同じIDで別の入力は拒否する。

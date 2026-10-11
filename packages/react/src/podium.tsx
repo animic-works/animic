@@ -23,7 +23,7 @@ export function Podium({
         return (
           <div key={item.id} className={c.item}>
             {item.decoration && <span className={c.decoration}>{item.decoration}</span>}
-            <img className={c.image} src={item.src} alt={item.label} />
+            <img className={c.image} src={item.src} alt={item.label} draggable={false} />
             <div className={c.name}>
               {item.avatar && <span className={c.avatar}>{item.avatar}</span>}
               {item.name}

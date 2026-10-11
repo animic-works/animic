@@ -15,6 +15,8 @@ export function ThumbnailList({
     id: string;
     src?: string;
     label: string;
+    /** 画像に重ねる短い表示（例: `#3`）。読み上げには`label`を使う。省略すると`label`を表示する。 */
+    badge?: string;
     content?: ReactNode;
     disabled?: boolean;
     entering?: boolean;
@@ -48,8 +50,14 @@ export function ThumbnailList({
               disabled={disabled || item.disabled}
               onClick={() => onValueChange(item.id)}
             >
-              {item.src ? <img src={item.src} alt="" className={c.image} /> : item.content}
-              <span className={c.label}>{item.label}</span>
+              {item.src ? (
+                <img src={item.src} alt="" className={c.image} draggable={false} />
+              ) : (
+                item.content
+              )}
+              <span className={c.label} aria-hidden={item.badge ? true : undefined}>
+                {item.badge ?? item.label}
+              </span>
               {value === item.id && (
                 <span className={c.selected} aria-hidden="true">
                   <svg

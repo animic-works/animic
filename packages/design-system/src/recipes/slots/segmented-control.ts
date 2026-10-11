@@ -103,8 +103,20 @@ export const segmentedControl = defineSlotRecipe({
       appearance: "pill",
       density: "compact",
       css: {
-        item: { minHeight: "1.5rem", padding: "0.2rem 0.6rem" },
-        label: { textStyle: "caption", fontWeight: "bold" },
+        item: {
+          minHeight: "1.5rem",
+          padding: "0.2rem 0.6rem",
+          whiteSpace: "nowrap",
+          _composerNarrow: { padding: "0.15rem 0.45rem", gap: "1" },
+          "[data-animic-composer-controls] &": { _composerDockedShort: { gap: "0" } },
+        },
+        // 背の低い画面の下端の編集欄では、Composerの切り替えはアイコンだけを見せる（文言は読み上げに残す）。
+        label: {
+          textStyle: "caption",
+          fontWeight: "bold",
+          whiteSpace: "nowrap",
+          "[data-animic-composer-controls] &": { _composerDockedShort: { srOnly: true } },
+        },
       },
     },
   ],
@@ -199,10 +211,20 @@ export const segmentedControl = defineSlotRecipe({
         control: { display: "none" },
       },
       chips: {
-        group: { padding: "0", gap: "2", background: "transparent" },
+        // Composerの欄の切り替えは狭い幅でも1行に並べる。ほかの場所では折り返す。
+        group: {
+          padding: "0",
+          gap: "2",
+          background: "transparent",
+          "[data-animic-composer-tabs] &": { flexWrap: "nowrap" },
+        },
         item: {
           minHeight: "1.7rem",
-          padding: "0.25rem 0.6rem",
+          padding: "0.25rem 0.55rem",
+          gap: "2",
+          flexShrink: 0,
+          whiteSpace: "nowrap",
+          _composerNarrow: { padding: "0.2rem 0.45rem", gap: "1", fontSize: "0.8rem" },
           borderRadius: "full",
           borderWidth: "1",
           borderColor: "transparent",

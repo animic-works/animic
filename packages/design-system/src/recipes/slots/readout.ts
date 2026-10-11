@@ -6,16 +6,18 @@ export const readout = defineSlotRecipe({
     root: {
       display: "grid",
       justifyItems: "center",
-      minWidth: "9.5rem",
-      padding: "0.25rem 1rem 0.5rem",
+      minWidth: "8rem",
+      padding: "0.2rem 0.9rem 0.35rem",
       border: "2px solid var(--animic-readout-border, token(colors.border.default))",
       borderRadius: "1.25rem",
       background: "var(--animic-readout-background, token(colors.bg.surface))",
       boxShadow: "soft.1",
       _readoutNarrow: { minWidth: "8rem", padding: "0.35rem 0.4rem 0.4rem" },
       _readoutCompact: {
+        // 狭い画面でも、枠と文字・ラベルと数字の間に余白を残す。
         minWidth: "6.3rem",
-        padding: "0.2rem 0.6rem 0.4rem",
+        rowGap: "0.15rem",
+        padding: "0.45rem 0.85rem 0.5rem",
         borderRadius: "1rem",
       },
     },
@@ -72,7 +74,15 @@ export const readout = defineSlotRecipe({
     },
     tone: {
       neutral: {},
-      highlight: { root: { "--animic-readout-background": "token(colors.bg.accent.highlight)" } },
+      // 期限が迫った別の段階（画像を選ぶ時間など）。黄色の面にする。
+      highlight: {
+        root: {
+          "--animic-readout-background": "token(colors.accent.highlight)",
+          "--animic-readout-border":
+            "color-mix(in srgb, token(colors.accent.highlight) 88%, token(colors.fg.accent.highlight))",
+          "--animic-readout-ink": "token(colors.fg.default)",
+        },
+      },
       primary: {
         root: {
           "--animic-readout-background": "token(colors.bg.accent.primary)",

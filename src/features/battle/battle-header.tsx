@@ -1,9 +1,10 @@
 import { Avatar } from "@animic/react/avatar";
 import { AvatarGroup } from "@animic/react/avatar-group";
 import { Badge } from "@animic/react/badge";
-import { CodeDisplay } from "@animic/react/code-display";
+import { Text } from "@animic/react/text";
 import { Progress } from "@animic/react/progress";
 import { Readout } from "@animic/react/readout";
+import { WorkspaceHeaderDetail } from "@animic/react/workspace";
 import { AppBrand } from "../shared/app-brand";
 import { accountIconAvatar, type AccountIcon } from "../account/account-icon";
 import { levels, playerPalettes } from "../room/room-presentation";
@@ -13,22 +14,26 @@ import type { BattleStage } from "./battle-screen";
 
 type BattleClock = ReturnType<typeof getBattleClock>;
 
-export function BattleRoomLabel({ code }: { code: string }) {
+export function BattleRoomLabel({
+  code,
+  settings,
+}: {
+  code: string;
+  settings: BattleSnapshot["settings"];
+}) {
+  // ルームコードと対戦条件は1つの札にまとめ、高さと並びをそろえる。
+  // 狭い画面では、ロゴとルームコードを1行に収めるため対戦条件を省略する。
   return (
     <>
-      <AppBrand />
-      <Badge>
-        ルーム <CodeDisplay value={code} presentation="inline" size="sm" />
+      <AppBrand linked={false} />
+      <Badge tone="surface">
+        ルーム <Text variant="code.compact">{code}</Text>
+        <WorkspaceHeaderDetail>
+          {"｜"}
+          {levels[settings.difficulty].label}・{settings.durationSeconds}秒
+        </WorkspaceHeaderDetail>
       </Badge>
     </>
-  );
-}
-
-export function BattleRules({ settings }: { settings: BattleSnapshot["settings"] }) {
-  return (
-    <Badge>
-      {levels[settings.difficulty].label}・{settings.durationSeconds}秒
-    </Badge>
   );
 }
 
@@ -85,7 +90,9 @@ export function BattlePlayers({
         const name = names.get(id) ?? (current ? "あなた" : "相手");
         return {
           id,
+          // 本人は項目の色で示し、表示名は縮めずに出す。読み上げでは「（あなた）」を付ける。
           name: current ? `${name}（あなた）` : name,
+          displayName: name,
           current,
           detail: current
             ? `${status === "complete" ? "提出済み" : status === "busy" ? "生成中" : "考え中"}・生成 ${successCount}回`

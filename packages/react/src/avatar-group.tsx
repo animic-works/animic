@@ -12,6 +12,8 @@ export function AvatarGroup({
     id: string;
     avatar: ReactNode;
     name: string;
+    /** 表示する短い名前。読み上げとツールチップには`name`を使う。 */
+    displayName?: string;
     detail: string;
     current?: boolean;
     state?: "pending" | "active" | "complete";
@@ -23,7 +25,7 @@ export function AvatarGroup({
 }) {
   const { ref: scrollingRef, scrollbars: scrollingBars } =
     useScrollViewport<HTMLOListElement>(label);
-  const c = avatarGroup({ presentation });
+  const c = avatarGroup({ presentation, crowded: members.length > 3 });
   return (
     <div className={c.frame}>
       {summary && <div className={c.summary}>{summary}</div>}
@@ -50,7 +52,7 @@ export function AvatarGroup({
             )}
             {member.avatar}
             <span className={c.text}>
-              <span className={c.name}>{member.name}</span>
+              <span className={c.name}>{member.displayName ?? member.name}</span>
               <span className={c.detail}>{member.detail}</span>
             </span>
             {member.value && (

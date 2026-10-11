@@ -1,10 +1,19 @@
 import { test, expect } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import { openBattle, openLobby } from "../fixtures/room-presentation";
 import { join, snapshot } from "./api";
 import { executeLocalD1 } from "./d1";
 import { signIn } from "./api";
 
 test.use({ reducedMotion: "reduce" });
+
+/** 対戦画面を開いたページから、本人に配信される対戦の状態を取得する。 */
+async function roomBattle(page: Page, code: string) {
+  return page.evaluate(
+    async (value) => (await window.animicTest.getRoomEntry({ data: { code: value } })).room?.battle,
+    code,
+  );
+}
 test.beforeAll(async () => {
   await executeLocalD1(
     "INSERT OR REPLACE INTO topic (id, difficulty, image_url) VALUES ('e2e-topic', 'easy', 'https://example.invalid/animic-topic.svg'); DELETE FROM rate_limit",
@@ -86,6 +95,55 @@ test("再読み込み後も対戦の開始時刻を保ち、期限後は未提�
     await page.reload();
     await expect(page.getByRole("heading", { name: "NO GAME", exact: true })).toBeVisible();
     expect(new URL(page.url()).search).toBe("");
+  } finally {
+    await context.close();
+  }
+});
+
+test("時間切れまでに提出しなければ、最後に完成した画像を提出したものとして結果を表示する", async ({
+  page,
+  browser,
+}) => {
+  test.setTimeout(60000);
+  const context = await browser.newContext({ reducedMotion: "reduce" });
+  try {
+    const guest = await context.newPage();
+    const code = await openBattle(page, guest, {
+      difficulty: "easy",
+      durationSeconds: 8,
+      selectionSeconds: 4,
+    });
+    await expect(page.getByRole("timer")).toBeVisible();
+    const battleId = (await roomBattle(page, code))?.id ?? "";
+    const generationIds = [crypto.randomUUID(), crypto.randomUUID()];
+    for (const [index, generationId] of generationIds.entries()) {
+      await page.evaluate((data) => window.animicTest.generateImage({ data }), {
+        code,
+        battleId,
+        generationId,
+        prompt: `e2e auto submit ${index}`,
+      });
+      await expect
+        .poll(async () => (await roomBattle(page, code))?.myGenerations[index]?.status)
+        .toBe("succeeded");
+    }
+    // 画像選択の猶予の間は、選ばなければ最後の画像を提出することを伝える。
+    await expect(page.getByText("選ばなければ最後に完成した1枚を提出")).toBeVisible({
+      timeout: 15000,
+    });
+    await expect(page.getByRole("heading", { name: "YOU WIN!", exact: true })).toBeVisible({
+      timeout: 15000,
+    });
+    const current = await roomBattle(page, code);
+    expect(current?.mySubmission).toMatchObject({
+      status: "submitted",
+      generationId: generationIds[1],
+      submittedAt: current?.selectionEndsAt,
+      successfulGenerationCount: 2,
+      eligibleForSpeedBonus: false,
+    });
+    // 画像のない相手は未提出のまま確定する。
+    expect((await snapshot(guest)).battle?.mySubmission?.status).toBe("not-submitted");
   } finally {
     await context.close();
   }

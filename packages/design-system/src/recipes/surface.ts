@@ -10,6 +10,8 @@ export const surface = defineRecipe({
   className: "surface",
   base: { boxSizing: "border-box", minWidth: 0, borderRadius: "3", color: "fg.default" },
   variants: {
+    /** グリッドの行など、親の高さに合わせて並んだ面の高さをそろえる。 */
+    fill: { true: { height: "100%" } },
     appearance: {
       inverse: { background: "bg.inverse", color: "fg.inverse", borderRadius: "1.5rem" },
       tinted: {

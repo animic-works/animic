@@ -103,10 +103,55 @@ async function history(page: Page) {
   return page.evaluate(() => window.animicTest.getMyBattleHistory());
 }
 
-test("ログインしていない人と匿名の参加者には、ログインを案内する", async ({ page }) => {
+test("ログインしていない人がトップの「マイページ」を押すと、移動する前にログインを求める", async ({
+  page,
+}) => {
+  // 実際のサービスへは通信せず、ログインの開始で送る戻り先だけを確かめる。
+  await page.route("https://accounts.google.com/**", (route) =>
+    route.fulfill({ status: 200, contentType: "text/html", body: "<title>Google</title>" }),
+  );
+  const loginRequest = page.waitForRequest("**/api/auth/sign-in/social");
   await page.goto("/");
   await page.getByRole("link", { name: "マイページ" }).click();
-  await expect(page).toHaveURL("/mypage");
+  const dialog = page.getByRole("dialog", { name: "ログインしよう" });
+  await expect(dialog).toBeVisible();
+  await expect(page).toHaveURL("/");
+  await expect(dialog.getByText("戦績を見るにはログインが必要です。")).toBeVisible();
+  await dialog.getByRole("button", { name: "Googleでログイン" }).click();
+  expect((await loginRequest).postDataJSON()).toMatchObject({ callbackURL: "/mypage" });
+});
+
+test("ログインしていれば、トップのメニューのアカウントのアイコンからメニューを開き、マイページへ移る", async ({
+  browser,
+}) => {
+  for (const provider of ["google", "discord"] as const) {
+    const context = await browser.newContext({ reducedMotion: "reduce" });
+    try {
+      const page = await context.newPage();
+      await signIn(context, {
+        provider,
+        email: `${crypto.randomUUID()}@example.test`,
+        name: provider === "google" ? "ぐーぐる" : "でぃすこ",
+      });
+      const name = provider === "google" ? "ぐーぐる" : "でぃすこ";
+      await page.goto("/");
+      await page.getByRole("button", { name: `アカウント（${name}）` }).click();
+      const menu = page.getByRole("dialog", { name: "アカウント" });
+      await expect(menu.getByRole("heading", { name })).toBeVisible();
+      await expect(
+        menu.getByText(`${provider === "google" ? "Google" : "Discord"}でログイン中`),
+      ).toBeVisible();
+      await expect(menu.getByText("まだ戦績がありません", { exact: false })).toBeVisible();
+      await menu.getByRole("link", { name: "マイページ" }).click();
+      await expect(page).toHaveURL("/mypage");
+    } finally {
+      await context.close();
+    }
+  }
+});
+
+test("ログインしていない人と匿名の参加者には、ログインを案内する", async ({ page }) => {
+  await page.goto("/mypage");
   const prompt = page.getByRole("heading", { name: "ログインして戦績を残そう" });
   await expect(prompt).toBeVisible();
   await expect(page.getByRole("button", { name: "Googleでログイン" })).toBeVisible();

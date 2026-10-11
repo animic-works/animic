@@ -29,7 +29,12 @@ import { GridBackdrop } from "../shared/visuals/grid-backdrop";
 import { signOut } from "../../lib/auth.client";
 import { loginProviderNames, type LoginProvider } from "../../lib/login-providers";
 import { ProviderIcon } from "./visuals/provider-icon";
-import { accountIconAvatar, parseAccountIcon, type AccountIcon } from "./account-icon";
+import {
+  accountIconAvatar,
+  parseAccountIcon,
+  providerPalette,
+  type AccountIcon,
+} from "./account-icon";
 import { AccountLoginPrompt } from "./account-login-prompt";
 import { updateAccountIcon, updateDisplayName } from "./account.functions";
 import { IconDialog } from "./icon-dialog";
@@ -49,12 +54,7 @@ function CameraIcon() {
 }
 
 function ProviderMark({ provider }: { provider: LoginProvider }) {
-  return (
-    <ProviderIcon
-      provider={provider === "google" ? "Google" : "Discord"}
-      inverse={provider === "discord"}
-    />
-  );
+  return <ProviderIcon provider={provider === "google" ? "Google" : "Discord"} />;
 }
 
 /** 表示名とログインに使ったサービス。表示名はその場で編集する。 */
@@ -134,7 +134,7 @@ function Profile({ account, onChanged }: { account: Account; onChanged: () => Pr
             onClick={() => setIconOpen(true)}
             name={account.name}
             fallback={Array.from(account.name)[0]}
-            {...accountIconAvatar(icon, "pink")}
+            {...accountIconAvatar(icon, providerPalette(account.provider))}
             size="fluid"
             badge={account.provider ? <ProviderMark provider={account.provider} /> : undefined}
             ring
@@ -222,6 +222,7 @@ function Profile({ account, onChanged }: { account: Account; onChanged: () => Pr
         <IconDialog
           name={account.name}
           icon={icon}
+          palette={providerPalette(account.provider)}
           saving={saving}
           onClose={() => setIconOpen(false)}
           onSave={(next) => void saveIcon(next)}

@@ -119,6 +119,16 @@ export const avatar = defineSlotRecipe({
       large: { root: { width: "5.5rem", height: "5.5rem" }, fallback: { fontSize: "5" } },
       standard: {},
       compact: { root: { width: "2.5rem", height: "2.5rem" } },
+      // トップのメニューのアカウント。狭い画面では隣の操作との間を空けるため、一回り小さくする。
+      navigation: {
+        root: {
+          width: "2.5rem",
+          height: "2.5rem",
+          _navigationCompact: { width: "2.125rem", height: "2.125rem" },
+          _navigationNarrow: { width: "1.875rem", height: "1.875rem" },
+        },
+        fallback: { _navigationCompact: { fontSize: "2" } },
+      },
     },
     ring: {
       true: {
@@ -146,5 +156,17 @@ export const avatar = defineSlotRecipe({
       ink: { root: { background: "avatar.ink.bg", color: "avatar.ink.fg" } },
     },
   },
+  compoundVariants: [
+    // Discordでログインした人の既定の色。輪もアバターの色にそろえる。
+    {
+      palette: "violet",
+      ring: true,
+      css: {
+        root: {
+          boxShadow: "0 0 0 2px token(colors.bg.surface), 0 0 0 4px token(colors.avatar.violet.bg)",
+        },
+      },
+    },
+  ],
   defaultVariants: { size: "standard" },
 });

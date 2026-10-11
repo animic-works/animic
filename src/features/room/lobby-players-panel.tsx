@@ -85,10 +85,10 @@ export function LobbyPlayersPanel({
   onInvite: () => void;
 }) {
   return (
-    <Surface appearance="card" padding="content">
+    <Surface appearance="card" padding="content" fill>
       <Stack>
         <Stack space="compact">
-          <Heading level={1} size="title">
+          <Heading level={2} size="title">
             ルームコード
           </Heading>
           <Cluster>

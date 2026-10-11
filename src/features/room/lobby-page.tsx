@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useBlocker } from "@tanstack/react-router";
+import { useRef, useState } from "react";
 import { AppFrame, AppFrameWideContent } from "@animic/react/app-frame";
 import { Button } from "@animic/react/button";
 import { Cluster } from "@animic/react/cluster";
@@ -7,6 +8,7 @@ import { IconButton } from "@animic/react/icon-button";
 import { Page } from "@animic/react/page";
 import { Split } from "@animic/react/split";
 import { Stack } from "@animic/react/stack";
+import { Heading } from "@animic/react/heading";
 import { Text } from "@animic/react/text";
 import { useToast } from "@animic/react/toast";
 import { AppBrand } from "../shared/app-brand";
@@ -40,6 +42,14 @@ export function LobbyPage({
   onLeft: () => void;
 }) {
   const [dialog, setDialog] = useState<"invite" | "leave" | "start" | null>(null);
+  // 退出した後の移動は止めない。
+  const left = useRef(false);
+  // 戻る操作などでルームの外へ移ろうとしたら、退出と同じ確認を出す。タブを閉じるときはブラウザの確認を出す。
+  const blocker = useBlocker({
+    shouldBlockFn: ({ current, next }) => !left.current && current.pathname !== next.pathname,
+    enableBeforeUnload: () => !left.current,
+    withResolver: true,
+  });
   const toast = useToast();
   const { code } = room;
   const isHost = room.hostId === participantId;
@@ -51,7 +61,12 @@ export function LobbyPage({
     previousBattleId,
     waitingForNext,
     onLeaving,
-    onLeft,
+    onLeft: () => {
+      left.current = true;
+      // 戻る操作で確認した場合は、その移動先へ進む。
+      if (blocker.status === "blocked") blocker.proceed();
+      else onLeft();
+    },
   });
   async function copy(value: string, title: string) {
     try {
@@ -68,6 +83,17 @@ export function LobbyPage({
     <Page decoration={<GridBackdrop />}>
       <AppFrame
         brand={<AppBrand />}
+        // 見出しを置き、ロゴの横ではなくヘッダーの下からカードを並べる。
+        context={
+          <Stack space="tight">
+            <Text variant="eyebrow.strong" tone="accent">
+              LOBBY
+            </Text>
+            <Heading level={1} size="title">
+              ロビー
+            </Heading>
+          </Stack>
+        }
         compactContext={
           <Button appearance="soft" shape="pill" size="xs" onClick={copyCode}>
             <Text variant="caption" tone="supporting">
@@ -83,8 +109,8 @@ export function LobbyPage({
         }
         bottomAction
       >
-        <Split layout="balanced-aside">
-          <Stack>
+        <Split layout="balanced-aside" align="stretch">
+          <Stack fill>
             <LobbyPlayersPanel
               code={code}
               lobby={lobby}
@@ -126,11 +152,12 @@ export function LobbyPage({
         onCopyUrl={() => void copy(inviteUrl, "招待リンクをコピーしました")}
       />
       <LeaveDialog
-        open={dialog === "leave"}
+        open={dialog === "leave" || blocker.status === "blocked"}
         pending={actions.pending}
         error={actions.error}
         handsOverHost={isHost && lobby.players.length > 1}
-        onClose={close}
+        // 戻る操作で出した確認は、その移動だけを取り消す。開いていたほかのダイアログは閉じない。
+        onClose={() => (blocker.status === "blocked" ? blocker.reset() : close())}
         onLeave={actions.leave}
       />
       <StartAnywayDialog

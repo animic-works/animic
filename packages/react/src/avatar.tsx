@@ -21,7 +21,7 @@ interface AvatarAppearanceProps {
     | "orange"
     | "ink";
   ring?: boolean;
-  size?: "standard" | "compact" | "large" | "small" | "fluid" | "fill";
+  size?: "standard" | "compact" | "large" | "small" | "fluid" | "fill" | "navigation";
 }
 type AvatarDecoration =
   | { badge?: ReactNode; status?: never }

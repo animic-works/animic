@@ -5,6 +5,7 @@ import * as v from "valibot";
 import { getScoringMetrics } from "../scoring/scoring-jobs.server";
 import { getBattleDetail, getBattleHistoryStats, savedBattleResultSchema } from "./battle-history";
 import { battleRecord, battleResult } from "./battle.schema";
+import { toImageSrc } from "./image-src";
 
 /** マイページの一覧に出す戦績の数。成績はすべての戦績から求める。 */
 const listedRecordCount = 100;
@@ -26,7 +27,11 @@ export async function getBattleHistory(db: D1Database, participantId: string) {
     .orderBy(desc(battleRecord.startedAt));
   return {
     stats: getBattleHistoryStats(records),
-    records: records.slice(0, listedRecordCount),
+    // 保存したURLは保存した時点の`BETTER_AUTH_URL`を基にしているため、同じオリジンのパスにする。
+    records: records.slice(0, listedRecordCount).map((record) => ({
+      ...record,
+      imageUrl: record.imageUrl === null ? null : toImageSrc(record.imageUrl),
+    })),
   };
 }
 

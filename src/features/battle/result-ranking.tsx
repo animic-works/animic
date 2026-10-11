@@ -12,6 +12,7 @@ import { accountIconAvatar, type AccountIcon } from "../account/account-icon";
 import { playerPalettes } from "../room/room-presentation";
 import { getRanking, ordinal, type RankingEntry } from "./battle-outcome";
 import type { BattleSnapshot } from "./battle-state";
+import { ResultBreakdown } from "./result-breakdown";
 import {
   Crown,
   ResultBurst,
@@ -144,6 +145,11 @@ export function RankingResult({
                   ))}
                 </RecordList>
               </ResultRankingReveal>
+              {me?.rank != null && (
+                <ActionGroup align="center">
+                  <ResultBreakdown battle={battle} participantId={participantId} />
+                </ActionGroup>
+              )}
               <ActionGroup align="center">
                 <Button shape="pill" size="lg" prominence="raised" onClick={onRematch}>
                   同じメンバーで再戦

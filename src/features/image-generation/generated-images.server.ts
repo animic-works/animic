@@ -1,6 +1,8 @@
 import { env } from "cloudflare:workers";
 import * as v from "valibot";
 
+import { getAppImagePath } from "../battle/image-src";
+
 const contentType = "image/webp";
 const idSchema = v.pipe(v.string(), v.uuid());
 const pathPattern = /^\/generated-images\/([^/]+)\/([^/]+)$/;
@@ -22,23 +24,20 @@ function imageKey({ battleId, generationId }: GeneratedImageId) {
 
 /**
  * 生成キューのDOが返したWebPを保存し、配信URLを返す。
- * URLは状態配信と採点が使うため、`BETTER_AUTH_URL`を基にした絶対URLにする。
+ * URLは対戦の状態と採点ジョブに記録するため、`BETTER_AUTH_URL`を基にした絶対URLにする。
+ * 画面へは`toImageSrc`（`battle/image-src.ts`）で同じオリジンのパスにして渡す。
  */
 export async function putGeneratedImage(id: GeneratedImageId, webp: Uint8Array) {
   await env.GENERATED_IMAGES.put(imageKey(id), webp, { httpMetadata: { contentType } });
   return new URL(`/generated-images/${id.battleId}/${id.generationId}`, env.BETTER_AUTH_URL).href;
 }
 
-/** このアプリが`base`のオリジンで配信する生成画像のURLなら、対戦IDと処理IDを返す。 */
-export function parseGeneratedImageUrl(url: string, base: string) {
-  let parsed: URL;
-  try {
-    parsed = new URL(url);
-  } catch {
-    return null;
-  }
-  if (parsed.origin !== new URL(base).origin || parsed.search || parsed.hash) return null;
-  const match = pathPattern.exec(parsed.pathname);
+/**
+ * このアプリが配信する生成画像のURL（またはパス）なら、対戦IDと処理IDを返す。
+ * オリジンは見ない（`getAppImagePath`を参照）。
+ */
+export function parseGeneratedImageUrl(url: string) {
+  const match = pathPattern.exec(getAppImagePath(url) ?? "");
   return readId(match?.[1], match?.[2]);
 }
 
