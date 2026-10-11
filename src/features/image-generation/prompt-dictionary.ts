@@ -1,4 +1,5 @@
-import type { PromptMode } from "./prompt-blocks";
+import { hasToken } from "./prompt-blocks";
+import type { PromptBlocks, PromptMode } from "./prompt-blocks";
 import type { PromptGroup, PromptPhrase } from "./prompt-phrases";
 
 // 対戦画面の入力候補と検索で、表現の辞書（管理画面で編集し、D1から読む）を探す。
@@ -74,4 +75,31 @@ export function browseDictionary(
   return hitsOf(groups).filter(
     (hit) => includes(phraseName(hit), q) || includes(hit.tag, q) || includes(hit.group.label, q),
   );
+}
+
+/**
+ * 入力方法を切り替えたときに、辞書にある語句を切り替え先の表記にする（例：「1人の女の子」と「1girl」）。
+ * 切り替え前の表記（大文字小文字を区別しない）が同じ表現の、最初の1件を使う。辞書にない語句と重みは変えない。
+ * 置き換えで同じ語句が欄に2つになる場合は、前の語句だけを残す
+ */
+export function convertBlocks(
+  blocks: PromptBlocks,
+  groups: readonly PromptGroup[],
+  from: PromptMode,
+  to: PromptMode,
+): PromptBlocks {
+  if (from === to) return blocks;
+  const words = new Map<string, string>();
+  for (const phrase of hitsOf(groups)) {
+    const key = wordOf(phrase, from).toLowerCase();
+    if (!words.has(key)) words.set(key, wordOf(phrase, to));
+  }
+  return blocks.map((tokens) => {
+    const next: PromptBlocks[number] = [];
+    for (const token of tokens) {
+      const text = words.get(token.text.toLowerCase()) ?? token.text;
+      if (!hasToken(next, text)) next.push({ ...token, text });
+    }
+    return next;
+  });
 }

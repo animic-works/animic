@@ -210,10 +210,11 @@ test("再読み込みしても、すべての欄の語句・書きかけ・入�
       page.getByRole("button", { name: "「white background」を書き直す" }),
     ).toBeVisible();
     await expect(page.getByText("1語（合計 3語）")).toBeVisible();
+    // キャラの欄の語句は、タグに切り替えたときにタグの表記へ変えている。
     await kinds.getByText("キャラ", { exact: true }).click();
-    await expect(page.getByRole("button", { name: "「ピンクの髪」を書き直す" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "「pink hair」を書き直す" })).toBeVisible();
     await expect(
-      page.getByRole("button", { name: "「ツインテール」を書き直す（重み 1.1）" }),
+      page.getByRole("button", { name: "「twintails」を書き直す（重み 1.1）" }),
     ).toBeVisible();
   } finally {
     await guest.close();

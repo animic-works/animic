@@ -3,6 +3,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import {
   browseDictionary,
+  convertBlocks,
   matchRange,
   normalizeQuery,
   phraseName,
@@ -99,5 +100,40 @@ describe("matchRange", () => {
     expect(matchRange("pink hair", "HAIR")).toEqual([5, 9]);
     expect(matchRange("pink hair", "")).toBeNull();
     expect(matchRange("pink hair", "eyes")).toBeNull();
+  });
+});
+
+describe("convertBlocks", () => {
+  it("辞書にある語句を切り替え先の表記にし、重みと辞書にない語句は変えない", () => {
+    const blocks = [
+      [{ text: "白背景", weight: 1 }],
+      [
+        { text: "1人の女の子", weight: 1.2 },
+        { text: "きらきらの瞳", weight: 1 },
+      ],
+    ];
+    const tags = convertBlocks(blocks, initialPromptGroups, "text", "tag");
+    expect(tags).toEqual([
+      [{ text: "white background", weight: 1 }],
+      [
+        { text: "1girl", weight: 1.2 },
+        { text: "きらきらの瞳", weight: 1 },
+      ],
+    ]);
+    expect(convertBlocks(tags, initialPromptGroups, "tag", "text")).toEqual(blocks);
+  });
+
+  it("大文字小文字を区別せずに照らし、置き換えで重なった語句は前だけを残す", () => {
+    const blocks = [
+      [],
+      [
+        { text: "1GIRL", weight: 1 },
+        { text: "1人の女の子", weight: 1.5 },
+      ],
+    ];
+    expect(convertBlocks(blocks, initialPromptGroups, "tag", "text")).toEqual([
+      [],
+      [{ text: "1人の女の子", weight: 1 }],
+    ]);
   });
 });
