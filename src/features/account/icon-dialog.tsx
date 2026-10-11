@@ -16,23 +16,24 @@ import {
   type AccountIcon,
 } from "./account-icon";
 
-const defaultIcon: AccountIcon = "color:pink";
-
 /** イラストかカラーからアイコンを選ぶ。保存は呼び出し元が行う。 */
 export function IconDialog({
   name,
   icon,
+  palette,
   saving,
   onClose,
   onSave,
 }: {
   name: string;
   icon: AccountIcon | null;
+  /** アイコンを選んでいないときの色。 */
+  palette: "pink" | "violet";
   saving: boolean;
   onClose: () => void;
   onSave: (icon: AccountIcon) => void;
 }) {
-  const [draft, setDraft] = useState(icon ?? defaultIcon);
+  const [draft, setDraft] = useState<AccountIcon>(icon ?? `color:${palette}`);
   const fallback = Array.from(name)[0];
   return (
     <Dialog
@@ -49,7 +50,7 @@ export function IconDialog({
             size="large"
             name={name}
             fallback={fallback}
-            {...accountIconAvatar(draft, "pink")}
+            {...accountIconAvatar(draft, palette)}
             ring
           />
         </Center>

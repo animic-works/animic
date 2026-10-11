@@ -11,6 +11,7 @@ import { Stack } from "@animic/react/stack";
 import { Surface } from "@animic/react/surface";
 import { Text } from "@animic/react/text";
 import { DIFFICULTIES } from "../battle/battle-labels";
+import { toImageSrc } from "../battle/image-src";
 import { TOPIC_GOAL, type TopicStatus } from "../battle/topic-admin";
 import type { listAdminTopics } from "../battle/topic-admin.functions";
 import { formatDate } from "./admin-format";
@@ -150,7 +151,12 @@ export function TopicListScreen({
                   onClick={(event) => openOnClick(event, () => onOpen(topic.id))}
                 >
                   <Stack space="compact">
-                    <Media src={topic.imageUrl} alt="" aspect="portrait" fit="contain" />
+                    <Media
+                      src={toImageSrc(topic.imageUrl)}
+                      alt=""
+                      aspect="portrait"
+                      fit="contain"
+                    />
                     <Cluster>
                       <StatusBadge status={topic.status} />
                       <DifficultyBadge difficulty={topic.difficulty} />

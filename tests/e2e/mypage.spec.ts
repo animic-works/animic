@@ -103,10 +103,52 @@ async function history(page: Page) {
   return page.evaluate(() => window.animicTest.getMyBattleHistory());
 }
 
-test("ログインしていない人と匿名の参加者には、ログインを案内する", async ({ page }) => {
+test("ログインしていない人がトップの「マイページ」を押すと、移動する前にログインを求める", async ({
+  page,
+}) => {
+  // 実際のサービスへは通信せず、ログインの開始で送る戻り先だけを確かめる。
+  await page.route("https://accounts.google.com/**", (route) =>
+    route.fulfill({ status: 200, contentType: "text/html", body: "<title>Google</title>" }),
+  );
+  const loginRequest = page.waitForRequest("**/api/auth/sign-in/social");
   await page.goto("/");
   await page.getByRole("link", { name: "マイページ" }).click();
-  await expect(page).toHaveURL("/mypage");
+  const dialog = page.getByRole("dialog", { name: "ログインしよう" });
+  await expect(dialog).toBeVisible();
+  await expect(page).toHaveURL("/");
+  await expect(dialog.getByText("戦績を見るにはログインが必要です。")).toBeVisible();
+  await dialog.getByRole("button", { name: "Googleでログイン" }).click();
+  expect((await loginRequest).postDataJSON()).toMatchObject({ callbackURL: "/mypage" });
+});
+
+test("ログインしていれば、トップのメニューにアカウントのアイコンを出してマイページへ移る", async ({
+  browser,
+}) => {
+  for (const provider of ["google", "discord"] as const) {
+    const context = await browser.newContext({ reducedMotion: "reduce" });
+    try {
+      const page = await context.newPage();
+      await signIn(context, {
+        provider,
+        email: `${crypto.randomUUID()}@example.test`,
+        name: provider === "google" ? "ぐーぐる" : "でぃすこ",
+      });
+      await page.goto("/");
+      const link = page.getByRole("link", {
+        name: `マイページ（${provider === "google" ? "ぐーぐる" : "でぃすこ"}）`,
+      });
+      await expect(link).toBeVisible();
+      await link.click();
+      await expect(page).toHaveURL("/mypage");
+      await expect(page.getByRole("dialog")).toHaveCount(0);
+    } finally {
+      await context.close();
+    }
+  }
+});
+
+test("ログインしていない人と匿名の参加者には、ログインを案内する", async ({ page }) => {
+  await page.goto("/mypage");
   const prompt = page.getByRole("heading", { name: "ログインして戦績を残そう" });
   await expect(prompt).toBeVisible();
   await expect(page.getByRole("button", { name: "Googleでログイン" })).toBeVisible();

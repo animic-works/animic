@@ -85,15 +85,16 @@ describe("お題の画像のキーとURL", () => {
     expect(parseTopicImageKey(`generations/easy-001/${imageId}`)).toBeNull();
   });
 
-  it("同じオリジンの配信URLだけをお題の画像として読む", () => {
+  it("配信のURLとパスを、オリジンによらずお題の画像として読む", () => {
     const base = "https://animic.party";
-    expect(parseTopicImageUrl(`${base}/topic-images/t1/${imageId}`, base)).toEqual({
-      topicId: "t1",
-      imageId,
-    });
-    expect(parseTopicImageUrl(`https://example.com/topic-images/t1/${imageId}`, base)).toBeNull();
-    expect(parseTopicImageUrl(`${base}/topic-images/t1/${imageId}?x=1`, base)).toBeNull();
-    expect(parseTopicImageUrl(`${base}/og-image.png`, base)).toBeNull();
-    expect(parseTopicImageUrl("not a url", base)).toBeNull();
+    const id = { topicId: "t1", imageId };
+    expect(parseTopicImageUrl(`${base}/topic-images/t1/${imageId}`)).toEqual(id);
+    // 別の公開URLで登録したお題も、同じR2の画像として読む。
+    expect(parseTopicImageUrl(`http://localhost:3000/topic-images/t1/${imageId}`)).toEqual(id);
+    expect(parseTopicImageUrl(`/topic-images/t1/${imageId}`)).toEqual(id);
+    expect(parseTopicImageUrl(`${base}/topic-images/t1/${imageId}?x=1`)).toBeNull();
+    expect(parseTopicImageUrl(`${base}/generated-images/t1/${imageId}`)).toBeNull();
+    expect(parseTopicImageUrl(`${base}/og-image.png`)).toBeNull();
+    expect(parseTopicImageUrl("not a url")).toBeNull();
   });
 });

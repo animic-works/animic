@@ -7,6 +7,7 @@ import {
   submissionSchema,
   topicSchema,
 } from "./battle-state";
+import { toImageSrc } from "./image-src";
 
 /** D1の`battle_result.data`。`serializeBattleResult`が書き出す形。 */
 export const savedBattleResultSchema = v.object({
@@ -26,6 +27,7 @@ export const savedBattleResultSchema = v.object({
   ),
 });
 export type SavedBattleResult = v.InferOutput<typeof savedBattleResultSchema>;
+type Submission = v.InferOutput<typeof submissionSchema>;
 
 /** 参加者ごとの戦績の行（D1の`battle_record`）。 */
 export type BattleRecord = {
@@ -43,6 +45,12 @@ function submittedImageUrl(saved: SavedBattleResult, participantId: string) {
   return (
     saved.submittedImages.find((image) => image.participantId === participantId)?.imageUrl ?? null
   );
+}
+
+// 画面に渡す画像のURL。保存したURLは保存した時点の`BETTER_AUTH_URL`を基にしているため、同じオリジンのパスにする。
+function submittedImageSrc(saved: SavedBattleResult, participantId: string) {
+  const url = submittedImageUrl(saved, participantId);
+  return url === null ? null : toImageSrc(url);
 }
 
 /** 保存する結果から、参加者ごとの戦績の行を作る。順位とスコアは結果画面と同じ規則で求める。 */
@@ -87,6 +95,17 @@ export function getBattleHistoryStats(
   };
 }
 
+/** スコアの内訳に出す、提出までの秒数と生成回数。提出していなければ`null`。 */
+export function summarizeSubmission(submission: Submission | undefined, startedAt: number) {
+  return submission?.status === "submitted"
+    ? {
+        seconds: Math.max(0, Math.round((submission.submittedAt - startedAt) / 1000)),
+        withinTimeLimit: submission.eligibleForSpeedBonus,
+        generationCount: submission.successfulGenerationCount,
+      }
+    : null;
+}
+
 /**
  * 1つの対戦を、参加した本人から見た詳細にする。
  * ほかの参加者の提出画像は、結果画面と同じく採点で順位が決まった人の分だけ含める。
@@ -107,7 +126,7 @@ export function getBattleDetail(saved: SavedBattleResult, participantId: string)
       ),
       imageUrl:
         id === participantId || saved.scores?.some((score) => score.participantId === id)
-          ? submittedImageUrl(saved, id)
+          ? submittedImageSrc(saved, id)
           : null,
     }))
     .toSorted((a, b) => (a.rank ?? Infinity) - (b.rank ?? Infinity));
@@ -115,21 +134,14 @@ export function getBattleDetail(saved: SavedBattleResult, participantId: string)
     battleId: saved.battleId,
     roomCode: saved.roomCode,
     startedAt: saved.startedAt,
-    topicImageUrl: saved.topic.imageUrl,
+    topicImageUrl: toImageSrc(saved.topic.imageUrl),
     settings: saved.settings,
     participantCount: saved.participantIds.length,
     resultKind: saved.result.kind,
     rank: getRank(participantId, saved.result, saved.scores),
     total: myScore?.total ?? null,
-    imageUrl: submittedImageUrl(saved, participantId),
-    submission:
-      submission?.status === "submitted"
-        ? {
-            seconds: Math.max(0, Math.round((submission.submittedAt - saved.startedAt) / 1000)),
-            withinTimeLimit: submission.eligibleForSpeedBonus,
-            generationCount: submission.successfulGenerationCount,
-          }
-        : null,
+    imageUrl: submittedImageSrc(saved, participantId),
+    submission: summarizeSubmission(submission, saved.startedAt),
     ranking,
   };
 }

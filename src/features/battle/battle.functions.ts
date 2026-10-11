@@ -7,6 +7,7 @@ import * as v from "valibot";
 
 import { createAuth } from "../../lib/auth.server";
 import { roomCodeSchema } from "../room/room-state";
+import { getScoringMetrics } from "../scoring/scoring-jobs.server";
 import { battleSettingsSchema, topicSchema } from "./battle-state";
 import { topic } from "./battle.schema";
 
@@ -58,4 +59,17 @@ export const submitBattleImage = createServerFn({ method: "POST" })
       current.user.id,
       data.generationId,
     );
+  });
+
+/**
+ * 結果画面に出す、自分の指標ごとの点。戦績の詳細と同じく採点ジョブの出力から読み、
+ * ログインしていない参加者も使えるようにセッションの参加者IDで探す。ほかの参加者の指標は返さない。
+ * 採点されていなければ`null`。
+ */
+export const getMyScoringMetrics = createServerFn({ method: "GET" })
+  .validator(v.object({ battleId: v.pipe(v.string(), v.uuid()) }))
+  .handler(async ({ data }) => {
+    setResponseHeader("Cache-Control", "private, no-store");
+    const current = await createAuth().api.getSession({ headers: getRequestHeaders() });
+    return current ? getScoringMetrics(env.DB, data.battleId, current.user.id) : null;
   });

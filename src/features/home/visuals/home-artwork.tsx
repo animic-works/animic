@@ -425,6 +425,7 @@ export function StepArtwork({ kind }: { kind: "room" | "image" | "prompt" | "tro
 }
 
 const sampleArtwork = css({
+  clipPath: "[inset(0 round 0.5rem)]",
   width:
     "[calc(max(12rem, min(100svh - clamp(7rem, 16svh, 9rem) - 14rem, (44vw - 12rem) * 1216 / 832)) * 832 / 1216)]",
   _artworkNarrow: {
@@ -436,48 +437,139 @@ const sampleArtwork = css({
       "[calc(max(12rem, min(100svh - 4.75rem - 22rem, (50vw - 2.2rem) * 1216 / 832)) * 832 / 1216)]",
   },
 });
-const sampleTint = css({
-  transitionProperty: "[fill]",
-  transitionDuration: "[300ms]",
-  transitionTimingFunction: "[ease]",
-  _motionReduce: { transitionDuration: "[0ms]" },
-});
-const sampleSymbol = css({ translate: "[-17px -17px]" });
-export function SampleArtwork({ tint }: { tint: string }) {
-  const pattern = useId();
+/** ギャラリーの例の画像。縦長のまま、画面の高さに合わせた幅で角を丸めて表示する。 */
+export function SampleArtwork({ src, alt }: { src: string; alt: string }) {
   return (
-    <svg className={sampleArtwork} width="832" height="1216" aria-hidden="true">
+    <svg className={sampleArtwork} viewBox="0 0 832 1216" role="img" aria-label={alt}>
+      <image href={src} width="832" height="1216" />
+    </svg>
+  );
+}
+
+const scoreArtwork = css({ width: "[100%]", height: "[auto]" });
+/** 採点方法のカードの絵。遊び方の絵と同じ縞の地と白いタイルを、横長の比率で描く。 */
+export function ScoreArtwork({ kind }: { kind: "similarity" | "speed" | "attempts" }) {
+  const stripes = useId();
+  return (
+    <svg className={scoreArtwork} viewBox="0 0 600 220" width="100%" aria-hidden="true">
       <defs>
         <pattern
-          id={pattern}
-          width="19"
-          height="19"
+          id={stripes}
+          width="26"
+          height="26"
           patternUnits="userSpaceOnUse"
           patternTransform="rotate(-18)"
         >
-          <rect y="16" width="19" height="3" fill="#fff" opacity="0.5" />
+          <rect y="22" width="26" height="4" fill="#fff" opacity="0.55" />
         </pattern>
       </defs>
-      <rect className={sampleTint} width="100%" height="100%" rx="16" fill={tint} />
-      <rect width="100%" height="100%" rx="16" fill={`url(#${pattern})`} />
-      <svg
-        className={sampleSymbol}
-        x="50%"
-        y="50%"
-        width="34"
-        height="34"
-        viewBox="0 0 24 24"
+      <rect
+        width="600"
+        height="220"
+        rx="24"
+        fill={kind === "similarity" ? "#ffe4f1" : kind === "speed" ? "#e0f6ff" : "#fff8ca"}
+      />
+      <rect width="600" height="220" rx="24" fill={`url(#${stripes})`} />
+      <rect
+        x="226"
+        y="36"
+        width="148"
+        height="148"
+        rx="24"
+        fill="#fff"
+        stroke="#dfe2e7"
+        strokeWidth="2"
+        transform="rotate(-6 300 110)"
+      />
+      <g
+        transform="rotate(-6 300 110) translate(256 66) scale(3.67)"
         fill="none"
-        stroke="#0b1b2b"
-        opacity="0.35"
+        stroke="currentColor"
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
       >
-        <rect x="3" y="3" width="18" height="18" rx="3" />
-        <circle cx="9" cy="9" r="2" />
-        <path d="m21 15-5-5L5 21" />
-      </svg>
+        {kind === "similarity" && (
+          <>
+            <path d="M12 3a9 9 0 1 0 9 9" />
+            <path d="M12 8a4 4 0 1 0 4 4" />
+            <path d="M12 12 21 3" />
+          </>
+        )}
+        {kind === "speed" && (
+          <>
+            <circle cx="12" cy="13" r="8" />
+            <path d="M12 9v4l2.5 2.5M9 2h6" />
+          </>
+        )}
+        {kind === "attempts" && (
+          <>
+            <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+            <path d="M3 3v5h5" />
+          </>
+        )}
+      </g>
+    </svg>
+  );
+}
+
+/** 再現度の観点ごとの色。グラフと凡例で同じ色を使う（隣り合う色の色覚差を検証済み）。 */
+const scoreWeightColors = {
+  ccip: "#ff2d87",
+  pixai: "#00b4fc",
+  siglip2: "#ff7a45",
+  dinov2: "#7959fc",
+  depth: "#16b37e",
+} as const;
+type ScoreWeightKey = keyof typeof scoreWeightColors;
+
+/** 再現度に占める観点ごとの重み（%）を、1本の帯の割合で描く。 */
+export function ScoreWeightsBar({
+  weights,
+}: {
+  weights: readonly { key: ScoreWeightKey; weight: number }[];
+}) {
+  const clip = useId();
+  const starts = weights.map((_, index) =>
+    weights.slice(0, index).reduce((sum, item) => sum + item.weight, 0),
+  );
+  return (
+    <svg width="100%" height="16" aria-hidden="true">
+      <defs>
+        <clipPath id={clip}>
+          <rect width="100%" height="16" rx="8" />
+        </clipPath>
+      </defs>
+      <g clipPath={`url(#${clip})`}>
+        {weights.map(({ key, weight }, index) => (
+          <rect
+            key={key}
+            x={`${starts[index]}%`}
+            width={`${weight}%`}
+            height="16"
+            fill={scoreWeightColors[key]}
+          />
+        ))}
+        {starts.slice(1).map((start) => (
+          <rect
+            key={start}
+            x={`${start}%`}
+            width="2"
+            height="16"
+            fill="#fff"
+            transform="translate(-1 0)"
+          />
+        ))}
+      </g>
+    </svg>
+  );
+}
+
+/** グラフの色と凡例を結び付ける色見本。 */
+export function ScoreWeightSwatch({ metric }: { metric: ScoreWeightKey }) {
+  return (
+    <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+      <rect width="10" height="10" rx="2.5" fill={scoreWeightColors[metric]} />
     </svg>
   );
 }

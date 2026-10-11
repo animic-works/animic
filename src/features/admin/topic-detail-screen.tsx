@@ -25,6 +25,7 @@ import {
   updateTopic,
 } from "../battle/topic-admin.functions";
 import { toTopicWebp } from "../battle/topic-image-file";
+import { toImageSrc } from "../battle/image-src";
 import { errorMessage, formatDateTime } from "./admin-format";
 import { AdminError, AdminHead } from "./admin-parts";
 import { DIFFICULTY_OPTIONS, DifficultyBadge, StatusBadge, difficultyOf } from "./topic-labels";
@@ -174,7 +175,7 @@ export function TopicDetailScreen({ topic, onBack, onChanged, onDeleted }: Topic
         }
       />
       <Split layout="balanced" align="start">
-        <Media src={topic.imageUrl} alt="お題の画像" aspect="portrait" fit="contain" />
+        <Media src={toImageSrc(topic.imageUrl)} alt="お題の画像" aspect="portrait" fit="contain" />
         <Stack>
           <section aria-labelledby="topic-edit-title">
             <Surface appearance="subtle">

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { getBattleClock, getBattleDeadline } from "./battle-clock";
+import { getBattleClock, getBattleDeadline, isScoringSlow } from "./battle-clock";
 
 const battle = {
   generationEndsAt: 60_000,
@@ -30,5 +30,15 @@ describe("残り時間の表示", () => {
       tone: "highlight",
       percent: 20,
     });
+  });
+});
+
+describe("採点の待ち時間", () => {
+  it("採点の開始（期限の5分前）から30秒を過ぎたら、時間がかかっているとする", () => {
+    expect(isScoringSlow(null)).toBe(false);
+    expect(isScoringSlow(5 * 60_000)).toBe(false);
+    expect(isScoringSlow(4 * 60_000 + 30_001)).toBe(false);
+    expect(isScoringSlow(4 * 60_000 + 30_000)).toBe(true);
+    expect(isScoringSlow(0)).toBe(true);
   });
 });

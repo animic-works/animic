@@ -8,7 +8,7 @@ import { Workspace } from "@animic/react/workspace";
 import type { AccountIcon } from "../account/account-icon";
 import { PromptComposer } from "../image-generation/prompt-composer";
 import { GridBackdrop } from "../shared/visuals/grid-backdrop";
-import { getBattleClock, getBattleDeadline } from "./battle-clock";
+import { getBattleClock, getBattleDeadline, isScoringSlow } from "./battle-clock";
 import {
   BattlePlayers,
   BattleProgress,
@@ -69,6 +69,8 @@ function SelectionNotice({
             履歴から選んで「この1枚で提出」
             <br />
             生成中の画像も、完成すれば選べます
+            <br />
+            選ばなければ最後に完成した1枚を提出
           </Text>
         </>
       )}
@@ -114,6 +116,12 @@ export function BattlePage({
   const noImage = hasNoImageToSubmit(stage, battle.myGenerations);
   const remaining = useRemainingMs(battle.serverTime, getBattleDeadline(battle, stage), receivedAt);
   const clock = getBattleClock(battle, stage, remaining);
+  // 採点の期限までの残り時間は出さず、時間がかかっていることだけを伝える。
+  const scoringRemaining = useRemainingMs(
+    battle.serverTime,
+    stage === "scoring" ? battle.scoringEndsAt : null,
+    receivedAt,
+  );
   const generate = useBattleGeneration({ code, battleId: battle.id });
   const submission = useBattleSubmission({ code, battleId: battle.id, locked });
   const confirmed = images.succeeded.find((item) => item.id === submission.confirmId);
@@ -154,6 +162,7 @@ export function BattlePage({
           ) : (
             <PromptComposer
               key={battle.id}
+              battleId={battle.id}
               maxCharacters={battle.settings.difficulty === "hard" ? 2 : 1}
               successCount={images.succeeded.length}
               pending={images.pendings.length > 0}
@@ -200,6 +209,8 @@ export function BattlePage({
       <SubmissionWaitDialog
         open={waiting}
         battle={battle}
+        scoring={stage === "scoring"}
+        slow={isScoringSlow(scoringRemaining)}
         submitted={images.submitted}
         submittedNumber={images.submitted ? images.numberOf(images.submitted.id) : 0}
         opponentName={opponentId === undefined ? null : (names.get(opponentId) ?? "相手")}

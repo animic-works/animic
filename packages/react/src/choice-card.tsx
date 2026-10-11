@@ -29,7 +29,7 @@ export function ChoiceCard({
       {media ? (
         <span className={c.media}>{media}</span>
       ) : src ? (
-        <img src={src} alt="" className={c.media} />
+        <img src={src} alt="" className={c.media} draggable={false} />
       ) : null}
       {selected && (
         <span className={c.indicator} aria-hidden="true">
