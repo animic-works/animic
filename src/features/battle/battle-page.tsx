@@ -14,6 +14,7 @@ import { BattlePlayers, BattleProgress, BattleRoomLabel, BattleTimer } from "./b
 import { getBattleImages, type BattleImagePick } from "./battle-images";
 import { BattleImagesPanel } from "./battle-images-panel";
 import { useModifierKey, useQuickSubmit } from "./battle-preferences";
+import { characterCount } from "./battle-state";
 import type { BattleSnapshot } from "./battle-state";
 import { hasNoImageToSubmit } from "./battle-screen";
 import type { BattleStage } from "./battle-screen";
@@ -165,7 +166,7 @@ export function BattlePage({
               key={battle.id}
               battleId={battle.id}
               dictionary={promptGroups}
-              maxCharacters={battle.settings.difficulty === "hard" ? 2 : 1}
+              maxCharacters={characterCount(battle.settings.difficulty)}
               successCount={images.succeeded.length}
               pending={images.pendings.length > 0}
               locked={stage !== "generating" || locked}

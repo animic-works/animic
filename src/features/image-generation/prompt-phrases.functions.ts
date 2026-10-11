@@ -15,6 +15,7 @@ import {
   promptPhraseNoteSchema,
   promptPhraseSuffixSchema,
   promptPhraseTagSchema,
+  promptTargetSchema,
   promptToneSchema,
 } from "./prompt-phrases";
 import { promptGroup, promptPhrase } from "./prompt-phrases.schema";
@@ -28,10 +29,15 @@ export const listPromptGroups = createServerFn({ method: "GET" }).handler(() =>
   loadPromptGroups(env.DB),
 );
 
-/** グループを追加する（最後に並べる）か、名前と色を変える。 */
+/** グループを追加する（最後に並べる）か、名前・色・入れる欄を変える。 */
 export const savePromptGroup = createServerFn({ method: "POST" })
   .validator(
-    v.object({ id: promptIdSchema, label: promptGroupLabelSchema, tone: promptToneSchema }),
+    v.object({
+      id: promptIdSchema,
+      label: promptGroupLabelSchema,
+      tone: promptToneSchema,
+      target: promptTargetSchema,
+    }),
   )
   .handler(async ({ data }) => {
     requireAdmin();
@@ -43,11 +49,12 @@ export const savePromptGroup = createServerFn({ method: "POST" })
         id: data.id,
         label: data.label,
         tone: data.tone,
+        target: data.target,
         sortOrder: (last?.value ?? -1) + 1,
       })
       .onConflictDoUpdate({
         target: promptGroup.id,
-        set: { label: data.label, tone: data.tone },
+        set: { label: data.label, tone: data.tone, target: data.target },
       });
   });
 
@@ -189,7 +196,7 @@ export const deletePromptPhraseImage = createServerFn({ method: "POST" })
     return { error: null };
   });
 
-/** グループを1つ上または下へ動かす（隣と並び順を入れ替える）。端なら何もしない。 */
+/** グループを、入れる欄が同じグループの中で1つ上または下へ動かす（隣と並び順を入れ替える）。端なら何もしない。 */
 export const movePromptGroup = createServerFn({ method: "POST" })
   .validator(v.object({ id: v.string(), direction: moveDirectionSchema }))
   .handler(async ({ data }) => {
@@ -202,9 +209,12 @@ export const movePromptGroup = createServerFn({ method: "POST" })
       .select()
       .from(promptGroup)
       .where(
-        up
-          ? lt(promptGroup.sortOrder, current.sortOrder)
-          : gt(promptGroup.sortOrder, current.sortOrder),
+        and(
+          eq(promptGroup.target, current.target),
+          up
+            ? lt(promptGroup.sortOrder, current.sortOrder)
+            : gt(promptGroup.sortOrder, current.sortOrder),
+        ),
       )
       .orderBy(up ? desc(promptGroup.sortOrder) : asc(promptGroup.sortOrder))
       .limit(1);

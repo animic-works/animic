@@ -25,9 +25,11 @@ import {
   togglePhrase,
 } from "./prompt-blocks";
 import type { PromptBlocks, PromptMode } from "./prompt-blocks";
+import type { GenerationInput } from "./generation-input";
 import {
   browseDictionary,
   convertBlocks,
+  groupsForBlock,
   matchRange,
   normalizeQuery,
   phraseName,
@@ -57,7 +59,7 @@ export type PromptComposerProps = {
   /** 受付終了・提出済み（入力・切り替え・検索も止める） */
   locked: boolean;
   /** 生成の要求。受付を拒否されたか通信に失敗したら例外を投げる（入力は残してエラーを表示する） */
-  onGenerate: (prompt: string) => Promise<void>;
+  onGenerate: (input: GenerationInput) => Promise<void>;
   /** ショートカットの案内に出す修飾キー */
   modifierKey: "⌘" | "Ctrl";
   /** 狭い画面で下端に畳んでいる（入力の要約と生成の操作だけを出す） */
@@ -91,16 +93,17 @@ function withCharacters(state: ComposerState, maxCharacters: 1 | 2): ComposerSta
 }
 
 // 入力欄の例。添字は欄（0: ベース, 1: キャラ1, 2: キャラ2）
+// ベースには画像全体（人数・背景・画風）、キャラにはそのキャラクターの見た目・表情・構図を書くことを伝える。
 const PLACEHOLDERS: Record<PromptMode, string[]> = {
   text: [
-    "「、」で区切って入力（例：白背景、アニメ塗り）",
-    "「、」で区切って入力（例：ピンクの髪、ツインテール、笑顔）",
-    "「、」で区切って入力（例：銀髪、ロングヘア、赤い目）",
+    "人数・背景・画風を「、」で区切って入力（例：1人の女の子、白背景、アニメ塗り）",
+    "このキャラの見た目・表情・構図を「、」で区切って入力（例：ピンクの髪、ツインテール、笑顔）",
+    "このキャラの見た目・表情・構図を「、」で区切って入力（例：銀髪、ロングヘア、赤い目）",
   ],
   tag: [
-    "「,」で区切って入力（例：white background, anime coloring）",
-    "「,」で区切って入力（例：pink hair, twintails, smile）",
-    "「,」で区切って入力（例：silver hair, long hair, red eyes）",
+    "人数・背景・画風を「,」で区切って入力（例：1girl, white background, anime coloring）",
+    "このキャラの見た目・表情・構図を「,」で区切って入力（例：pink hair, twintails, smile）",
+    "このキャラの見た目・表情・構図を「,」で区切って入力（例：silver hair, long hair, red eyes）",
   ],
 };
 
@@ -174,13 +177,15 @@ export function PromptComposer({
     prompt,
   });
   const total = countTokens(blocks);
-  const allHits = browseDictionary(dictionary, null, "");
+  // 入力候補と検索には、開いている欄に入れるグループだけを出す。
+  const groups = groupsForBlock(dictionary, active);
+  const allHits = browseDictionary(groups, null, "");
   const hitsById = new Map(allHits.map((hit) => [hit.id, hit]));
   const words = preview.flat().map((token) => token.text);
   const query = draftQuery(draft);
   const suggestions = locked
     ? []
-    : searchDictionary(dictionary, query).map((hit) => ({
+    : searchDictionary(groups, query).map((hit) => ({
         id: hit.id,
         label: phraseName(hit),
         tag: hit.tag,
@@ -255,7 +260,9 @@ export function PromptComposer({
   }, [shortcutRef]);
 
   // 検索の窓に出すジャンル・カード
-  const searchHits = browseDictionary(dictionary, search.genre, search.query);
+  // 欄を切り替えて、選んでいたジャンルが出せなくなったら「すべて」に戻す。
+  const genre = groups.some((group) => group.id === search.genre) ? search.genre : null;
+  const searchHits = browseDictionary(groups, genre, search.query);
   const inPrompt = (hit: DictionaryHit) => hasToken(tokens, wordOf(hit, mode));
   const genres: SearchGenre[] = [
     {
@@ -265,7 +272,7 @@ export function PromptComposer({
       count: allHits.length,
       picked: allHits.filter(inPrompt).length,
     },
-    ...dictionary.map((group) => {
+    ...groups.map((group) => {
       const hits = allHits.filter((hit) => hit.group.id === group.id);
       return {
         key: group.id,
@@ -288,7 +295,7 @@ export function PromptComposer({
     tagMatch: matchRange(hit.tag, search.query),
   }));
   const trimmedQuery = search.query.trim();
-  const genreLabel = genres.find((item) => item.key === search.genre)?.label ?? "すべて";
+  const genreLabel = genres.find((item) => item.key === genre)?.label ?? "すべて";
   const summary = normalizeQuery(search.query) ? (
     <>
       「<b>{trimmedQuery}</b>」の結果 {cards.length}件
@@ -513,7 +520,7 @@ export function PromptComposer({
         query={search.query}
         onQueryChange={(value) => setSearch((current) => ({ ...current, query: value }))}
         genres={genres}
-        genre={search.genre}
+        genre={genre}
         onGenreChange={(key) => setSearch((current) => ({ ...current, genre: key }))}
         summary={summary}
         cards={cards}

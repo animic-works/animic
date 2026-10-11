@@ -22,9 +22,19 @@ async function readPromptGroups(db: D1Database): Promise<PromptGroup[]> {
   }));
 }
 
+/** 1つのクエリの値の数が上限に収まるように、行を分ける。 */
+function chunkRows<T extends object>(rows: readonly T[]): T[][] {
+  const [first] = rows;
+  const size = first ? Math.floor(maxBoundParameters / Object.keys(first).length) : 1;
+  const chunks: T[][] = [];
+  for (let index = 0; index < rows.length; index += size)
+    chunks.push(rows.slice(index, index + size));
+  return chunks;
+}
+
 /**
  * 初期データを登録する。IDが固定のため、同時に呼ばれても同じ内容が1回だけ入る。
- * 表現は、1つのクエリの値の数が上限に収まる件数ずつ入れる。
+ * グループと表現は、1つのクエリの値の数が上限に収まる件数ずつ、グループを先に入れる。
  */
 async function insertInitialPromptGroups(db: D1Database) {
   const client = drizzle(db);
@@ -32,17 +42,15 @@ async function insertInitialPromptGroups(db: D1Database) {
   const phrases = initialPromptGroups.flatMap((group) =>
     group.phrases.map((phrase) => ({ ...phrase, groupId: group.id })),
   );
-  const [first] = phrases;
-  const size = first ? Math.floor(maxBoundParameters / Object.keys(first).length) : 1;
-  const inserts = [];
-  for (let index = 0; index < phrases.length; index += size)
-    inserts.push(
-      client
-        .insert(promptPhrase)
-        .values(phrases.slice(index, index + size))
-        .onConflictDoNothing(),
-    );
-  await client.batch([client.insert(promptGroup).values(groups).onConflictDoNothing(), ...inserts]);
+  const [first, ...rest] = [
+    ...chunkRows(groups).map((rows) =>
+      client.insert(promptGroup).values(rows).onConflictDoNothing(),
+    ),
+    ...chunkRows(phrases).map((rows) =>
+      client.insert(promptPhrase).values(rows).onConflictDoNothing(),
+    ),
+  ];
+  if (first) await client.batch([first, ...rest]);
 }
 
 /** グループと表現を並び順で読む。グループが1つもなければ、先に初期データを登録する。 */
@@ -55,11 +63,11 @@ export async function loadPromptGroups(db: D1Database): Promise<PromptGroup[]> {
 
 /** グループを上書きまたは追加する書き込み（表現は含めない）。 */
 export function upsertPromptGroup(db: D1Database, group: Omit<PromptGroup, "phrases">) {
-  const { id, label, tone, sortOrder } = group;
+  const { id, label, tone, target, sortOrder } = group;
   return drizzle(db)
     .insert(promptGroup)
-    .values({ id, label, tone, sortOrder })
-    .onConflictDoUpdate({ target: promptGroup.id, set: { label, tone, sortOrder } });
+    .values({ id, label, tone, target, sortOrder })
+    .onConflictDoUpdate({ target: promptGroup.id, set: { label, tone, target, sortOrder } });
 }
 
 /**

@@ -51,6 +51,7 @@ const backup: Backup = {
       id: "hair",
       label: "髪の色",
       tone: "pink",
+      target: "character",
       sortOrder: 0,
       phrases: [
         {
@@ -108,6 +109,7 @@ describe("バックアップのZIP", () => {
         id: "hair",
         label: "髪の色",
         tone: "slate",
+        target: "both",
         sortOrder: 0,
         phrases: [
           {

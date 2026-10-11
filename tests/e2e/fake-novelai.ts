@@ -12,12 +12,19 @@ import { e2eNovelAiToken } from "./novelai-token";
 // E2Eのビルドの`NOVELAI_API_URL`をここへ向ける。
 
 export const fakeNovelAiUrl = "http://127.0.0.1:4174";
-/** プロンプトに含めると、失敗（500）を返す。 */
+/** プロンプト（ベースかキャラのどれか）に含めると、失敗（500）を返す。 */
 export const novelAiFailMarker = "e2e-novelai-fail";
 /** プロンプトに含めると、応答を3秒遅らせる。 */
 export const novelAiSlowMarker = "e2e-novelai-slow";
 
-const requestSchema = v.object({ input: v.string() });
+const requestSchema = v.object({
+  input: v.string(),
+  parameters: v.object({
+    v4_prompt: v.object({
+      caption: v.object({ char_captions: v.array(v.object({ char_caption: v.string() })) }),
+    }),
+  }),
+});
 const callsSchema = v.object({ count: v.number(), maxConcurrent: v.number() });
 
 function chunk(type: string, data: Buffer) {
@@ -84,7 +91,12 @@ export default async function startFakeNovelAi() {
       response.end(JSON.stringify({ statusCode: 401, message: "Unauthorized" }));
       return;
     }
-    const { input } = v.parse(requestSchema, JSON.parse(await readBody(request)));
+    const { input: base, parameters } = v.parse(requestSchema, JSON.parse(await readBody(request)));
+    // ベースとキャラクターごとのプロンプトを、欄の順に改行でつないで記録する。
+    const input = [
+      base,
+      ...parameters.v4_prompt.caption.char_captions.map((c) => c.char_caption),
+    ].join("\n");
     prompts.push(input);
     active += 1;
     maxConcurrent = Math.max(maxConcurrent, active);

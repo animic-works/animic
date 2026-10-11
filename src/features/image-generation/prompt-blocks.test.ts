@@ -112,14 +112,23 @@ describe("renderToken", () => {
 describe("assemblePrompt", () => {
   const blocks = [[token("白背景")], [token("ピンクの髪", 1.2), token("笑顔")]];
 
-  it("入力方法に合わせた区切りで全欄をつなぐ", () => {
-    expect(assemblePrompt(blocks, "text")).toBe("白背景、1.2::ピンクの髪::、笑顔");
-    expect(assemblePrompt(blocks, "tag")).toBe("白背景, 1.2::ピンクの髪::, 笑顔");
+  it("ベースの欄を全体のプロンプト、キャラの欄をキャラクターごとのプロンプトにする", () => {
+    expect(assemblePrompt(blocks, "text")).toEqual({
+      prompt: "白背景",
+      characters: ["1.2::ピンクの髪::、笑顔"],
+    });
+    expect(assemblePrompt(blocks, "tag")).toEqual({
+      prompt: "白背景",
+      characters: ["1.2::ピンクの髪::, 笑顔"],
+    });
   });
 
-  it("空の欄は飛ばし、すべて空なら空文字にする", () => {
-    expect(assemblePrompt([[], [token("smile")], []], "tag")).toBe("smile");
-    expect(assemblePrompt([[], []], "text")).toBe("");
+  it("空の欄は空文字にし、キャラの欄の数は変えない", () => {
+    expect(assemblePrompt([[], [token("smile")], []], "tag")).toEqual({
+      prompt: "",
+      characters: ["smile", ""],
+    });
+    expect(assemblePrompt([[], []], "text")).toEqual({ prompt: "", characters: [""] });
   });
 });
 
@@ -132,32 +141,38 @@ describe("previewBlocks", () => {
   });
 });
 
+const prompt = (base: string, ...characters: string[]) => ({ prompt: base, characters });
+
 describe("getGenerateBlocker", () => {
-  const ready = { locked: false, pending: false, prompt: "笑顔" };
+  const ready = { locked: false, pending: false, prompt: prompt("", "笑顔") };
 
   it("押せない理由を優先順に返す", () => {
     expect(getGenerateBlocker({ ...ready, locked: true, pending: true })).toEqual({
       disabled: true,
       reason: null,
     });
-    expect(getGenerateBlocker({ ...ready, pending: true, prompt: "" })).toEqual({
+    expect(getGenerateBlocker({ ...ready, pending: true, prompt: prompt("", "") })).toEqual({
       disabled: true,
       reason: "生成が終わるまでお待ちください",
     });
-    expect(getGenerateBlocker({ ...ready, prompt: "" })).toEqual({
+    expect(getGenerateBlocker({ ...ready, prompt: prompt("", "", "") })).toEqual({
       disabled: true,
       reason: "プロンプトを入力してください",
     });
-    expect(getGenerateBlocker({ ...ready, prompt: "あ".repeat(1001) })).toEqual({
+    // 文字数はすべての欄を合わせて数える
+    expect(
+      getGenerateBlocker({ ...ready, prompt: prompt("あ".repeat(500), "あ".repeat(501)) }),
+    ).toEqual({
       disabled: true,
       reason: "プロンプトが1000文字を超えています（1001文字）",
     });
   });
 
-  it("理由がなければ押せる", () => {
-    expect(getGenerateBlocker({ ...ready, prompt: "あ".repeat(1000) })).toEqual({
-      disabled: false,
-      reason: null,
-    });
+  it("ベースだけ・キャラだけでも、上限までなら押せる", () => {
+    for (const input of [prompt("白背景", ""), prompt("", "笑顔"), prompt("あ".repeat(1000))])
+      expect(getGenerateBlocker({ ...ready, prompt: input })).toEqual({
+        disabled: false,
+        reason: null,
+      });
   });
 });

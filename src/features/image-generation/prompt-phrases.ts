@@ -55,9 +55,14 @@ export const promptTones = [
 export const promptToneSchema = v.picklist(promptTones);
 export type PromptTone = v.InferOutput<typeof promptToneSchema>;
 
+/** グループの表現を入れる欄。対戦画面の検索と入力候補で、開いている欄に合うグループを使う。 */
+export const promptTargets = ["base", "character", "both"] as const;
+export const promptTargetSchema = v.picklist(promptTargets);
+export type PromptTarget = v.InferOutput<typeof promptTargetSchema>;
+
 const sortOrderSchema = v.pipe(v.number(), v.integer());
 
-// サフィックス・注釈・挿絵・色は後から足したため、前の形式で書き出したファイルにはない。
+// サフィックス・注釈・挿絵・色・入れる欄は後から足したため、前の形式で書き出したファイルにはない。
 export const promptPhraseSchema = v.object({
   id: promptIdSchema,
   label: promptPhraseLabelSchema,
@@ -74,6 +79,7 @@ export const promptGroupSchema = v.object({
   id: promptIdSchema,
   label: promptGroupLabelSchema,
   tone: v.optional(promptToneSchema, "slate"),
+  target: v.optional(promptTargetSchema, "both"),
   sortOrder: sortOrderSchema,
   phrases: v.pipe(v.array(promptPhraseSchema), v.maxLength(500)),
 });

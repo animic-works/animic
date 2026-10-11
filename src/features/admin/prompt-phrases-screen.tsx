@@ -35,14 +35,27 @@ import {
   promptPhraseNoteSchema,
   promptPhraseSuffixSchema,
   promptPhraseTagSchema,
+  promptTargets,
+  promptTargetSchema,
   promptTones,
   promptToneSchema,
 } from "../image-generation/prompt-phrases";
-import type { PromptGroup, PromptPhrase, PromptTone } from "../image-generation/prompt-phrases";
+import type {
+  PromptGroup,
+  PromptPhrase,
+  PromptTarget,
+  PromptTone,
+} from "../image-generation/prompt-phrases";
 import { AdminHead } from "./admin-parts";
 import { errorMessage } from "./admin-format";
 
-type GroupDraft = { id: string; isNew: boolean; label: string; tone: PromptTone };
+type GroupDraft = {
+  id: string;
+  isNew: boolean;
+  label: string;
+  tone: PromptTone;
+  target: PromptTarget;
+};
 /** 選んで変換した挿絵と、プレビューに使うURL。 */
 type PickedImage = { blob: Blob; url: string };
 type PhraseDraft = {
@@ -58,6 +71,18 @@ type PhraseDraft = {
   picked: PickedImage | null;
   /** 保存するときに挿絵を外すか */
   removeImage: boolean;
+};
+
+const TARGET_LABELS: Record<PromptTarget, string> = {
+  base: "ベース",
+  character: "キャラ",
+  both: "両方",
+};
+
+const TARGET_SECTION_LABELS: Record<PromptTarget, string> = {
+  base: "ベースの欄に入れるグループ",
+  character: "キャラの欄に入れるグループ",
+  both: "両方の欄に入れるグループ",
 };
 
 const TONE_LABELS: Record<PromptTone, string> = {
@@ -266,6 +291,7 @@ export function PromptPhrasesScreen({
   const groupForm = useId();
   const phraseForm = useId();
   const imageLabel = useId();
+  const groupsHeading = useId();
   const [selectedId, setSelectedId] = useState<string | null>(groups[0]?.id ?? null);
   const [groupDraft, setGroupDraft] = useState<GroupDraft | null>(null);
   const [phraseDraft, setPhraseDraftState] = useState<PhraseDraft | null>(null);
@@ -275,6 +301,11 @@ export function PromptPhrasesScreen({
 
   // 選んだグループが消えていたら最初のグループに寄せる。
   const selected = groups.find((group) => group.id === selectedId) ?? groups[0] ?? null;
+  // グループは入れる欄ごとに分けて並べ、並べ替えも同じ欄のグループの中で行う。
+  const sections = promptTargets
+    .map((target) => ({ target, groups: groups.filter((group) => group.target === target) }))
+    .filter((section) => section.groups.length > 0);
+  const siblings = groups.filter((group) => group.target === selected?.target);
 
   // 並べ替え・削除の共通処理。サーバーの結果にエラーがあれば知らせ、なければ読み直す。
   async function run(task: () => Promise<{ error?: string | null } | void>, done?: string) {
@@ -304,7 +335,13 @@ export function PromptPhrasesScreen({
 
   function openAddGroup() {
     setFormError(null);
-    setGroupDraft({ id: crypto.randomUUID(), isNew: true, label: "", tone: "slate" });
+    setGroupDraft({
+      id: crypto.randomUUID(),
+      isNew: true,
+      label: "",
+      tone: "slate",
+      target: "both",
+    });
   }
 
   function openAddPhrase() {
@@ -377,7 +414,12 @@ export function PromptPhrasesScreen({
     setBusy(true);
     try {
       await savePromptGroup({
-        data: { id: groupDraft.id, label: parsed.output, tone: groupDraft.tone },
+        data: {
+          id: groupDraft.id,
+          label: parsed.output,
+          tone: groupDraft.tone,
+          target: groupDraft.target,
+        },
       });
       await onChanged();
       if (groupDraft.isNew) setSelectedId(groupDraft.id);
@@ -480,28 +522,43 @@ export function PromptPhrasesScreen({
           </Cluster>
         </Stack>
       ) : (
-        <SegmentedControl
-          label="グループ"
-          labelVisibility="visible"
-          appearance="chips"
-          value={selected?.id ?? ""}
-          disabled={busy}
-          options={groups.map((group) => ({
-            value: group.id,
-            label: group.label,
-            detail: group.phrases.length,
-            markerTone: group.tone,
-          }))}
-          onValueChange={setSelectedId}
-        />
+        <section aria-labelledby={groupsHeading}>
+          <Stack space="compact">
+            <Heading id={groupsHeading} level={2} size="sm">
+              グループ
+            </Heading>
+            {sections.map((section) => (
+              <SegmentedControl
+                key={section.target}
+                label={TARGET_SECTION_LABELS[section.target]}
+                labelVisibility="visible"
+                appearance="chips"
+                value={selected?.target === section.target ? selected.id : ""}
+                disabled={busy}
+                options={section.groups.map((group) => ({
+                  value: group.id,
+                  label: group.label,
+                  detail: group.phrases.length,
+                  markerTone: group.tone,
+                }))}
+                onValueChange={setSelectedId}
+              />
+            ))}
+          </Stack>
+        </section>
       )}
       {selected && (
         <section aria-label={`${selected.label}の表現`}>
           <Stack>
             <Cluster justify="between">
-              <Heading level={2} size="sm">
-                {selected.label}の表現（{selected.phrases.length}件）
-              </Heading>
+              <Stack space="tight">
+                <Heading level={2} size="sm">
+                  {selected.label}の表現（{selected.phrases.length}件）
+                </Heading>
+                <Text variant="caption" tone="muted">
+                  入れる欄：{TARGET_LABELS[selected.target]}
+                </Text>
+              </Stack>
               <Button appearance="secondary" size="sm" loading={busy} onClick={openAddPhrase}>
                 表現を追加
               </Button>
@@ -518,16 +575,17 @@ export function PromptPhrasesScreen({
                     isNew: false,
                     label: selected.label,
                     tone: selected.tone,
+                    target: selected.target,
                   });
                 }}
               >
-                グループの名前と色を変える
+                グループの名前・色・入れる欄を変える
               </Button>
               <IconButton
                 label={`${selected.label}を前へ`}
                 appearance="quiet"
                 size="sm"
-                disabled={groups[0]?.id === selected.id}
+                disabled={siblings[0]?.id === selected.id}
                 loading={busy}
                 onClick={() =>
                   void run(() => movePromptGroup({ data: { id: selected.id, direction: "up" } }))
@@ -539,7 +597,7 @@ export function PromptPhrasesScreen({
                 label={`${selected.label}を後ろへ`}
                 appearance="quiet"
                 size="sm"
-                disabled={groups.at(-1)?.id === selected.id}
+                disabled={siblings.at(-1)?.id === selected.id}
                 loading={busy}
                 onClick={() =>
                   void run(() => movePromptGroup({ data: { id: selected.id, direction: "down" } }))
@@ -618,6 +676,24 @@ export function PromptPhrasesScreen({
                   onChange={(event) => setGroupDraft({ ...groupDraft, label: event.target.value })}
                 />
               </Field>
+              <SegmentedControl
+                label="入れる欄"
+                labelVisibility="visible"
+                appearance="chips"
+                value={groupDraft.target}
+                disabled={busy}
+                options={promptTargets.map((target) => ({
+                  value: target,
+                  label: TARGET_LABELS[target],
+                }))}
+                onValueChange={(value) => {
+                  const target = v.safeParse(promptTargetSchema, value);
+                  if (target.success) setGroupDraft({ ...groupDraft, target: target.output });
+                }}
+              />
+              <Text variant="caption" tone="muted">
+                対戦画面の検索と入力候補で、ベースの欄にはベース・両方、キャラの欄にはキャラ・両方のグループを出します。
+              </Text>
               <SegmentedControl
                 label="目印の色"
                 labelVisibility="visible"

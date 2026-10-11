@@ -11,6 +11,12 @@ export type DictionaryHit = PromptPhrase & { group: Omit<PromptGroup, "phrases">
 export const wordOf = (phrase: PromptPhrase, mode: PromptMode) =>
   mode === "tag" ? phrase.tag : phrase.label;
 
+/** 欄（0はベース、1以降はキャラ）に入れるグループ。ベースにはベース・両方、キャラにはキャラ・両方を使う */
+export function groupsForBlock(groups: readonly PromptGroup[], block: number): PromptGroup[] {
+  const excluded = block === 0 ? "character" : "base";
+  return groups.filter((group) => group.target !== excluded);
+}
+
 /** 画面に出す名前（表示名とサフィックス） */
 export const phraseName = (phrase: PromptPhrase) => phrase.label + phrase.suffix;
 

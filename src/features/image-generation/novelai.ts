@@ -48,13 +48,18 @@ function withTags(prompt: string, tags: string) {
   return `${joinTags(prompt.slice(0, start).trimEnd(), tags)}\n${prompt.slice(start)}`;
 }
 
+// キャラクターの位置は指定しない（`use_coords: false`）。NovelAIの画面と同じく中央を送る。
+const center = { x: 0.5, y: 0.5 };
+
 /**
  * NovelAIの`/ai/generate-image`へ送る内容。
- * 規定の絵柄は参加者のプロンプトと品質タグの間に入れる。どちらも`v4_prompt`にだけ加え、
+ * `prompt`はベースの欄（全体）で、規定の絵柄と品質タグをこの後ろに加える。どちらも`v4_prompt`にだけ加え、
  * `input`には参加者のプロンプトをそのまま送る。
+ * `characters`はキャラの欄ごとのプロンプトで、空の欄も空のまま送る。キャラクターごとの除外は送らない。
  */
 export function buildGeneratePayload(request: {
   prompt: string;
+  characters: readonly string[];
   stylePrompt: string;
   model: ImageModel;
   seed: number;
@@ -91,14 +96,22 @@ export function buildGeneratePayload(request: {
       ucPreset: 1,
       cfg_rescale: 0,
       controlnet_strength: 1,
-      characterPrompts: [],
+      characterPrompts: request.characters.map((prompt) => ({
+        prompt,
+        uc: "",
+        center,
+        enabled: true,
+      })),
       v4_prompt: {
         caption: {
           base_caption: withTags(
             request.prompt,
             joinTags(request.stylePrompt, settings.qualityTags),
           ),
-          char_captions: [],
+          char_captions: request.characters.map((prompt) => ({
+            char_caption: prompt,
+            centers: [center],
+          })),
         },
         use_coords: false,
         use_order: true,
@@ -161,6 +174,7 @@ export async function requestImage(request: {
   apiUrl: string;
   token: string;
   prompt: string;
+  characters: readonly string[];
   stylePrompt: string;
   model: ImageModel;
   deadline: number;
@@ -175,6 +189,7 @@ export async function requestImage(request: {
       body: JSON.stringify(
         buildGeneratePayload({
           prompt: request.prompt,
+          characters: request.characters,
           stylePrompt: request.stylePrompt,
           model: request.model,
           seed: Math.floor(Math.random() * 1_000_000_000),
