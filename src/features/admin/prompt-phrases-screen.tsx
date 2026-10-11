@@ -30,7 +30,10 @@ import {
   savePromptPhraseImage,
 } from "../image-generation/prompt-phrases.functions";
 import {
+  maxPhraseAliases,
+  maxPhraseAliasLength,
   promptGroupLabelSchema,
+  promptPhraseAliasesSchema,
   promptPhraseLabelSchema,
   promptPhraseNoteSchema,
   promptPhraseSuffixSchema,
@@ -56,6 +59,9 @@ type GroupDraft = {
   tone: PromptTone;
   target: PromptTarget;
 };
+/** 別名の欄の文字列を、「、」「,」・改行で区切って語の配列にする（空の語・重複は保存時の検証で除く）。 */
+const splitAliases = (text: string) => text.split(/[、,，\n]/);
+
 /** 選んで変換した挿絵と、プレビューに使うURL。 */
 type PickedImage = { blob: Blob; url: string };
 type PhraseDraft = {
@@ -65,6 +71,8 @@ type PhraseDraft = {
   suffix: string;
   tag: string;
   note: string;
+  /** 別名を「、」か改行で区切った文字列。保存するときに配列にする */
+  aliases: string;
   /** 保存済みの挿絵 */
   imageId: string | null;
   /** 保存するときに差し替える挿絵 */
@@ -353,6 +361,7 @@ export function PromptPhrasesScreen({
       suffix: "",
       tag: "",
       note: "",
+      aliases: "",
       imageId: null,
       picked: null,
       removeImage: false,
@@ -368,6 +377,7 @@ export function PromptPhrasesScreen({
       suffix: phrase.suffix,
       tag: phrase.tag,
       note: phrase.note,
+      aliases: phrase.aliases.join("、"),
       imageId: phrase.imageId,
       picked: null,
       removeImage: false,
@@ -454,6 +464,11 @@ export function PromptPhrasesScreen({
       setFormError(note.issues[0].message);
       return;
     }
+    const aliases = v.safeParse(promptPhraseAliasesSchema, splitAliases(phraseDraft.aliases));
+    if (!aliases.success) {
+      setFormError(aliases.issues[0].message);
+      return;
+    }
     if (busy) return;
     setBusy(true);
     try {
@@ -465,6 +480,7 @@ export function PromptPhrasesScreen({
           suffix: suffix.output,
           tag: tag.output,
           note: note.output,
+          aliases: aliases.output,
         },
       });
       if (result.error) {
@@ -785,6 +801,19 @@ export function PromptPhrasesScreen({
                   rows={2}
                   disabled={busy}
                   onChange={(event) => setPhraseDraft({ ...phraseDraft, note: event.target.value })}
+                />
+              </Field>
+              <Field
+                label="別名"
+                description={`「、」か改行で区切って${maxPhraseAliases}件まで、1件${maxPhraseAliasLength}文字まで。入力候補と検索だけに使い、画面には出しません`}
+              >
+                <Textarea
+                  value={phraseDraft.aliases}
+                  rows={2}
+                  disabled={busy}
+                  onChange={(event) =>
+                    setPhraseDraft({ ...phraseDraft, aliases: event.target.value })
+                  }
                 />
               </Field>
               <PhraseImageField

@@ -60,6 +60,7 @@ const backup: Backup = {
           suffix: "（明るい）",
           tag: "pink hair",
           note: "濃いピンクは別の表現",
+          aliases: ["桃色の髪"],
           imageId: phraseImageId,
           sortOrder: 0,
         },
@@ -89,7 +90,7 @@ describe("バックアップのZIP", () => {
     ]);
   });
 
-  it("色・サフィックス・注釈・挿絵がない前の形式は、空の値（色は灰色）として読み込む", () => {
+  it("色・サフィックス・注釈・別名・挿絵がない前の形式は、空の値（色は灰色）として読み込む", () => {
     const old = {
       ...backup,
       topics: [],
@@ -118,6 +119,7 @@ describe("バックアップのZIP", () => {
             suffix: "",
             tag: "pink hair",
             note: "",
+            aliases: [],
             imageId: null,
             sortOrder: 0,
           },
@@ -176,6 +178,7 @@ describe("summarizeBackup", () => {
               suffix: "",
               tag: "pink hair",
               note: "",
+              aliases: [],
               imageId: null,
               sortOrder: 3,
             },

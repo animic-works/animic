@@ -256,7 +256,7 @@ test("対戦条件の候補と既定値を変えるとロビーに反映し、�
   await host.close();
 });
 
-test("表現の辞書を初期データから始め、色・サフィックス・注釈・挿絵を付けて編集すると、対戦画面の検索と候補に出す", async ({
+test("表現の辞書を初期データから始め、色・サフィックス・注釈・別名・挿絵を付けて編集すると、対戦画面の検索と候補に出す", async ({
   page,
   browser,
 }) => {
@@ -303,6 +303,7 @@ test("表現の辞書を初期データから始め、色・サフィックス�
     await dialog.getByLabel("サフィックス").fill("（E2E）");
     await dialog.getByLabel("NovelAIへ送る語").fill(tag);
     await dialog.getByLabel("注釈").fill("E2Eの注釈");
+    await dialog.getByLabel("別名").fill("ナガオサゲ、\nE2Eのお下げ髪");
     await dialog.getByRole("button", { name: "保存する" }).click();
     if (label === "三つ編み") {
       await expect(dialog.getByRole("alert")).toHaveText(
@@ -374,6 +375,7 @@ test("表現の辞書を初期データから始め、色・サフィックス�
         suffix: "",
         tag: "e2e red eyes",
         note: "",
+        aliases: [],
       },
     });
     return id;
@@ -447,11 +449,16 @@ test("表現の辞書を初期データから始め、色・サフィックス�
     await expect(search).toBeVisible();
     await expect(view).toBeFocused();
     await expect(card).toHaveAttribute("aria-pressed", "false");
+    // 別名でも探せる（カタカナとひらがなは区別しない）。カードには別名を出さない。
+    await search.getByRole("searchbox", { name: "プロンプトを検索" }).fill("お下げ髪");
+    await expect(card).toBeVisible();
+    await expect(card).not.toContainText("お下げ髪");
+    await search.getByRole("searchbox", { name: "プロンプトを検索" }).fill("");
     await search.getByRole("button", { name: "決定" }).click();
 
-    // 候補にもサフィックスを出すが、欄に入るのは表示名だけ。
+    // 候補にもサフィックスを出すが、欄に入るのは表示名だけ。別名（ひらがなで入力）でも候補に出す。
     const input = host.getByRole("combobox", { name: "プロンプト（キャラ）" });
-    await input.fill("おさげ");
+    await input.fill("ながおさげ");
     await host
       .getByRole("listbox", { name: "入力候補" })
       .getByRole("option", { name: /おさげ（E2E）/ })
@@ -501,6 +508,7 @@ test("書き出したZIPを読み込むと、選んだ項目（お題と画像�
         suffix: "（夏）",
         tag: "serafuku",
         note: "E2Eの注釈",
+        aliases: [],
       },
     });
     return id;

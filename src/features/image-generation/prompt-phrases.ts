@@ -1,5 +1,7 @@
 import * as v from "valibot";
 
+import { normalizeQuery } from "./prompt-dictionary";
+
 // IDは管理画面で作るとUUID。書き出したファイルから読み込む場合も同じ文字に限る。
 export const promptIdSchema = v.pipe(
   v.string(),
@@ -34,6 +36,37 @@ export const promptPhraseNoteSchema = v.pipe(
   v.maxLength(100, "注釈は100文字以内で入力してください。"),
 );
 
+/** 別名の上限（件数・1件の文字数）。 */
+export const maxPhraseAliases = 10;
+export const maxPhraseAliasLength = 20;
+
+/**
+ * 別名。入力候補と検索だけに使う語で、画面には出さない。前後の空白を除き、
+ * 空の語と、検索で同じ語になるもの（カタカナとひらがな・大文字と小文字の違い）は先の1つだけを残す。
+ */
+export const promptPhraseAliasesSchema = v.pipe(
+  v.array(
+    v.pipe(
+      v.string(),
+      v.trim(),
+      v.maxLength(
+        maxPhraseAliasLength,
+        `別名は1件${maxPhraseAliasLength}文字以内で入力してください。`,
+      ),
+    ),
+  ),
+  v.transform((aliases) => {
+    const seen = new Set<string>();
+    return aliases.filter((alias) => {
+      const key = normalizeQuery(alias);
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }),
+  v.maxLength(maxPhraseAliases, `別名は${maxPhraseAliases}件までにしてください。`),
+);
+
 /** 挿絵の画像ID。差し替えるたびに変え、配信URLも変える。 */
 export const phraseImageIdSchema = v.pipe(v.string(), v.uuid());
 
@@ -62,13 +95,14 @@ export type PromptTarget = v.InferOutput<typeof promptTargetSchema>;
 
 const sortOrderSchema = v.pipe(v.number(), v.integer());
 
-// サフィックス・注釈・挿絵・色・入れる欄は後から足したため、前の形式で書き出したファイルにはない。
+// サフィックス・注釈・別名・挿絵・色・入れる欄は後から足したため、前の形式で書き出したファイルにはない。
 export const promptPhraseSchema = v.object({
   id: promptIdSchema,
   label: promptPhraseLabelSchema,
   suffix: v.optional(promptPhraseSuffixSchema, ""),
   tag: promptPhraseTagSchema,
   note: v.optional(promptPhraseNoteSchema, ""),
+  aliases: v.optional(promptPhraseAliasesSchema, []),
   imageId: v.optional(v.nullable(phraseImageIdSchema), null),
   sortOrder: sortOrderSchema,
 });

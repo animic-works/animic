@@ -14,6 +14,7 @@ export const promptGroup = sqliteTable("prompt_group", {
 /**
  * 表現の辞書の表現。`label`は画面に出す名前で、文章入力ではプロンプトにも入る。
  * `suffix`は表示名の後ろに出す補足、`tag`はタグ入力でプロンプトに入る語、`note`は検索のカードに出す注釈。
+ * `aliases`は入力候補と検索だけに使う別名（JSONの配列）。
  * `imageId`は検索のカードに出す挿絵（R2の`PHRASE_IMAGES`）の画像ID。
  */
 export const promptPhrase = sqliteTable(
@@ -27,6 +28,7 @@ export const promptPhrase = sqliteTable(
     suffix: text("suffix").notNull().default(""),
     tag: text("tag").notNull(),
     note: text("note").notNull().default(""),
+    aliases: text("aliases", { mode: "json" }).$type<string[]>().notNull().default([]),
     imageId: text("image_id"),
     sortOrder: integer("sort_order").notNull(),
   },
