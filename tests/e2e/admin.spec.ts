@@ -29,6 +29,11 @@ async function adminCalls(page: Page) {
         window.animicTest.savePromptGroup({
           data: { id: crypto.randomUUID(), label: "e2e", tone: "slate" },
         }),
+      () => {
+        const form = new FormData();
+        form.set("id", crypto.randomUUID());
+        return window.animicTest.savePromptPhraseImage({ data: form });
+      },
       () => window.animicTest.getImageModel(),
       () => window.animicTest.saveImageModel({ data: { model: "nai-diffusion-4-5-curated" } }),
       () => window.animicTest.getBackup(),

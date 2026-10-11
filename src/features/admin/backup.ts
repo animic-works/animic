@@ -3,6 +3,7 @@ import * as v from "valibot";
 
 import { adminTopicSchema } from "../battle/topic-admin";
 import { parseTopicImageKey } from "../battle/topic-images";
+import type { PhraseImageId } from "../image-generation/phrase-images";
 import { promptGroupSchema } from "../image-generation/prompt-phrases";
 import { battleOptionsSchema } from "../room/battle-options";
 
@@ -25,6 +26,11 @@ export const backupChunkSize = 20;
 export function backupImagePath(imageKey: string) {
   const id = parseTopicImageKey(imageKey);
   return id ? `topic-images/${id.topicId}/${id.imageId}.webp` : null;
+}
+
+/** ZIPの中の挿絵のパス（`phrase-images/<表現ID>/<画像ID>.webp`）。 */
+export function backupPhraseImagePath({ phraseId, imageId }: PhraseImageId) {
+  return `phrase-images/${phraseId}/${imageId}.webp`;
 }
 
 /** 書き出すZIPのファイル名（日本時間の日時）。 */
@@ -52,35 +58,42 @@ export function buildBackupZip(backup: Backup, images: ReadonlyMap<string, Uint8
   return zipSync(files);
 }
 
-export type ReadBackupResult =
-  | { backup: Backup; images: Map<string, Uint8Array>; error: null }
-  | { backup: null; images: null; error: string };
+/** ZIPから読んだ挿絵。 */
+export type BackupPhraseImage = PhraseImageId & { bytes: Uint8Array };
 
-/** ZIPを開いて中身を確かめる。お題の画像がそろっていなければ理由を返す。 */
+export type ReadBackupResult =
+  | {
+      backup: Backup;
+      images: Map<string, Uint8Array>;
+      phraseImages: BackupPhraseImage[];
+      error: null;
+    }
+  | { backup: null; images: null; phraseImages: null; error: string };
+
+const failed = (error: string) =>
+  ({ backup: null, images: null, phraseImages: null, error }) as const;
+
+/** ZIPを開いて中身を確かめる。お題の画像や挿絵がそろっていなければ理由を返す。 */
 export function readBackupZip(bytes: Uint8Array): ReadBackupResult {
   let files: Record<string, Uint8Array>;
   try {
     files = unzipSync(bytes);
   } catch {
-    return { backup: null, images: null, error: "ZIPファイルを開けませんでした。" };
+    return failed("ZIPファイルを開けませんでした。");
   }
   const data = files[dataFileName];
-  if (!data) return { backup: null, images: null, error: `ZIPに${dataFileName}がありません。` };
+  if (!data) return failed(`ZIPに${dataFileName}がありません。`);
   let json: unknown;
   try {
     json = JSON.parse(strFromU8(data));
   } catch {
-    return { backup: null, images: null, error: `${dataFileName}を読めませんでした。` };
+    return failed(`${dataFileName}を読めませんでした。`);
   }
   const parsed = v.safeParse(backupSchema, json);
   if (!parsed.success) {
     const [issue] = parsed.issues;
     const path = v.getDotPath(issue);
-    return {
-      backup: null,
-      images: null,
-      error: path ? `${issue.message}（${path}）` : issue.message,
-    };
+    return failed(path ? `${issue.message}（${path}）` : issue.message);
   }
   const images = new Map<string, Uint8Array>();
   for (const topic of parsed.output.topics) {
@@ -88,17 +101,20 @@ export function readBackupZip(bytes: Uint8Array): ReadBackupResult {
     const id = parseTopicImageKey(topic.imageKey);
     const path = backupImagePath(topic.imageKey);
     if (!id || !path || id.topicId !== topic.id)
-      return {
-        backup: null,
-        images: null,
-        error: `お題「${topic.id}」の画像のキーが正しくありません。`,
-      };
+      return failed(`お題「${topic.id}」の画像のキーが正しくありません。`);
     const image = files[path];
-    if (!image)
-      return { backup: null, images: null, error: `お題「${topic.id}」の画像がZIPにありません。` };
+    if (!image) return failed(`お題「${topic.id}」の画像がZIPにありません。`);
     images.set(topic.imageKey, image);
   }
-  return { backup: parsed.output, images, error: null };
+  const phraseImages: BackupPhraseImage[] = [];
+  for (const phrase of parsed.output.promptGroups.flatMap((group) => group.phrases)) {
+    if (phrase.imageId === null) continue;
+    const id = { phraseId: phrase.id, imageId: phrase.imageId };
+    const image = files[backupPhraseImagePath(id)];
+    if (!image) return failed(`表現「${phrase.label}」の挿絵がZIPにありません。`);
+    phraseImages.push({ ...id, bytes: image });
+  }
+  return { backup: parsed.output, images, phraseImages, error: null };
 }
 
 type BackupCounts = { added: number; updated: number };

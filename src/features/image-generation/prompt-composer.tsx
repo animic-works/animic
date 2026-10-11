@@ -33,6 +33,7 @@ import {
   wordOf,
 } from "./prompt-dictionary";
 import type { DictionaryHit } from "./prompt-dictionary";
+import { phraseImagePath } from "./phrase-images";
 import { PromptField } from "./prompt-field";
 import type { PromptGroup, PromptPhrase } from "./prompt-phrases";
 import { PromptSearchDialog } from "./prompt-search-dialog";
@@ -265,6 +266,7 @@ export function PromptComposer({
     id: hit.id,
     label: phraseName(hit),
     tag: hit.tag,
+    image: hit.imageId ? phraseImagePath({ phraseId: hit.id, imageId: hit.imageId }) : null,
     note: hit.note,
     genre: hit.group.label,
     pressed: inPrompt(hit),

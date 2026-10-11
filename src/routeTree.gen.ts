@@ -29,6 +29,7 @@ import { Route as AdminTopicsNewRouteImport } from './routes/admin/topics/new'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as GeneratedImagesBattleIdGenerationIdRouteImport } from './routes/generated-images.$battleId.$generationId'
 import { Route as MypageMatchesBattleIdRouteImport } from './routes/mypage/matches/$battleId'
+import { Route as PhraseImagesPhraseIdImageIdRouteImport } from './routes/phrase-images.$phraseId.$imageId'
 import { Route as TopicImagesTopicIdImageIdRouteImport } from './routes/topic-images.$topicId.$imageId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -132,6 +133,12 @@ const MypageMatchesBattleIdRoute = MypageMatchesBattleIdRouteImport.update({
   path: '/mypage/matches/$battleId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PhraseImagesPhraseIdImageIdRoute =
+  PhraseImagesPhraseIdImageIdRouteImport.update({
+    id: '/phrase-images/$phraseId/$imageId',
+    path: '/phrase-images/$phraseId/$imageId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const TopicImagesTopicIdImageIdRoute =
   TopicImagesTopicIdImageIdRouteImport.update({
     id: '/topic-images/$topicId/$imageId',
@@ -159,6 +166,7 @@ export interface FileRoutesByFullPath {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/generated-images/$battleId/$generationId': typeof GeneratedImagesBattleIdGenerationIdRoute
   '/mypage/matches/$battleId': typeof MypageMatchesBattleIdRoute
+  '/phrase-images/$phraseId/$imageId': typeof PhraseImagesPhraseIdImageIdRoute
   '/topic-images/$topicId/$imageId': typeof TopicImagesTopicIdImageIdRoute
   '/admin/topics/': typeof AdminTopicsIndexRoute
 }
@@ -181,6 +189,7 @@ export interface FileRoutesByTo {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/generated-images/$battleId/$generationId': typeof GeneratedImagesBattleIdGenerationIdRoute
   '/mypage/matches/$battleId': typeof MypageMatchesBattleIdRoute
+  '/phrase-images/$phraseId/$imageId': typeof PhraseImagesPhraseIdImageIdRoute
   '/topic-images/$topicId/$imageId': typeof TopicImagesTopicIdImageIdRoute
   '/admin/topics': typeof AdminTopicsIndexRoute
 }
@@ -205,6 +214,7 @@ export interface FileRoutesById {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/generated-images/$battleId/$generationId': typeof GeneratedImagesBattleIdGenerationIdRoute
   '/mypage/matches/$battleId': typeof MypageMatchesBattleIdRoute
+  '/phrase-images/$phraseId/$imageId': typeof PhraseImagesPhraseIdImageIdRoute
   '/topic-images/$topicId/$imageId': typeof TopicImagesTopicIdImageIdRoute
   '/admin/topics/': typeof AdminTopicsIndexRoute
 }
@@ -230,6 +240,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/generated-images/$battleId/$generationId'
     | '/mypage/matches/$battleId'
+    | '/phrase-images/$phraseId/$imageId'
     | '/topic-images/$topicId/$imageId'
     | '/admin/topics/'
   fileRoutesByTo: FileRoutesByTo
@@ -252,6 +263,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/generated-images/$battleId/$generationId'
     | '/mypage/matches/$battleId'
+    | '/phrase-images/$phraseId/$imageId'
     | '/topic-images/$topicId/$imageId'
     | '/admin/topics'
   id:
@@ -275,6 +287,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/generated-images/$battleId/$generationId'
     | '/mypage/matches/$battleId'
+    | '/phrase-images/$phraseId/$imageId'
     | '/topic-images/$topicId/$imageId'
     | '/admin/topics/'
   fileRoutesById: FileRoutesById
@@ -290,6 +303,7 @@ export interface RootRouteChildren {
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   GeneratedImagesBattleIdGenerationIdRoute: typeof GeneratedImagesBattleIdGenerationIdRoute
   MypageMatchesBattleIdRoute: typeof MypageMatchesBattleIdRoute
+  PhraseImagesPhraseIdImageIdRoute: typeof PhraseImagesPhraseIdImageIdRoute
   TopicImagesTopicIdImageIdRoute: typeof TopicImagesTopicIdImageIdRoute
 }
 
@@ -435,6 +449,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MypageMatchesBattleIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/phrase-images/$phraseId/$imageId': {
+      id: '/phrase-images/$phraseId/$imageId'
+      path: '/phrase-images/$phraseId/$imageId'
+      fullPath: '/phrase-images/$phraseId/$imageId'
+      preLoaderRoute: typeof PhraseImagesPhraseIdImageIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/topic-images/$topicId/$imageId': {
       id: '/topic-images/$topicId/$imageId'
       path: '/topic-images/$topicId/$imageId'
@@ -487,6 +508,7 @@ const rootRouteChildren: RootRouteChildren = {
   GeneratedImagesBattleIdGenerationIdRoute:
     GeneratedImagesBattleIdGenerationIdRoute,
   MypageMatchesBattleIdRoute: MypageMatchesBattleIdRoute,
+  PhraseImagesPhraseIdImageIdRoute: PhraseImagesPhraseIdImageIdRoute,
   TopicImagesTopicIdImageIdRoute: TopicImagesTopicIdImageIdRoute,
 }
 export const routeTree = rootRouteImport

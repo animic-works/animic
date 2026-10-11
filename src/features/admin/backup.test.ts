@@ -15,6 +15,8 @@ import type { Backup } from "./backup";
 const imageId = "8d6f3c1e-2b4a-4c5d-9e8f-0a1b2c3d4e5f";
 const imageKey = `topics/t1/${imageId}`;
 const imagePath = `topic-images/t1/${imageId}.webp`;
+const phraseImageId = "2f0c8a4b-6d1e-4f3a-8b9c-7e5d4c3b2a10";
+const phraseImagePath = `phrase-images/pink/${phraseImageId}.webp`;
 
 const backup: Backup = {
   format: backupFormat,
@@ -57,6 +59,7 @@ const backup: Backup = {
           suffix: "（明るい）",
           tag: "pink hair",
           note: "濃いピンクは別の表現",
+          imageId: phraseImageId,
           sortOrder: 0,
         },
       ],
@@ -65,15 +68,27 @@ const backup: Backup = {
 };
 
 describe("バックアップのZIP", () => {
-  it("書き出したZIPを読み戻すと、同じ内容と画像になる", () => {
+  it("書き出したZIPを読み戻すと、同じ内容と画像・挿絵になる", () => {
     const image = new Uint8Array([1, 2, 3]);
-    const result = readBackupZip(buildBackupZip(backup, new Map([[imagePath, image]])));
+    const phraseImage = new Uint8Array([4, 5]);
+    const result = readBackupZip(
+      buildBackupZip(
+        backup,
+        new Map([
+          [imagePath, image],
+          [phraseImagePath, phraseImage],
+        ]),
+      ),
+    );
     expect(result.error).toBeNull();
     expect(result.backup).toEqual(backup);
     expect(result.images?.get(imageKey)).toEqual(image);
+    expect(result.phraseImages).toEqual([
+      { phraseId: "pink", imageId: phraseImageId, bytes: phraseImage },
+    ]);
   });
 
-  it("色・サフィックス・注釈がない前の形式は、空の値（色は灰色）として読み込む", () => {
+  it("色・サフィックス・注釈・挿絵がない前の形式は、空の値（色は灰色）として読み込む", () => {
     const old = {
       ...backup,
       topics: [],
@@ -95,7 +110,15 @@ describe("バックアップのZIP", () => {
         tone: "slate",
         sortOrder: 0,
         phrases: [
-          { id: "pink", label: "ピンクの髪", suffix: "", tag: "pink hair", note: "", sortOrder: 0 },
+          {
+            id: "pink",
+            label: "ピンクの髪",
+            suffix: "",
+            tag: "pink hair",
+            note: "",
+            imageId: null,
+            sortOrder: 0,
+          },
         ],
       },
     ]);
@@ -117,6 +140,9 @@ describe("バックアップのZIP", () => {
     expect(readBackupZip(buildBackupZip(moved, new Map())).error).toBe(
       "お題「t2」の画像のキーが正しくありません。",
     );
+    expect(
+      readBackupZip(buildBackupZip(backup, new Map([[imagePath, new Uint8Array()]]))).error,
+    ).toBe("表現「ピンクの髪」の挿絵がZIPにありません。");
   });
 });
 
@@ -148,6 +174,7 @@ describe("summarizeBackup", () => {
               suffix: "",
               tag: "pink hair",
               note: "",
+              imageId: null,
               sortOrder: 3,
             },
           ],

@@ -446,6 +446,7 @@ export const initialPromptGroups: PromptGroup[] = groups.map((group, groupIndex)
     suffix: "",
     tag,
     note: "",
+    imageId: null,
     sortOrder: index,
   })),
 }));

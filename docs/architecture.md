@@ -294,6 +294,7 @@ APIの結合検証は画面のレイアウトやフォームに依存させま�
 | お題の情報・難易度・公開状態・画像の参照先                              | D1             |
 | お題の画像（管理画面で登録したもの）                                    | R2             |
 | 生成画像                                                                | R2             |
+| 表現の挿絵                                                              | R2             |
 | ロビーで選べる対戦条件の候補・表現の辞書                                | D1             |
 | 運営者が選んだ画像生成のモデル                                          | 生成キューのDO |
 | ルームの参加者・ホスト・準備状態・次の対戦の設定                        | ルームのDO     |
@@ -407,11 +408,13 @@ NovelAIはPNGのtEXtチャンクと、アルファ値の最下位ビット（`st
 
 お題の画像はR2のバケット（binding `TOPIC_IMAGES`）の`topics/<お題ID>/<画像ID>`に保存し、`src/routes/topic-images.$topicId.$imageId.ts`のServer Routeで配信します。配信ではセッションを確かめず、`Cache-Control: public, max-age=31536000, immutable`を付けます。画像を差し替えると画像IDを変えて新しいURLにし、古い画像は過去の対戦結果のために消しません。`topic.image_url`には`BETTER_AUTH_URL`を基にした配信URLを保存し、対戦の状態と採点が絶対URLを使えるようにします。
 
-画像のメタデータは管理画面で消します。ブラウザーで画像を白で塗ったcanvasに描き直してWebPにし、Server FunctionへFormDataで送ります。サーバーは`src/features/battle/topic-images.ts`でWebPのチャンクを確かめ、EXIF・XMP・アニメーションがあれば保存しません。お題の画像はWorkersでは変換しません。
+表現の挿絵はR2のバケット（binding `PHRASE_IMAGES`）の`phrases/<表現ID>/<画像ID>`に保存し、`prompt_phrase.image_id`に画像IDを記録して、`src/routes/phrase-images.$phraseId.$imageId.ts`のServer Routeで配信します。配信の方式はお題の画像と同じです。対戦画面の検索のカードは同じオリジンのパスで読むため、絶対URLは保存しません。過去の対戦結果から参照されないため、差し替え・挿絵を外す・表現やグループの削除・バックアップの読み込みによる上書きの後に、どの表現も使っていない前の画像をR2から消します（`src/features/image-generation/phrase-images.server.ts`）。
+
+画像のメタデータは管理画面で消します。ブラウザーで画像を白で塗ったcanvasに描き直してWebPにし（`src/lib/webp-file.ts`）、Server FunctionへFormDataで送ります。挿絵は検索のカードに小さく出すため、長い辺を640pxまでに縮めます。サーバーは`src/lib/webp.ts`でWebPのチャンクを確かめ、EXIF・XMP・アニメーションがあれば保存しません。管理画面で登録する画像はWorkersでは変換しません。
 
 画像生成の画面は、`image-generation`のServer Function（`src/features/image-generation/image-generation-admin.functions.ts`）から生成キューのDOを呼び、モデルを読み書きします。値はValibotの`picklist`で検証し、V5 CuratedとV4.5 Curated以外は保存しません。
 
-バックアップのZIP（`backup.json`と`topic-images/`の画像）は、ブラウザーで`fflate`を使って作成・展開します。書き出しではServer Functionから`backup.json`の内容を受け取り、画像は配信URLから読みます。読み込みでは、ZIPを検証して件数を表示し、画像を1枚ずつ保存してから、グループ・表現・お題・対戦条件の候補を20件ずつServer Functionへ送ります。D1の1回の呼び出しで使えるクエリ数に収めるためです。書き込みはIDで上書きまたは追加するため、途中で失敗しても同じZIPを読み込み直せば同じ状態になります。グループの色と表現のサフィックス・注釈がない前の形式の`backup.json`は、色を`slate`、サフィックス・注釈を空として読み込みます。
+バックアップのZIP（`backup.json`と、`topic-images/`のお題の画像・`phrase-images/`の挿絵）は、ブラウザーで`fflate`を使って作成・展開します。書き出しではServer Functionから`backup.json`の内容を受け取り、画像は配信URLから読みます。読み込みでは、ZIPを検証して件数を表示し、運営者が選んだ項目（お題・対戦条件の候補・表現の辞書）について、お題の画像と挿絵を1枚ずつ保存してから、グループ・表現・お題・対戦条件の候補を20件ずつServer Functionへ送ります。選ばなかった項目の画像と書き込みは送りません。D1の1回の呼び出しで使えるクエリ数に収めるためです。書き込みはIDで上書きまたは追加するため、途中で失敗しても同じZIPを同じ項目で読み込み直せば同じ状態になります。グループの色と表現のサフィックス・注釈・挿絵がない前の形式の`backup.json`は、色を`slate`、サフィックス・注釈を空、挿絵をなしとして読み込みます。
 
 ### 処理の呼び出し順序
 
@@ -422,6 +425,7 @@ NovelAIはPNGのtEXtチャンクと、アルファ値の最下位ビット（`st
 | お題・保存済み結果の取得   | loaderまたはUI → 担当featureのServer Function → D1                                                            |
 | 表示名・アイコンの変更     | マイページ → `account`のServer Function → D1                                                                  |
 | お題の画像の登録           | 管理画面（ブラウザーでWebPに変換）→ `battle`のServer Function → R2・D1                                        |
+| 表現の挿絵の登録           | 管理画面（ブラウザーでWebPに変換）→ `image-generation`のServer Function → R2・D1                              |
 | バックアップ               | 管理画面（ブラウザーでZIPを作成・展開）→ 担当featureのServer Function → D1・R2                                |
 | 画像生成のモデルの切り替え | 管理画面 → `image-generation`のServer Function → 生成キューのDO                                               |
 | ルーム・対戦状態の配信     | ルームのDO → WebSocket → UI                                                                                   |

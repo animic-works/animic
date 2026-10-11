@@ -68,7 +68,7 @@ export function upsertPromptGroup(db: D1Database, group: Omit<PromptGroup, "phra
  */
 export function upsertPromptPhrase(db: D1Database, groupId: string, phrase: PromptPhrase) {
   const client = drizzle(db);
-  const { id, label, suffix, tag, note, sortOrder } = phrase;
+  const { id, label, suffix, tag, note, imageId, sortOrder } = phrase;
   return [
     client
       .delete(promptPhrase)
@@ -77,10 +77,10 @@ export function upsertPromptPhrase(db: D1Database, groupId: string, phrase: Prom
       ),
     client
       .insert(promptPhrase)
-      .values({ id, groupId, label, suffix, tag, note, sortOrder })
+      .values({ id, groupId, label, suffix, tag, note, imageId, sortOrder })
       .onConflictDoUpdate({
         target: promptPhrase.id,
-        set: { groupId, label, suffix, tag, note, sortOrder },
+        set: { groupId, label, suffix, tag, note, imageId, sortOrder },
       }),
   ] as const;
 }

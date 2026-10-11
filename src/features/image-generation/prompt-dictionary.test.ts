@@ -66,6 +66,7 @@ describe("searchDictionary", () => {
             suffix: "（2本の三つ編み）",
             tag: "twin braids",
             note: "肩の前に垂らすことが多い",
+            imageId: null,
             sortOrder: 0,
           },
         ],

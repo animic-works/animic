@@ -11,8 +11,7 @@ import { useToast } from "@animic/react/toast";
 import { errorMessage } from "./admin-format";
 import { AdminGuide, AdminHead, AdminError } from "./admin-parts";
 import { DIFFICULTY_OPTIONS, difficultyOf, type Difficulty } from "./topic-labels";
-import { toTopicWebp } from "../battle/topic-image-file";
-import { topicSourceImageTypes } from "../battle/topic-admin";
+import { sourceImageTypes, toWebp } from "../../lib/webp-file";
 import { Badge } from "@animic/react/badge";
 import { ActionGroup } from "@animic/react/action-group";
 import { createTopic } from "../battle/topic-admin.functions";
@@ -89,7 +88,7 @@ export function TopicNewScreen({ onOpen, onBack }: TopicNewScreenProps) {
     for (const { file, id } of queue) {
       patch(id, { state: "running" });
       try {
-        const blob = await toTopicWebp(file);
+        const blob = await toWebp(file);
         const form = new FormData();
         form.set("id", id);
         form.set("difficulty", difficulty);
@@ -126,7 +125,7 @@ export function TopicNewScreen({ onOpen, onBack }: TopicNewScreenProps) {
           <Stack>
             <FileButton
               label="画像"
-              accept={topicSourceImageTypes.join(",")}
+              accept={sourceImageTypes.join(",")}
               multiple
               loading={busy}
               onFiles={(next) => {
