@@ -148,11 +148,7 @@ export function ResultPage({
       icon={icons.get(entry.participantId) ?? null}
       mine={entry.participantId === participantId}
       seat={battle.participantIds.indexOf(entry.participantId)}
-      breakdown={
-        entry.participantId === participantId && (
-          <ResultBreakdown battle={battle} participantId={participantId} />
-        )
-      }
+      breakdown={entry.participantId === participantId && <ResultBreakdown battle={battle} />}
     />
   );
   return (

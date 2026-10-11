@@ -15,20 +15,14 @@ type Metrics =
   | { status: "loaded"; metrics: ScoringMetricScores | null };
 
 /**
- * 結果画面で、自分のスコアの内訳を開いて見る操作。採点された人にだけ出す。
+ * 結果画面で、自分のスコアの内訳を開いて見る操作。採点された人にだけ出す。内訳は本人の分だけが配信される（`myScore`）。
  * 指標ごとの点は配信しないため、初めて開いたときに読み出す。ほかの参加者の内訳は出さない。
  */
-export function ResultBreakdown({
-  battle,
-  participantId,
-}: {
-  battle: BattleSnapshot;
-  participantId: string;
-}) {
+export function ResultBreakdown({ battle }: { battle: BattleSnapshot }) {
   const [open, setOpen] = useState(false);
   const [metrics, setMetrics] = useState<Metrics>({ status: "idle" });
-  const total = battle.scores?.find((score) => score.participantId === participantId)?.total;
-  if (total === undefined) return null;
+  const score = battle.myScore;
+  if (!score) return null;
 
   async function load() {
     setMetrics({ status: "loading" });
@@ -66,7 +60,7 @@ export function ResultBreakdown({
       >
         <Stack>
           <ScoreBreakdown
-            total={total}
+            score={score}
             submission={summarizeSubmission(battle.mySubmission ?? undefined, battle.startedAt)}
             metrics={metrics.status === "loaded" ? metrics.metrics : null}
           />

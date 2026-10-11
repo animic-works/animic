@@ -46,8 +46,10 @@ export const battleRecord = sqliteTable(
     participantCount: integer("participant_count").notNull(),
     // 順位のない人（未提出・採点できなかった人・勝負不成立）はnull。
     rank: integer("rank"),
-    // 採点されなかった人はnull。
+    // 最終スコア（再現度とボーナスの合計）。採点されなかった人はnull。
     total: real("total"),
+    // 再現度。採点されなかった人はnull。
+    similarity: real("similarity"),
     // 未提出はnull。
     imageUrl: text("image_url"),
   },

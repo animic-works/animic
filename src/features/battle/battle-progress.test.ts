@@ -15,6 +15,8 @@ import {
   startNextBattle,
 } from "./battle-state";
 import type { BattleState, ScoringJobOutcome } from "./battle-state";
+import { noScoreBonus } from "../scoring/final-score";
+import type { ScoreBonus } from "../scoring/final-score";
 
 function battle(durationSeconds = 10) {
   return createBattle(
@@ -218,7 +220,7 @@ describe("提出と期限", () => {
     ]);
     expect(reconcileBattle(state, 30_000)).toEqual(state);
   });
-  it("選択期限ちょうどに、最後に完成した画像を速度の加点なしで提出したものとして扱う", () => {
+  it("選択期限ちょうどに、最後に完成した画像を最速提出ボーナスの対象外で提出したものとして扱う", () => {
     let state = success(accept(battle(), "one"), "one", 2000);
     state = success(accept(state, "two", "a", 3000), "two", 4000);
     state = failure(accept(state, "three", "a", 5000), "three", 6000);
@@ -492,16 +494,21 @@ describe("3人以上の結果", () => {
 function bothGenerated() {
   return success(success(accept(accept(battle(), "one"), "two", "b"), "one"), "two");
 }
-function trio() {
+function trio(scoreBonus: ScoreBonus = noScoreBonus) {
   return createBattle(
     { difficulty: "easy", durationSeconds: 10, selectionSeconds: 5 },
     { id: "topic", difficulty: "easy", imageUrl: "https://example.invalid/topic.png" },
     ["a", "b", "c"],
     0,
+    null,
+    scoreBonus,
   );
 }
 function trioSubmitted(...ids: string[]) {
-  let state = trio();
+  return submitAll(trio(), ids);
+}
+function submitAll(initial: BattleState, ids: string[]) {
+  let state = initial;
   for (const id of ids) state = success(accept(state, `image-${id}`, id), `image-${id}`);
   for (const [index, id] of ids.entries())
     state = submitImage(state, id, `image-${id}`, 3000 + index);
@@ -608,6 +615,10 @@ describe("採点による1対1の勝敗", () => {
       ],
     });
   });
+  it("ボーナスの記録がない保存済みの状態は、ボーナスなしとして読み込む", () => {
+    const { scoreBonus: _scoreBonus, ...saved } = battle();
+    expect(v.parse(battleStateSchema, saved).scoreBonus).toEqual(noScoreBonus);
+  });
   it("採点の項目がない保存済みの状態も読み込める", () => {
     const { scoring: _scoring, ...saved } = battle();
     expect(v.parse(battleStateSchema, saved).scoring).toEqual({ endsAt: null, entries: [] });
@@ -632,7 +643,15 @@ describe("同じルームでの再戦", () => {
   it("対戦ID・履歴・締切を新しくし、前の提出と結果は変更しない", () => {
     const ended = reconcileBattle(battle(), 15_000);
     const saved = serializeBattleResult(ended, "ABCDEFGH", new Map());
-    const next = startNextBattle(ended, ended.id, ended.settings, ended.topic, ["a", "c"], 20_000);
+    const next = startNextBattle(
+      ended,
+      ended.id,
+      ended.settings,
+      ended.topic,
+      ["a", "c"],
+      20_000,
+      noScoreBonus,
+    );
     expect(next.id).not.toBe(ended.id);
     expect(next.previousBattleId).toBe(ended.id);
     expect(next.generationEndsAt).toBe(30_000);
@@ -646,7 +665,15 @@ describe("同じルームでの再戦", () => {
   it("進行中の対戦を再戦操作で置き換えない", () => {
     const current = battle();
     expect(() =>
-      startNextBattle(current, current.id, current.settings, current.topic, ["a", "b"], 1000),
+      startNextBattle(
+        current,
+        current.id,
+        current.settings,
+        current.topic,
+        ["a", "b"],
+        1000,
+        noScoreBonus,
+      ),
     ).toThrow();
   });
   it("開始の再送で二重に作らず、古い対戦からの開始要求も拒否する", () => {
@@ -658,17 +685,112 @@ describe("同じルームでの再戦", () => {
       first.topic,
       ["a", "b"],
       20_000,
+      noScoreBonus,
     );
     expect(
-      startNextBattle(second, first.id, first.settings, first.topic, ["a", "b"], 21_000),
+      startNextBattle(
+        second,
+        first.id,
+        first.settings,
+        first.topic,
+        ["a", "b"],
+        21_000,
+        noScoreBonus,
+      ),
     ).toEqual(second);
     expect(() =>
-      startNextBattle(second, null, first.settings, first.topic, ["a", "b"], 21_000),
+      startNextBattle(second, null, first.settings, first.topic, ["a", "b"], 21_000, noScoreBonus),
     ).toThrow();
     const ended = reconcileBattle(second, 40_000);
-    const third = startNextBattle(ended, ended.id, ended.settings, ended.topic, ["a", "b"], 50_000);
+    const third = startNextBattle(
+      ended,
+      ended.id,
+      ended.settings,
+      ended.topic,
+      ["a", "b"],
+      50_000,
+      noScoreBonus,
+    );
     expect(() =>
-      startNextBattle(third, first.id, first.settings, first.topic, ["a", "b"], 51_000),
+      startNextBattle(
+        third,
+        first.id,
+        first.settings,
+        first.topic,
+        ["a", "b"],
+        51_000,
+        noScoreBonus,
+      ),
     ).toThrow();
+  });
+});
+
+describe("最終スコアのボーナス", () => {
+  const bonus = { speedPoints: 5, generationPoints: 3, minSimilarity: 0 };
+  it("再現度にボーナスを加えた最終スコアで勝敗を決め、内訳は本人にだけ配信して保存する", () => {
+    // aがいちばん早く提出し、生成回数は全員1回で同点のため3点を3人で分ける。
+    const state = submitAll(trio(bonus), ["a", "b", "c"]);
+    const scored = applyScoringJobs(state, jobs(state, { a: 70, b: 74, c: 60 }), 5000);
+    expect(scored.result).toEqual({
+      kind: "win",
+      reason: "higher-score",
+      winnerId: "a",
+      decidedAt: 5000,
+    });
+    const snapshot = getBattleSnapshot(scored, "b", 5000);
+    expect(snapshot.scores?.map(({ participantId, total }) => [participantId, total])).toEqual([
+      ["a", 76],
+      ["b", 75],
+      ["c", 61],
+    ]);
+    expect(snapshot.myScore).toEqual({
+      similarity: 74,
+      speedBonus: 0,
+      generationBonus: 1,
+      total: 75,
+    });
+    expect(JSON.stringify(snapshot.scores)).not.toContain("similarity");
+    expect(JSON.parse(serializeBattleResult(scored, "ABCDEFGH", new Map())).scores).toEqual([
+      { participantId: "a", similarity: 70, speedBonus: 5, generationBonus: 1, total: 76 },
+      { participantId: "b", similarity: 74, speedBonus: 0, generationBonus: 1, total: 75 },
+      { participantId: "c", similarity: 60, speedBonus: 0, generationBonus: 1, total: 61 },
+    ]);
+  });
+  it("時間切れの後の自動の提出は最速提出ボーナスの対象にせず、最少生成ボーナスの対象にする", () => {
+    let state = trio(bonus);
+    state = success(accept(state, "a1", "a"), "a1");
+    state = success(accept(state, "a2", "a", 2000), "a2", 2500);
+    state = success(accept(state, "b1", "b", 2600), "b1", 2800);
+    state = reconcileBattle(submitImage(state, "a", "a2", 3000), 15_000);
+    expect(submissionOf(state, "b")).toMatchObject({ eligibleForSpeedBonus: false });
+    const scored = applyScoringJobs(state, jobs(state, { a: 70, b: 70 }), 16_000);
+    expect(getBattleSnapshot(scored, "a", 16_000).myScore).toMatchObject({
+      speedBonus: 5,
+      generationBonus: 0,
+      total: 75,
+    });
+    expect(getBattleSnapshot(scored, "b", 16_000).myScore).toMatchObject({
+      speedBonus: 0,
+      generationBonus: 3,
+      total: 73,
+    });
+  });
+  it("採点できなかった人はボーナスの対象にしない", () => {
+    const state = submitAll(trio(bonus), ["a", "b", "c"]);
+    const scored = applyScoringJobs(state, jobs(state, { a: "failed", b: 70, c: 71 }), 5000);
+    // いちばん早いaを除き、bが最速提出ボーナスを取って逆転する。
+    expect(scored.result).toMatchObject({ kind: "win", winnerId: "b" });
+    expect(getBattleSnapshot(scored, "a", 5000).myScore).toBeNull();
+  });
+  it("ボーナスを記録していない対戦は、再現度をそのまま最終スコアにする", () => {
+    const state = trioSubmitted("a", "b", "c");
+    const scored = applyScoringJobs(state, jobs(state, { a: 70, b: 74, c: 60 }), 5000);
+    expect(scored.result).toMatchObject({ kind: "win", winnerId: "b" });
+    expect(getBattleSnapshot(scored, "a", 5000).myScore).toEqual({
+      similarity: 70,
+      speedBonus: null,
+      generationBonus: null,
+      total: 70,
+    });
   });
 });

@@ -5,6 +5,7 @@ import { Meter } from "@animic/react/meter";
 import { Stack } from "@animic/react/stack";
 import { Surface } from "@animic/react/surface";
 import { Text } from "@animic/react/text";
+import type { FinalScore } from "../scoring/final-score";
 import { scoringMetrics, type ScoringMetricScores } from "../scoring/scoring-metrics";
 import type { summarizeSubmission } from "./battle-history";
 
@@ -12,24 +13,38 @@ function formatTotal(total: number | null) {
   return total === null ? "—" : total.toFixed(1);
 }
 
+/** ボーナスの点。取れなかった人は0。小数は分け合ったときだけ出る。 */
+function formatBonus(points: number) {
+  return `ボーナス +${points.toLocaleString("ja-JP", { maximumFractionDigits: 1 })}`;
+}
+
 /**
- * 本人のスコアの内訳（再現度・提出時間・生成回数）と、指標ごとの点。
+ * 本人のスコアの内訳（再現度・提出時間・生成回数と、取ったボーナス）と、指標ごとの点。
  * 戦績の詳細と結果画面で使う。見出しは使う側で付ける。`metrics`が`null`なら指標を出さない。
+ * その対戦で定義していない（点が0の）ボーナスは出さない。
  */
 export function ScoreBreakdown({
-  total,
+  score,
   submission,
   metrics,
 }: {
-  total: number | null;
+  score: FinalScore | null;
   submission: ReturnType<typeof summarizeSubmission>;
   metrics: ScoringMetricScores | null;
 }) {
   const terms = [
-    { label: "再現度", value: formatTotal(total) },
-    { label: "提出時間", value: submission ? `${submission.seconds}秒` : "—" },
-    { label: "生成回数", value: submission ? `${submission.generationCount}回` : "—" },
-    { label: "合計", value: formatTotal(total), strong: true },
+    { label: "再現度", value: formatTotal(score?.similarity ?? null), bonus: null },
+    {
+      label: "提出時間",
+      value: submission ? `${submission.seconds}秒` : "—",
+      bonus: score?.speedBonus ?? null,
+    },
+    {
+      label: "生成回数",
+      value: submission ? `${submission.generationCount}回` : "—",
+      bonus: score?.generationBonus ?? null,
+    },
+    { label: "合計", value: formatTotal(score?.total ?? null), bonus: null, strong: true },
   ];
   return (
     <Stack space="compact">
@@ -43,6 +58,15 @@ export function ScoreBreakdown({
               <Text variant="code" emphasis={term.strong ? "strong" : undefined}>
                 {term.value}
               </Text>
+              {term.bonus !== null && (
+                <Text
+                  variant="caption"
+                  tone={term.bonus > 0 ? undefined : "muted"}
+                  emphasis={term.bonus > 0 ? "strong" : undefined}
+                >
+                  {formatBonus(term.bonus)}
+                </Text>
+              )}
             </Stack>
           </Surface>
         ))}
@@ -53,8 +77,8 @@ export function ScoreBreakdown({
             指標
           </Heading>
           {scoringMetrics.map((metric) => {
-            const score = metrics[metric.key];
-            return score === null ? (
+            const point = metrics[metric.key];
+            return point === null ? (
               <Cluster key={metric.key} justify="between">
                 <Text variant="label.supporting">
                   {metric.label}（{metric.name}）
@@ -68,8 +92,8 @@ export function ScoreBreakdown({
                 key={metric.key}
                 label={metric.label}
                 description={metric.name}
-                value={score}
-                valueText={score.toFixed(1)}
+                value={point}
+                valueText={point.toFixed(1)}
                 presentation="row"
               />
             );

@@ -4,6 +4,7 @@ import type { Page } from "@playwright/test";
 
 import { getBattleRecords } from "../../src/features/battle/battle-history";
 import type { SavedBattleResult } from "../../src/features/battle/battle-history";
+import type { FinalScore } from "../../src/features/scoring/final-score";
 import { expectAccessible } from "../design-system/browser/accessibility";
 import { create, join, loadApi, signIn, snapshot } from "./api";
 import { executeLocalD1 } from "./d1";
@@ -33,23 +34,28 @@ async function saveResult(result: SavedBattleResult) {
         record.participantCount,
         record.rank ?? "NULL",
         record.total ?? "NULL",
+        record.similarity ?? "NULL",
         record.imageUrl === null ? "NULL" : sql(record.imageUrl),
       ].join(", ")})`,
   );
   await executeLocalD1(
-    `INSERT INTO battle_result (battle_id, room_code, data) VALUES (${sql(result.battleId)}, ${sql(result.roomCode)}, ${sql(JSON.stringify(result))}); INSERT INTO battle_record (battle_id, participant_id, started_at, difficulty, participant_count, rank, total, image_url) VALUES ${records.join(", ")}`,
+    `INSERT INTO battle_result (battle_id, room_code, data) VALUES (${sql(result.battleId)}, ${sql(result.roomCode)}, ${sql(JSON.stringify(result))}); INSERT INTO battle_record (battle_id, participant_id, started_at, difficulty, participant_count, rank, total, similarity, image_url) VALUES ${records.join(", ")}`,
   );
 }
 
 const illustration = (id: number) => `${origin}/images/account-icons/illustration-${id}.svg`;
 
-/** 全員が提出し、`totals`の人が採点された対戦。 */
+/** 全員が提出し、`totals`の人が採点された対戦。数だけの人はボーナスなしで、再現度を最終スコアにする。 */
 function scoredResult(
   participants: { id: string; name: string }[],
-  totals: Record<string, number>,
+  totals: Record<string, number | FinalScore>,
   startedAt: number,
 ): SavedBattleResult {
-  const scores = Object.entries(totals).map(([participantId, total]) => ({ participantId, total }));
+  const scores = Object.entries(totals).map(([participantId, score]) =>
+    typeof score === "number"
+      ? { participantId, similarity: score, speedBonus: null, generationBonus: null, total: score }
+      : { participantId, ...score },
+  );
   const best = Math.max(...scores.map((score) => score.total));
   return {
     battleId: crypto.randomUUID(),
@@ -198,13 +204,14 @@ test("対戦の結果を、ログインして参加した人だけの戦績に�
       wins: 0,
       winRate: 0,
       bestTotal: null,
-      averageTotal: null,
+      averageSimilarity: null,
     });
     expect(saved?.records[0]).toMatchObject({
       difficulty: "easy",
       participantCount: 2,
       rank: null,
       total: null,
+      similarity: null,
       imageUrl: null,
     });
     // 匿名で参加した人には戦績を返さない。
@@ -240,7 +247,7 @@ test("成績・1位だけの絞り込み・詳細の内訳と指標を表示し�
         { id: me, name: "ねこぜ" },
         { id: other, name: "ぴよ丸" },
       ],
-      { [me]: 80, [other]: 61.2 },
+      { [me]: { similarity: 77, speedBonus: 3, generationBonus: 0, total: 80 }, [other]: 61.2 },
       now - 3_600_000,
     );
     const lost = scoredResult(
@@ -261,7 +268,7 @@ test("成績・1位だけの絞り込み・詳細の内訳と指標を表示し�
       now,
     );
     for (const result of [won, lost, others]) await saveResult(result);
-    await saveScoringJob(won.battleId, me, 80);
+    await saveScoringJob(won.battleId, me, 77);
 
     await page.goto("/mypage");
     await expect(page.getByRole("heading", { name: "ねこぜ", level: 2 })).toBeVisible();
@@ -271,7 +278,8 @@ test("成績・1位だけの絞り込み・詳細の内訳と指標を表示し�
       ["対戦", "2回"],
       ["勝率", "50%"],
       ["ベストスコア", "80.0pt"],
-      ["平均の再現度", "75.0%"],
+      // ベストスコアはボーナスを加えた最終スコア、平均は再現度（77と70）で求める。
+      ["平均の再現度", "73.5%"],
     ])
       await expect(page.getByText(label, { exact: true }).locator("..")).toContainText(value);
     const list = page.getByRole("list", { name: "戦績" });
@@ -292,6 +300,10 @@ test("成績・1位だけの絞り込み・詳細の内訳と指標を表示し�
     );
     await expect(page.getByText("42秒")).toBeVisible();
     await expect(page.getByText("3回")).toBeVisible();
+    // 再現度とボーナスを分けて出す。
+    await expect(page.getByText("77.0").first()).toBeVisible();
+    await expect(page.getByText("ボーナス +3")).toBeVisible();
+    await expect(page.getByText("ボーナス +0")).toBeVisible();
     await expect(page.getByRole("meter", { name: "タグ" })).toHaveAttribute(
       "aria-valuenow",
       "74.8",

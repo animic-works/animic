@@ -42,12 +42,19 @@ export const scoringJob = sqliteTable(
   ],
 );
 
-/** 再現度の指標の重み（JSON）。変えるたびに行を足し、対戦を始めた時刻より前の最新の行を、その対戦の採点に使う。 */
+/**
+ * 再現度の指標の重み（JSON）と、最終スコアのボーナス。変えるたびに行を足し、
+ * 対戦を始めた時刻より前の最新の行を、その対戦に使う。
+ * ボーナスの列は後から加えたため、それより前に保存した行は`null`で、既定値を使う。
+ */
 export const scoringWeight = sqliteTable(
   "scoring_weight",
   {
     id: text("id").primaryKey(),
     weights: text("weights").notNull(),
+    speedBonus: integer("speed_bonus"),
+    generationBonus: integer("generation_bonus"),
+    bonusMinSimilarity: integer("bonus_min_similarity"),
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
   },
   (table) => [index("scoring_weight_created_at_idx").on(table.createdAt)],

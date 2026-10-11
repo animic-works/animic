@@ -328,7 +328,7 @@ export function HomePage({ content }: { content: HomeContent }) {
           </Layer>
         </Section>
         <HowToPlay steps={content.howSteps} index={stepIndex} onIndexChange={setStepIndex} />
-        <Scoring steps={content.scoringSteps} weights={content.weights} />
+        <Scoring steps={content.scoringSteps} weights={content.weights} bonus={content.bonus} />
         <Gallery items={content.gallery} index={matchIndex} onIndexChange={setMatchIndex} />
       </main>
       <LoginDialog open={loginOpen} onOpenChange={setLoginOpen} purpose={loginPurpose} />

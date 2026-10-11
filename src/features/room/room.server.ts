@@ -25,6 +25,7 @@ import {
   getScoringJobs,
   registerScoringJobs,
 } from "../scoring/scoring-jobs.server";
+import { loadScoringWeights } from "../scoring/scoring-weights.server";
 import type { AccountIcon } from "../account/account-icon";
 import { isRoomCreationRetry } from "./room-creation";
 import type { RoomCreation } from "./room-creation";
@@ -362,6 +363,10 @@ export class Room extends DurableObject<Env> {
     topic: Topic,
     previousBattleId: string | null,
   ) {
+    // 最終スコアのボーナスは、対戦を始めた時刻に使う値を記録する。再現度の重みも同じ時刻で引く。
+    // D1を待つ間にほかの操作が進むため、状態は読み込んだ後に確かめる。
+    const now = Date.now();
+    const { bonus } = await loadScoringWeights(this.env.DB, new Date(now));
     const state = this.#reconcile();
     if (!state || state.closed || state.hostId !== participantId)
       throw new Error("ホストのみ開始できます。");
@@ -376,7 +381,8 @@ export class Room extends DurableObject<Env> {
       settings,
       topic,
       state.members.filter((member) => connected.has(member.id)).map((member) => member.id),
-      Date.now(),
+      now,
+      bonus,
     );
     for (const member of state.members) member.ready = false;
     this.#save(state);

@@ -15,6 +15,7 @@ const base: BattleSnapshot = {
   selectionEndsAt: null,
   scoringEndsAt: null,
   scores: null,
+  myScore: null,
   result: null,
   submissionsClosed: false,
   generationClosed: false,

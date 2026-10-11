@@ -3,6 +3,7 @@ import * as v from "valibot";
 import { difficultySchema } from "../battle/battle-state";
 import { scoringMetrics } from "../scoring/scoring-metrics";
 import type { ScoringWeights } from "../scoring/scoring-metrics";
+import type { ScoreBonus } from "../scoring/final-score";
 
 // トップページの遊び方・採点方法・ギャラリーとOGP画像。運営者が管理画面で編集し、D1から読む。
 // 遊び方・採点方法は項目の数と順番を固定し、編集していない項目はここの既定の文言を使う。
@@ -39,34 +40,44 @@ export const howSteps = [
 ] as const;
 
 /**
- * 採点方法の各要素。計算式が決まるまで、再現度だけを最終スコアにし、
- * 提出速度と生成回数は加えない（docs/product.md）。`upcoming`の項目には重みのグラフを出さない。
+ * 採点方法の各要素。`bonus`は、その項目が説明するボーナス。再現度の項目（`null`）には重みのグラフを、
+ * ボーナスの項目には今のボーナスの点を出し、点が0のボーナスの項目は出さない。
  */
 export const scoringSteps = [
   {
     id: "score-1",
     title: "再現度で勝負",
-    description: "AIがお題と提出を見比べて0〜100点で採点。これがそのまま最終スコアです。",
+    description: "AIがお題と提出を見比べて0〜100点で採点。最終スコアのいちばん大きな要素です。",
     illustration: "similarity",
-    upcoming: false,
+    bonus: null,
   },
   {
     id: "score-2",
     title: "提出速度",
     description:
-      "制限時間内に早く提出するほど加点する予定です。時間切れの後に提出した1枚は、加点の対象になりません。",
+      "制限時間内にいちばん早く提出した人にボーナス。時間切れの後に提出した1枚は、ボーナスの対象になりません。",
     illustration: "speed",
-    upcoming: true,
+    bonus: "speed",
   },
   {
     id: "score-3",
     title: "生成回数",
     description:
-      "少ない生成回数で仕上げるほど有利になる予定です。数えるのは提出までに成功した生成で、失敗した生成は数えません。",
+      "いちばん少ない生成回数で提出した人にボーナス。数えるのは提出までに成功した生成で、失敗した生成は数えません。",
     illustration: "attempts",
-    upcoming: true,
+    bonus: "generation",
   },
 ] as const;
+
+/** ボーナスの項目に添える、今のボーナスの点。点が0のボーナスは`null`（項目を出さない）。 */
+export function bonusNote(kind: "speed" | "generation", bonus: ScoreBonus) {
+  const points = kind === "speed" ? bonus.speedPoints : bonus.generationPoints;
+  if (points === 0) return null;
+  const who = kind === "speed" ? "いちばん早く提出した人" : "いちばん少ない回数で提出した人";
+  const target =
+    bonus.minSimilarity > 0 ? `再現度${bonus.minSimilarity}点以上の人が対象です。` : "";
+  return `${who}に${points}点（同点なら分け合います）。${target}`;
+}
 
 const homeItemIds = [...howSteps, ...scoringSteps].map((item) => item.id);
 export const homeItemIdSchema = v.picklist(homeItemIds);
@@ -144,6 +155,7 @@ export type HomeContent = {
   howSteps: HomeItem[];
   scoringSteps: HomeItem[];
   weights: ScoringWeights;
+  bonus: ScoreBonus;
   gallery: GalleryItem[];
   ogImage: string | null;
 };

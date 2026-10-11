@@ -16,7 +16,8 @@ function saved(
   ids: string[],
   submitted: string[],
   result: SavedBattleResult["result"],
-  scores: SavedBattleResult["scores"],
+  // 内訳のない形は、ボーナスを加える前に保存した結果。
+  scores: v.InferInput<typeof savedBattleResultSchema>["scores"],
 ): SavedBattleResult {
   return v.parse(savedBattleResultSchema, {
     battleId: "battle",
@@ -70,9 +71,27 @@ describe("参加者ごとの戦績", () => {
         participantCount: 2,
         rank: 2,
         total: 61.2,
+        similarity: 61.2,
         imageUrl: image("a"),
       },
       expect.objectContaining({ participantId: "b", rank: 1, total: 80, imageUrl: image("b") }),
+    ]);
+  });
+  it("最終スコアで順位を付け、再現度は別に残す", () => {
+    const records = getBattleRecords(
+      saved(
+        ["a", "b"],
+        ["a", "b"],
+        { kind: "win", reason: "higher-score", winnerId: "a", decidedAt: 2 },
+        [
+          { participantId: "a", total: 73, similarity: 70, speedBonus: 3, generationBonus: 0 },
+          { participantId: "b", total: 72, similarity: 72, speedBonus: 0, generationBonus: 0 },
+        ],
+      ),
+    );
+    expect(records.map(({ rank, total, similarity }) => ({ rank, total, similarity }))).toEqual([
+      { rank: 1, total: 73, similarity: 70 },
+      { rank: 2, total: 72, similarity: 72 },
     ]);
   });
   it("引き分けは両方を1位にする", () => {
@@ -137,11 +156,11 @@ describe("マイページの成績", () => {
   it("1位の回数・対戦数・勝率・ベストスコア・平均の再現度を求める", () => {
     expect(
       getBattleHistoryStats([
-        { rank: 1, total: 80 },
-        { rank: 2, total: 61 },
-        { rank: null, total: null },
+        { rank: 1, total: 83, similarity: 80 },
+        { rank: 2, total: 61, similarity: 61 },
+        { rank: null, total: null, similarity: null },
       ]),
-    ).toEqual({ matches: 3, wins: 1, winRate: 33, bestTotal: 80, averageTotal: 70.5 });
+    ).toEqual({ matches: 3, wins: 1, winRate: 33, bestTotal: 83, averageSimilarity: 70.5 });
   });
   it("戦績がなければ0と値なしにする", () => {
     expect(getBattleHistoryStats([])).toEqual({
@@ -149,7 +168,7 @@ describe("マイページの成績", () => {
       wins: 0,
       winRate: 0,
       bestTotal: null,
-      averageTotal: null,
+      averageSimilarity: null,
     });
   });
 });
@@ -171,6 +190,8 @@ describe("戦績の詳細", () => {
     expect(detail).toMatchObject({
       rank: 2,
       total: 61.2,
+      // 内訳のない結果は、ボーナスなしとして読む。
+      score: { similarity: 61.2, speedBonus: null, generationBonus: null, total: 61.2 },
       imageUrl: image("a"),
       submission: { seconds: 42, withinTimeLimit: true, generationCount: 3 },
       participantCount: 3,
@@ -198,6 +219,29 @@ describe("戦績の詳細", () => {
       { key: 2, name: null, isMe: false, rank: null, total: null, submitted: true, imageUrl: null },
     ]);
     expect(JSON.stringify(detail)).not.toContain('"b"');
+  });
+  it("自分の内訳だけを返す", () => {
+    const detail = getBattleDetail(
+      saved(
+        ["a", "b"],
+        ["a", "b"],
+        { kind: "win", reason: "higher-score", winnerId: "b", decidedAt: 2 },
+        [
+          { participantId: "a", total: 61.5, similarity: 60, speedBonus: 1.5, generationBonus: 0 },
+          { participantId: "b", total: 84.5, similarity: 80, speedBonus: 1.5, generationBonus: 3 },
+        ],
+      ),
+      "a",
+    );
+    expect(detail.score).toEqual({
+      similarity: 60,
+      speedBonus: 1.5,
+      generationBonus: 0,
+      total: 61.5,
+    });
+    // ほかの参加者は最終スコアだけを返す。
+    expect(detail.ranking.find((player) => !player.isMe)).not.toHaveProperty("similarity");
+    expect(JSON.stringify(detail)).not.toContain('"similarity":80');
   });
   it("勝負不成立でも自分の提出画像は返し、相手の画像は返さない", () => {
     const detail = getBattleDetail(
