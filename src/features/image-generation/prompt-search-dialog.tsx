@@ -8,22 +8,23 @@ import { Dialog } from "@animic/react/dialog";
 import { Input } from "@animic/react/input";
 import { SegmentedControl } from "@animic/react/segmented-control";
 import { Text } from "@animic/react/text";
-import type { DictionaryTone } from "./prompt-dictionary";
 import { Highlight } from "./prompt-field";
+import type { PromptTone } from "./prompt-phrases";
 /** 左のジャンル。keyがnullは「すべて」、pickedは欄に入っている数 */
 export type SearchGenre = {
   key: string | null;
   label: string;
-  tone: DictionaryTone;
+  tone: PromptTone;
   count: number;
   picked: number;
 };
 
-/** 右のカード。pressedは欄に入っているか */
+/** 右のカード。labelは表示名とサフィックス、noteは注釈（空なら出さない）、pressedは欄に入っているか */
 export type SearchCard = {
   id: string;
   label: string;
   tag: string;
+  note: string;
   genre: string;
   pressed: boolean;
   labelMatch: [number, number] | null;
@@ -147,6 +148,7 @@ export function PromptSearchDialog(props: PromptSearchDialogProps) {
             <Text variant="caption" tone="muted">
               <Highlight text={card.tag} range={card.tagMatch} />
             </Text>
+            {card.note && <Text variant="caption">{card.note}</Text>}
           </ChoiceCard>
         ))}
       </CollectionBrowser>

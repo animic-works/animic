@@ -10,27 +10,43 @@ import {
   promptGroupLabelSchema,
   promptIdSchema,
   promptPhraseLabelSchema,
+  promptPhraseNoteSchema,
+  promptPhraseSuffixSchema,
   promptPhraseTagSchema,
+  promptToneSchema,
 } from "./prompt-phrases";
 import { promptGroup, promptPhrase } from "./prompt-phrases.schema";
 import { loadPromptGroups } from "./prompt-phrases.server";
 
-export const listPromptGroups = createServerFn({ method: "GET" }).handler(() => {
-  requireAdmin();
-  return loadPromptGroups(env.DB);
-});
+/**
+ * 表現の辞書（グループと表現）。管理画面と、対戦画面の入力候補・検索で使う。
+ * 参加前の人にも見せてよい情報のため認証しない。
+ */
+export const listPromptGroups = createServerFn({ method: "GET" }).handler(() =>
+  loadPromptGroups(env.DB),
+);
 
-/** グループを追加する（最後に並べる）か、名前を変える。 */
+/** グループを追加する（最後に並べる）か、名前と色を変える。 */
 export const savePromptGroup = createServerFn({ method: "POST" })
-  .validator(v.object({ id: promptIdSchema, label: promptGroupLabelSchema }))
+  .validator(
+    v.object({ id: promptIdSchema, label: promptGroupLabelSchema, tone: promptToneSchema }),
+  )
   .handler(async ({ data }) => {
     requireAdmin();
     const db = drizzle(env.DB);
     const [last] = await db.select({ value: max(promptGroup.sortOrder) }).from(promptGroup);
     await db
       .insert(promptGroup)
-      .values({ id: data.id, label: data.label, sortOrder: (last?.value ?? -1) + 1 })
-      .onConflictDoUpdate({ target: promptGroup.id, set: { label: data.label } });
+      .values({
+        id: data.id,
+        label: data.label,
+        tone: data.tone,
+        sortOrder: (last?.value ?? -1) + 1,
+      })
+      .onConflictDoUpdate({
+        target: promptGroup.id,
+        set: { label: data.label, tone: data.tone },
+      });
   });
 
 /** グループを削除する。中の表現も一緒に消える。 */
@@ -41,14 +57,16 @@ export const deletePromptGroup = createServerFn({ method: "POST" })
     await drizzle(env.DB).delete(promptGroup).where(eq(promptGroup.id, data.id));
   });
 
-/** 表現を追加する（グループの最後に並べる）か、表示名と語を変える。同じグループに同じ語があれば保存しない。 */
+/** 表現を追加する（グループの最後に並べる）か、内容を変える。同じグループに同じ語があれば保存しない。 */
 export const savePromptPhrase = createServerFn({ method: "POST" })
   .validator(
     v.object({
       id: promptIdSchema,
       groupId: v.string(),
       label: promptPhraseLabelSchema,
+      suffix: promptPhraseSuffixSchema,
       tag: promptPhraseTagSchema,
+      note: promptPhraseNoteSchema,
     }),
   )
   .handler(async ({ data }) => {
@@ -80,10 +98,15 @@ export const savePromptPhrase = createServerFn({ method: "POST" })
         id: data.id,
         groupId: data.groupId,
         label: data.label,
+        suffix: data.suffix,
         tag: data.tag,
+        note: data.note,
         sortOrder: (last?.value ?? -1) + 1,
       })
-      .onConflictDoUpdate({ target: promptPhrase.id, set: { label: data.label, tag: data.tag } });
+      .onConflictDoUpdate({
+        target: promptPhrase.id,
+        set: { label: data.label, suffix: data.suffix, tag: data.tag, note: data.note },
+      });
     return { error: null };
   });
 

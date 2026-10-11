@@ -229,50 +229,113 @@ test("対戦条件の候補と既定値を変えるとロビーに反映し、�
   await host.close();
 });
 
-test("よく使う表現をグループに分けて追加・並べ替え・削除し、同じ語は同じグループに登録しない", async ({
+test("表現の辞書を初期データから始め、色・サフィックス・注釈を付けて編集すると、対戦画面の検索と候補に出す", async ({
   page,
+  browser,
 }) => {
+  test.setTimeout(90_000);
+  await executeLocalD1("DELETE FROM prompt_group");
   await loginAdmin(page);
-  await openAdminMenu(page, "よく使う表現");
-  for (const label of ["髪の色", "目"]) {
+  await openAdminMenu(page, "表現の辞書");
+  // D1が空なら、初期データ（22ジャンル）を登録してから表示する。
+  const groups = page.getByRole("region", { name: "グループ" });
+  await expect(groups.getByRole("row")).toHaveCount(23);
+  await expect(groups.getByRole("row", { name: /^髪の色/ })).toContainText("ピンク");
+
+  for (const [label, tone] of [
+    ["E2Eの髪", "水色"],
+    ["E2Eの目", "紫"],
+  ] as const) {
     await page.getByRole("button", { name: "グループを追加" }).click();
     const dialog = page.getByRole("dialog", { name: "グループを追加" });
     await dialog.getByLabel("グループの名前").fill(label);
+    await dialog.getByRole("radiogroup", { name: "目印の色" }).getByText(tone).click();
     await dialog.getByRole("button", { name: "保存する" }).click();
     await expect(dialog).toHaveCount(0);
   }
-  const groups = page.getByRole("region", { name: "グループ" });
-  await expect(groups.getByRole("row")).toHaveCount(3);
-  await groups.getByRole("button", { name: "目を上へ" }).click();
-  await expect(groups.getByRole("row").nth(1)).toContainText("目");
+  await expect(groups.getByRole("row")).toHaveCount(25);
+  await expect(groups.getByRole("row", { name: /^E2Eの髪/ })).toContainText("水色");
+  await groups.getByRole("button", { name: "E2Eの目を上へ" }).click();
+  await expect(groups.getByRole("row").nth(23)).toContainText("E2Eの目");
 
-  await groups.getByRole("button", { name: "髪の色", exact: true }).click();
+  await groups.getByRole("button", { name: "E2Eの髪", exact: true }).click();
   for (const [label, tag] of [
-    ["ピンクの髪", "pink hair"],
-    ["桃色の髪", "pink hair"],
+    ["おさげ", "e2e braids"],
+    ["三つ編み", "e2e braids"],
   ]) {
     await page.getByRole("button", { name: "表現を追加" }).click();
     const dialog = page.getByRole("dialog", { name: "表現を追加" });
     await dialog.getByLabel("表示名").fill(label);
+    await dialog.getByLabel("サフィックス").fill("（E2E）");
     await dialog.getByLabel("NovelAIへ送る語").fill(tag);
+    await dialog.getByLabel("注釈").fill("E2Eの注釈");
     await dialog.getByRole("button", { name: "保存する" }).click();
-    if (label === "桃色の髪") {
+    if (label === "三つ編み") {
       await expect(dialog.getByRole("alert")).toHaveText(
         "このグループには同じ語の表現があります。",
       );
       await dialog.getByRole("button", { name: "やめる" }).click();
     } else await expect(dialog).toHaveCount(0);
   }
-  const phrases = page.getByRole("region", { name: "髪の色の表現" });
-  await expect(phrases.getByRole("row", { name: /ピンクの髪/ })).toContainText("pink hair");
+  const phrases = page.getByRole("region", { name: "E2Eの髪の表現" });
+  const braids = phrases.getByRole("row", { name: /おさげ（E2E）/ });
+  await expect(braids).toContainText("e2e braids");
 
-  await groups.getByRole("button", { name: "目を削除" }).click();
+  await groups.getByRole("button", { name: "E2Eの目を削除" }).click();
   const confirm = page.getByRole("dialog", { name: "グループを削除しますか？" });
   await confirm.getByRole("button", { name: "削除する" }).click();
-  await expect(groups.getByRole("row")).toHaveCount(2);
+  await expect(groups.getByRole("row")).toHaveCount(24);
+
+  // 次に開いた対戦画面の検索と入力候補に、編集した内容が出る。
+  await executeLocalD1(
+    "INSERT OR REPLACE INTO topic (id, difficulty, image_url) VALUES ('e2e-topic', 'easy', 'https://example.invalid/animic-topic.svg')",
+  );
+  const guestContext = await browser.newContext({
+    extraHTTPHeaders: { "CF-Connecting-IP": "203.0.113.32" },
+  });
+  const host = await browser.newPage({
+    reducedMotion: "reduce",
+    extraHTTPHeaders: { "CF-Connecting-IP": "203.0.113.33" },
+  });
+  try {
+    const code = await create(host, "辞書のホスト");
+    await join(await guestContext.newPage(), code, "辞書のゲスト");
+    await expect
+      .poll(async () => (await snapshot(host)).members.filter((member) => member.connected).length)
+      .toBe(2);
+    const started = await start(host, code, {
+      difficulty: "easy",
+      durationSeconds: 600,
+      selectionSeconds: 10,
+    });
+    expect(started.error).toBeNull();
+    await host.goto(`/rooms/${code}`);
+    await expect(host.getByRole("timer")).toBeVisible();
+
+    await host.getByRole("button", { name: "キャラプロンプトを検索" }).click();
+    const search = host.getByRole("dialog", { name: "キャラプロンプトを検索" });
+    await search.getByRole("radiogroup", { name: "ジャンル" }).getByText("E2Eの髪").click();
+    const card = search.getByRole("button", { name: "おさげ（E2E）をキャラに入れる" });
+    await expect(card).toContainText("e2e braids");
+    await expect(card).toContainText("E2Eの注釈");
+    await expect(search.getByRole("radiogroup", { name: "ジャンル" })).not.toContainText("E2Eの目");
+    await search.getByRole("button", { name: "決定" }).click();
+
+    // 候補にもサフィックスを出すが、欄に入るのは表示名だけ。
+    const input = host.getByRole("combobox", { name: "プロンプト（キャラ）" });
+    await input.fill("おさげ");
+    await host
+      .getByRole("listbox", { name: "入力候補" })
+      .getByRole("option", { name: /おさげ（E2E）/ })
+      .click();
+    await expect(host.getByRole("button", { name: "「おさげ」を書き直す" })).toBeVisible();
+  } finally {
+    await host.close();
+    await guestContext.close();
+  }
 });
 
-test("書き出したZIPを読み込むと、消したお題と画像・対戦条件・よく使う表現が元に戻る", async ({
+test("書き出したZIPを読み込むと、消したお題と画像・対戦条件・表現の辞書が元に戻る", async ({
   page,
 }) => {
   await executeLocalD1("DELETE FROM prompt_group");
@@ -287,9 +350,16 @@ test("書き出したZIPを読み込むと、消したお題と画像・対戦�
       },
     });
     const groupId = crypto.randomUUID();
-    await window.animicTest.savePromptGroup({ data: { id: groupId, label: "服" } });
+    await window.animicTest.savePromptGroup({ data: { id: groupId, label: "服", tone: "cyan" } });
     await window.animicTest.savePromptPhrase({
-      data: { id: crypto.randomUUID(), groupId, label: "セーラー服", tag: "serafuku" },
+      data: {
+        id: crypto.randomUUID(),
+        groupId,
+        label: "セーラー服",
+        suffix: "（夏）",
+        tag: "serafuku",
+        note: "E2Eの注釈",
+      },
     });
   });
 
@@ -339,6 +409,8 @@ test("書き出したZIPを読み込むと、消したお題と画像・対戦�
     status: "unpublished",
   });
   expect(restored.options.duration).toEqual({ choices: [40, 80], defaultSeconds: 80 });
-  expect(restored.groups.map((group) => group.label)).toEqual(["服"]);
-  expect(restored.groups[0]?.phrases.map((phrase) => phrase.tag)).toEqual(["serafuku"]);
+  expect(restored.groups.find((group) => group.label === "服")).toMatchObject({
+    tone: "cyan",
+    phrases: [{ label: "セーラー服", suffix: "（夏）", tag: "serafuku", note: "E2Eの注釈" }],
+  });
 });

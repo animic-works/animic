@@ -48,8 +48,18 @@ const backup: Backup = {
     {
       id: "hair",
       label: "髪の色",
+      tone: "pink",
       sortOrder: 0,
-      phrases: [{ id: "pink", label: "ピンクの髪", tag: "pink hair", sortOrder: 0 }],
+      phrases: [
+        {
+          id: "pink",
+          label: "ピンクの髪",
+          suffix: "（明るい）",
+          tag: "pink hair",
+          note: "濃いピンクは別の表現",
+          sortOrder: 0,
+        },
+      ],
     },
   ],
 };
@@ -61,6 +71,34 @@ describe("バックアップのZIP", () => {
     expect(result.error).toBeNull();
     expect(result.backup).toEqual(backup);
     expect(result.images?.get(imageKey)).toEqual(image);
+  });
+
+  it("色・サフィックス・注釈がない前の形式は、空の値（色は灰色）として読み込む", () => {
+    const old = {
+      ...backup,
+      topics: [],
+      promptGroups: [
+        {
+          id: "hair",
+          label: "髪の色",
+          sortOrder: 0,
+          phrases: [{ id: "pink", label: "ピンクの髪", tag: "pink hair", sortOrder: 0 }],
+        },
+      ],
+    };
+    const result = readBackupZip(zipSync({ "backup.json": strToU8(JSON.stringify(old)) }));
+    expect(result.error).toBeNull();
+    expect(result.backup?.promptGroups).toEqual([
+      {
+        id: "hair",
+        label: "髪の色",
+        tone: "slate",
+        sortOrder: 0,
+        phrases: [
+          { id: "pink", label: "ピンクの髪", suffix: "", tag: "pink hair", note: "", sortOrder: 0 },
+        ],
+      },
+    ]);
   });
 
   it("壊れたZIP・形式の違うファイル・足りない画像を読み込まない", () => {
@@ -103,7 +141,16 @@ describe("summarizeBackup", () => {
       promptGroups: [
         {
           ...backup.promptGroups[0],
-          phrases: [{ id: "other", label: "桃色の髪", tag: "pink hair", sortOrder: 3 }],
+          phrases: [
+            {
+              id: "other",
+              label: "桃色の髪",
+              suffix: "",
+              tag: "pink hair",
+              note: "",
+              sortOrder: 3,
+            },
+          ],
         },
       ],
     };

@@ -8,8 +8,10 @@ import { Dialog } from "@animic/react/dialog";
 import { Field } from "@animic/react/field";
 import { Input } from "@animic/react/input";
 import { IconButton } from "@animic/react/icon-button";
+import { SegmentedControl } from "@animic/react/segmented-control";
 import { Stack } from "@animic/react/stack";
 import { Text } from "@animic/react/text";
+import { Textarea } from "@animic/react/textarea";
 import { useToast } from "@animic/react/toast";
 import {
   deletePromptGroup,
@@ -22,14 +24,40 @@ import {
 import {
   promptGroupLabelSchema,
   promptPhraseLabelSchema,
+  promptPhraseNoteSchema,
+  promptPhraseSuffixSchema,
   promptPhraseTagSchema,
+  promptTones,
+  promptToneSchema,
 } from "../image-generation/prompt-phrases";
-import type { PromptGroup, PromptPhrase } from "../image-generation/prompt-phrases";
+import type { PromptGroup, PromptPhrase, PromptTone } from "../image-generation/prompt-phrases";
 import { AdminHead } from "./admin-parts";
 import { errorMessage } from "./admin-format";
 
-type GroupDraft = { id: string; isNew: boolean; label: string };
-type PhraseDraft = { id: string; isNew: boolean; label: string; tag: string };
+type GroupDraft = { id: string; isNew: boolean; label: string; tone: PromptTone };
+type PhraseDraft = {
+  id: string;
+  isNew: boolean;
+  label: string;
+  suffix: string;
+  tag: string;
+  note: string;
+};
+
+const TONE_LABELS: Record<PromptTone, string> = {
+  ink: "黒",
+  pink: "ピンク",
+  rose: "薄いピンク",
+  red: "赤",
+  orange: "オレンジ",
+  amber: "黄土色",
+  yellow: "黄色",
+  green: "緑",
+  forest: "深緑",
+  cyan: "水色",
+  purple: "紫",
+  slate: "灰色",
+};
 type Deleting = { kind: "group"; item: PromptGroup } | { kind: "phrase"; item: PromptPhrase };
 
 type RunMutation = (
@@ -73,6 +101,7 @@ function groupColumns({
         </Button>
       ),
     },
+    { id: "tone", header: "色", cell: (group) => TONE_LABELS[group.tone] },
     { id: "count", header: "表現", cell: (group) => group.phrases.length },
     {
       id: "order",
@@ -118,7 +147,7 @@ function groupColumns({
             loading={busy}
             onClick={() => {
               setFormError(null);
-              setGroupDraft({ id: group.id, isNew: false, label: group.label });
+              setGroupDraft({ id: group.id, isNew: false, label: group.label, tone: group.tone });
             }}
           >
             編集
@@ -158,7 +187,16 @@ function phraseColumns({
       id: "label",
       header: "表示名",
       rowHeader: true,
-      cell: (phrase) => phrase.label,
+      cell: (phrase) => (
+        <>
+          {phrase.label}
+          {phrase.suffix && (
+            <Text variant="inherit" tone="muted">
+              {phrase.suffix}
+            </Text>
+          )}
+        </>
+      ),
     },
     {
       id: "tag",
@@ -213,7 +251,9 @@ function phraseColumns({
                 id: phrase.id,
                 isNew: false,
                 label: phrase.label,
+                suffix: phrase.suffix,
                 tag: phrase.tag,
+                note: phrase.note,
               });
             }}
           >
@@ -234,7 +274,7 @@ function phraseColumns({
   ];
 }
 
-// よく使う表現: グループと表現の表、追加・編集・並べ替え・削除
+// 表現の辞書: グループと表現の表、追加・編集・並べ替え・削除
 export function PromptPhrasesScreen({
   groups,
   onChanged,
@@ -276,12 +316,19 @@ export function PromptPhrasesScreen({
 
   function openAddGroup() {
     setFormError(null);
-    setGroupDraft({ id: crypto.randomUUID(), isNew: true, label: "" });
+    setGroupDraft({ id: crypto.randomUUID(), isNew: true, label: "", tone: "slate" });
   }
 
   function openAddPhrase() {
     setFormError(null);
-    setPhraseDraft({ id: crypto.randomUUID(), isNew: true, label: "", tag: "" });
+    setPhraseDraft({
+      id: crypto.randomUUID(),
+      isNew: true,
+      label: "",
+      suffix: "",
+      tag: "",
+      note: "",
+    });
   }
 
   async function saveGroup() {
@@ -295,7 +342,7 @@ export function PromptPhrasesScreen({
     setBusy(true);
     try {
       await savePromptGroup({
-        data: { id: groupDraft.id, label: parsed.output },
+        data: { id: groupDraft.id, label: parsed.output, tone: groupDraft.tone },
       });
       await onChanged();
       setGroupDraft(null);
@@ -314,9 +361,19 @@ export function PromptPhrasesScreen({
       setFormError(label.issues[0].message);
       return;
     }
+    const suffix = v.safeParse(promptPhraseSuffixSchema, phraseDraft.suffix);
+    if (!suffix.success) {
+      setFormError(suffix.issues[0].message);
+      return;
+    }
     const tag = v.safeParse(promptPhraseTagSchema, phraseDraft.tag);
     if (!tag.success) {
       setFormError(tag.issues[0].message);
+      return;
+    }
+    const note = v.safeParse(promptPhraseNoteSchema, phraseDraft.note);
+    if (!note.success) {
+      setFormError(note.issues[0].message);
       return;
     }
     if (busy) return;
@@ -327,7 +384,9 @@ export function PromptPhrasesScreen({
           id: phraseDraft.id,
           groupId: selected.id,
           label: label.output,
+          suffix: suffix.output,
           tag: tag.output,
+          note: note.output,
         },
       });
       if (result.error) {
@@ -358,8 +417,8 @@ export function PromptPhrasesScreen({
     <Stack space="section">
       <AdminHead
         eyebrow="Admin"
-        title="よく使う表現"
-        description="プロンプト入力の選択肢です。表示名は画面に出す名前、NovelAIへ送る語は生成に使う語です。"
+        title="表現の辞書"
+        description="対戦画面のプロンプトの入力候補と検索に出す表現です。変えた内容は、参加者が次にルームを開いたときから使います。"
         actions={
           groups.length > 0 ? (
             <Button loading={busy} onClick={openAddGroup}>
@@ -458,6 +517,22 @@ export function PromptPhrasesScreen({
                   onChange={(event) => setGroupDraft({ ...groupDraft, label: event.target.value })}
                 />
               </Field>
+              <SegmentedControl
+                label="目印の色"
+                labelVisibility="visible"
+                appearance="chips"
+                value={groupDraft.tone}
+                disabled={busy}
+                options={promptTones.map((tone) => ({
+                  value: tone,
+                  label: TONE_LABELS[tone],
+                  markerTone: tone,
+                }))}
+                onValueChange={(value) => {
+                  const tone = v.safeParse(promptToneSchema, value);
+                  if (tone.success) setGroupDraft({ ...groupDraft, tone: tone.output });
+                }}
+              />
             </Stack>
           </form>
         )}
@@ -492,7 +567,10 @@ export function PromptPhrasesScreen({
             }}
           >
             <Stack>
-              <Field label="表示名" description="30文字まで">
+              <Field
+                label="表示名"
+                description="30文字まで。文章で入力するときは、この名前がプロンプトに入ります"
+              >
                 <Input
                   value={phraseDraft.label}
                   maxLength={30}
@@ -502,12 +580,34 @@ export function PromptPhrasesScreen({
                   }
                 />
               </Field>
+              <Field
+                label="サフィックス"
+                description="20文字まで。表示名の後ろに出す補足で、プロンプトには入りません（例：（2本の三つ編み））"
+              >
+                <Input
+                  value={phraseDraft.suffix}
+                  maxLength={20}
+                  disabled={busy}
+                  onChange={(event) =>
+                    setPhraseDraft({ ...phraseDraft, suffix: event.target.value })
+                  }
+                />
+              </Field>
               <Field label="NovelAIへ送る語" description="200文字まで">
                 <Input
                   value={phraseDraft.tag}
                   maxLength={200}
                   disabled={busy}
                   onChange={(event) => setPhraseDraft({ ...phraseDraft, tag: event.target.value })}
+                />
+              </Field>
+              <Field label="注釈" description="100文字まで。検索のカードに出します">
+                <Textarea
+                  value={phraseDraft.note}
+                  maxLength={100}
+                  rows={2}
+                  disabled={busy}
+                  onChange={(event) => setPhraseDraft({ ...phraseDraft, note: event.target.value })}
                 />
               </Field>
               {formError && (

@@ -19,7 +19,7 @@ import { loadBattleOptions, replaceBattleOptions } from "../room/battle-options.
 import { backupChunkSize, backupFormat } from "./backup";
 import type { Backup } from "./backup";
 
-/** 書き出す内容（お題・対戦条件・よく使う表現）。画像はブラウザーが配信URLから読んでZIPに入れる。 */
+/** 書き出す内容（お題・対戦条件・表現の辞書）。画像はブラウザーが配信URLから読んでZIPに入れる。 */
 export const getBackup = createServerFn({ method: "GET" }).handler(async (): Promise<Backup> => {
   requireAdmin();
   const [topics, battleOptions, promptGroups] = await Promise.all([

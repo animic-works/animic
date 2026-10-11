@@ -25,8 +25,10 @@ async function adminCalls(page: Page) {
             selection: { choices: [5], defaultSeconds: 5 },
           },
         }),
-      () => window.animicTest.listPromptGroups(),
-      () => window.animicTest.savePromptGroup({ data: { id: crypto.randomUUID(), label: "e2e" } }),
+      () =>
+        window.animicTest.savePromptGroup({
+          data: { id: crypto.randomUUID(), label: "e2e", tone: "slate" },
+        }),
       () => window.animicTest.getImageModel(),
       () => window.animicTest.saveImageModel({ data: { model: "nai-diffusion-4-5-curated" } }),
       () => window.animicTest.getBackup(),

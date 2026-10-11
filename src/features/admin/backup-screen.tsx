@@ -105,7 +105,7 @@ export function BackupScreen() {
       <AdminHead
         eyebrow="Admin"
         title="バックアップ"
-        description="お題（画像を含む）・対戦条件・よく使う表現を1つのZIPで書き出し、読み込みます。"
+        description="お題（画像を含む）・対戦条件・表現の辞書を1つのZIPで書き出し、読み込みます。"
       />
       <Split layout="main-aside">
         <Stack>
@@ -200,7 +200,7 @@ export function BackupScreen() {
         </Stack>
         <AdminGuide
           items={[
-            { term: "含まれるもの", body: "お題と画像、対戦条件の候補、よく使う表現。" },
+            { term: "含まれるもの", body: "お題と画像、対戦条件の候補、表現の辞書。" },
             {
               term: "含まれないもの",
               body: "採点ワーカー・採点ジョブ・対戦結果・参加者の情報・生成した画像・画像生成のモデル。",
