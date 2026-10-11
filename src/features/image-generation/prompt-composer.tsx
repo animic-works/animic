@@ -40,6 +40,7 @@ import type { DictionaryHit } from "./prompt-dictionary";
 import { phraseImagePath } from "./phrase-images";
 import { PromptField } from "./prompt-field";
 import type { PromptGroup, PromptPhrase } from "./prompt-phrases";
+import { PhraseImageDialog } from "./phrase-image-dialog";
 import { PromptSearchDialog } from "./prompt-search-dialog";
 import { savePrompt, useSavedPrompt } from "./prompt-storage";
 import type { SearchCard, SearchGenre } from "./prompt-search-dialog";
@@ -78,7 +79,8 @@ type ComposerState = {
   draft: string;
 };
 
-type SearchState = { open: boolean; genre: string | null; query: string };
+/** viewingは挿絵の全体を見ている表現のID */
+type SearchState = { open: boolean; genre: string | null; query: string; viewing: string | null };
 
 const INITIAL_STATE: ComposerState = { mode: "text", blocks: [[], []], active: 1, draft: "" };
 
@@ -157,7 +159,12 @@ export function PromptComposer({
   const state = withCharacters(edited ?? saved ?? INITIAL_STATE, maxCharacters);
   const toast = useToast();
   const [requesting, setRequesting] = useState(false);
-  const [search, setSearch] = useState<SearchState>({ open: false, genre: null, query: "" });
+  const [search, setSearch] = useState<SearchState>({
+    open: false,
+    genre: null,
+    query: "",
+    viewing: null,
+  });
   const [clearing, setClearing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -216,7 +223,7 @@ export function PromptComposer({
   function openSearch(target: number) {
     if (locked) return;
     update((current) => ({ ...commitActive(current), active: target }));
-    setSearch({ open: true, genre: null, query: "" });
+    setSearch({ open: true, genre: null, query: "", viewing: null });
   }
 
   async function generate() {
@@ -528,8 +535,31 @@ export function PromptComposer({
           const hit = hitsById.get(id);
           if (hit) toggleEntry(hit);
         }}
+        onView={(id) => setSearch((current) => ({ ...current, viewing: id }))}
         target={activeLabel}
         pickedText={`プロンプト 合計${total}語`}
+        disabled={locked}
+      />
+      <PhraseImageDialog
+        open={search.open && !locked && search.viewing !== null}
+        onOpenChange={(open) => {
+          if (!open) setSearch((current) => ({ ...current, viewing: null }));
+        }}
+        cards={cards}
+        othersLabel={
+          normalizeQuery(search.query)
+            ? `「${trimmedQuery}」の結果のほかの表現`
+            : genre === null
+              ? "ほかの表現"
+              : `${genreLabel}のほかの表現`
+        }
+        cardId={search.viewing}
+        onCardChange={(id) => setSearch((current) => ({ ...current, viewing: id }))}
+        target={activeLabel}
+        onToggle={(id) => {
+          const hit = hitsById.get(id);
+          if (hit) toggleEntry(hit);
+        }}
         disabled={locked}
       />
     </>

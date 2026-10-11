@@ -1,5 +1,9 @@
 import { defineSlotRecipe } from "@pandacss/dev";
 import { focus } from "../control";
+const emphasized = {
+  borderColor: "accent.primary",
+  boxShadow: "0 0 0 2px color-mix(in srgb, token(colors.accent.primary) 20%, transparent)",
+};
 export const thumbnailList = defineSlotRecipe({
   className: "thumbnail-list",
   slots: [
@@ -64,10 +68,9 @@ export const thumbnailList = defineSlotRecipe({
       color: "fg.muted",
       textStyle: "caption",
       cursor: "pointer",
-      _pressed: {
-        borderColor: "accent.primary",
-        boxShadow: "0 0 0 2px color-mix(in srgb, token(colors.accent.primary) 20%, transparent)",
-      },
+      _pressed: emphasized,
+      // 表示中の項目（aria-current）は、選んだ項目と同じ枠で示す。
+      "&[aria-current=true]": emphasized,
       _focusVisible: focus,
       _disabled: { cursor: "default" },
     },
@@ -103,6 +106,21 @@ export const thumbnailList = defineSlotRecipe({
     },
   },
   variants: {
+    // stripは画面幅にかかわらず横1列に並べ、横にスクロールする（ダイアログの中の一覧など）。
+    layout: {
+      adaptive: {},
+      strip: {
+        root: {
+          flexWrap: "nowrap",
+          maxHeight: "none",
+          overflowX: "auto",
+          overflowY: "hidden",
+          _thumbnailCompact: { paddingBottom: "0.6rem" },
+        },
+        item: { width: "4.5rem", _thumbnailCompact: { width: "4.5rem" } },
+        button: { aspectRatio: "1", _thumbnailCompact: { aspectRatio: "1" } },
+      },
+    },
     entering: {
       true: {
         button: {
@@ -112,4 +130,5 @@ export const thumbnailList = defineSlotRecipe({
       },
     },
   },
+  defaultVariants: { layout: "adaptive" },
 });
