@@ -214,7 +214,7 @@ export class Room extends DurableObject<Env> {
     const requests = battle ? getScoringRequests(battle) : [];
     if (!state || state.closed || !battle || !requests.length) return;
     try {
-      await registerScoringJobs(this.env.DB, battle.id, state.code, requests);
+      await registerScoringJobs(this.env.DB, battle.id, state.code, battle.startedAt, requests);
       const jobs = await getScoringJobs(
         this.env.DB,
         requests.map((request) => request.jobId),

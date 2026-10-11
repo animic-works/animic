@@ -22,6 +22,7 @@ import { Route as AdminPromptsRouteImport } from './routes/admin/prompts'
 import { Route as MypageIndexRouteImport } from './routes/mypage/index'
 import { Route as RoomsCodeRouteImport } from './routes/rooms.$code'
 import { Route as AdminScoringJobsRouteImport } from './routes/admin/scoring/jobs'
+import { Route as AdminScoringWeightsRouteImport } from './routes/admin/scoring/weights'
 import { Route as AdminScoringWorkersRouteImport } from './routes/admin/scoring/workers'
 import { Route as AdminTopicsIndexRouteImport } from './routes/admin/topics/index'
 import { Route as AdminTopicsTopicIdRouteImport } from './routes/admin/topics/$topicId'
@@ -97,6 +98,11 @@ const AdminScoringJobsRoute = AdminScoringJobsRouteImport.update({
   path: '/scoring/jobs',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminScoringWeightsRoute = AdminScoringWeightsRouteImport.update({
+  id: '/scoring/weights',
+  path: '/scoring/weights',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminScoringWorkersRoute = AdminScoringWorkersRouteImport.update({
   id: '/scoring/workers',
   path: '/scoring/workers',
@@ -160,6 +166,7 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/mypage/': typeof MypageIndexRoute
   '/admin/scoring/jobs': typeof AdminScoringJobsRoute
+  '/admin/scoring/weights': typeof AdminScoringWeightsRoute
   '/admin/scoring/workers': typeof AdminScoringWorkersRoute
   '/admin/topics/$topicId': typeof AdminTopicsTopicIdRoute
   '/admin/topics/new': typeof AdminTopicsNewRoute
@@ -183,6 +190,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/mypage': typeof MypageIndexRoute
   '/admin/scoring/jobs': typeof AdminScoringJobsRoute
+  '/admin/scoring/weights': typeof AdminScoringWeightsRoute
   '/admin/scoring/workers': typeof AdminScoringWorkersRoute
   '/admin/topics/$topicId': typeof AdminTopicsTopicIdRoute
   '/admin/topics/new': typeof AdminTopicsNewRoute
@@ -208,6 +216,7 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/mypage/': typeof MypageIndexRoute
   '/admin/scoring/jobs': typeof AdminScoringJobsRoute
+  '/admin/scoring/weights': typeof AdminScoringWeightsRoute
   '/admin/scoring/workers': typeof AdminScoringWorkersRoute
   '/admin/topics/$topicId': typeof AdminTopicsTopicIdRoute
   '/admin/topics/new': typeof AdminTopicsNewRoute
@@ -234,6 +243,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/mypage/'
     | '/admin/scoring/jobs'
+    | '/admin/scoring/weights'
     | '/admin/scoring/workers'
     | '/admin/topics/$topicId'
     | '/admin/topics/new'
@@ -257,6 +267,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/mypage'
     | '/admin/scoring/jobs'
+    | '/admin/scoring/weights'
     | '/admin/scoring/workers'
     | '/admin/topics/$topicId'
     | '/admin/topics/new'
@@ -281,6 +292,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/mypage/'
     | '/admin/scoring/jobs'
+    | '/admin/scoring/weights'
     | '/admin/scoring/workers'
     | '/admin/topics/$topicId'
     | '/admin/topics/new'
@@ -400,6 +412,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminScoringJobsRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/scoring/weights': {
+      id: '/admin/scoring/weights'
+      path: '/scoring/weights'
+      fullPath: '/admin/scoring/weights'
+      preLoaderRoute: typeof AdminScoringWeightsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/scoring/workers': {
       id: '/admin/scoring/workers'
       path: '/scoring/workers'
@@ -473,6 +492,7 @@ interface AdminRouteRouteChildren {
   AdminPromptsRoute: typeof AdminPromptsRoute
   AdminIndexRoute: typeof AdminIndexRoute
   AdminScoringJobsRoute: typeof AdminScoringJobsRoute
+  AdminScoringWeightsRoute: typeof AdminScoringWeightsRoute
   AdminScoringWorkersRoute: typeof AdminScoringWorkersRoute
   AdminTopicsTopicIdRoute: typeof AdminTopicsTopicIdRoute
   AdminTopicsNewRoute: typeof AdminTopicsNewRoute
@@ -486,6 +506,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminPromptsRoute: AdminPromptsRoute,
   AdminIndexRoute: AdminIndexRoute,
   AdminScoringJobsRoute: AdminScoringJobsRoute,
+  AdminScoringWeightsRoute: AdminScoringWeightsRoute,
   AdminScoringWorkersRoute: AdminScoringWorkersRoute,
   AdminTopicsTopicIdRoute: AdminTopicsTopicIdRoute,
   AdminTopicsNewRoute: AdminTopicsNewRoute,

@@ -1,7 +1,8 @@
 import * as v from "valibot";
 
 import illustSimilarityV2 from "./illust-similarity-v2.workflow.json";
-import type { ScoringMetricScores } from "./scoring-metrics";
+import { weightedTotal } from "./scoring-metrics";
+import type { ScoringMetricScores, ScoringWeights } from "./scoring-metrics";
 
 const imageUrlSchema = v.pipe(v.string(), v.url());
 export const scoringInputsSchema = v.array(
@@ -44,7 +45,11 @@ const metricsReportSchema = v.object({
 
 type ScoringWorkflow = {
   build(inputs: ScoringInputs): string;
-  readTotals(inputs: ScoringInputs, data: unknown): ScoringTotal[] | null;
+  readTotals(
+    inputs: ScoringInputs,
+    data: unknown,
+    weights: ScoringWeights | null,
+  ): ScoringTotal[] | null;
   readMetrics(data: unknown): ScoringMetricScores | null;
 };
 
@@ -78,12 +83,18 @@ const workflows: Record<string, ScoringWorkflow> = {
       topicAndSubmission(inputs);
       return JSON.stringify(illustSimilarityV2);
     },
-    readTotals(inputs, data) {
+    readTotals(inputs, data, weights) {
       const { submission } = topicAndSubmission(inputs);
-      const similarity = v.safeParse(similaritySchema, readSimilarityReport(data));
-      return similarity.success
-        ? [{ participantId: submission.participantId, total: similarity.output.total }]
-        : null;
+      const report = readSimilarityReport(data);
+      let total: number | null = null;
+      if (weights) {
+        const metrics = v.safeParse(metricsReportSchema, report);
+        total = metrics.success ? weightedTotal(metrics.output, weights) : null;
+      } else {
+        const similarity = v.safeParse(similaritySchema, report);
+        total = similarity.success ? similarity.output.total : null;
+      }
+      return total === null ? null : [{ participantId: submission.participantId, total }];
     },
     readMetrics(data) {
       const metrics = v.safeParse(metricsReportSchema, readSimilarityReport(data));
@@ -104,8 +115,17 @@ export function buildScoringWorkflow(version: string, inputs: ScoringInputs) {
   return getWorkflow(version).build(inputs);
 }
 
-export function readScoringTotals(version: string, inputs: ScoringInputs, data: unknown) {
-  return getWorkflow(version).readTotals(inputs, data);
+/**
+ * 採点ワーカーの出力から参加者ごとの再現度を読む。`weights`があれば指標ごとの点から計算し直し、
+ * `null`なら採点ノードの`total`を使う。読めなければ`null`。
+ */
+export function readScoringTotals(
+  version: string,
+  inputs: ScoringInputs,
+  data: unknown,
+  weights: ScoringWeights | null,
+) {
+  return getWorkflow(version).readTotals(inputs, data, weights);
 }
 
 /** 採点ワーカーの出力から指標ごとの点を読む。今は使っていないワークフローの出力は`null`。 */

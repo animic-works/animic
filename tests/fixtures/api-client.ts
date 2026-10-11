@@ -35,6 +35,7 @@ import {
   saveImageModel,
 } from "../../src/features/image-generation/image-generation-admin.functions";
 import { generateImage } from "../../src/features/image-generation/image-generation.functions";
+import { updateScoringWeights } from "../../src/features/scoring/scoring-weights.functions";
 import {
   applyBackupChunk,
   getBackup,
@@ -73,6 +74,7 @@ const api = {
   savePromptPhraseImage,
   getImageModel,
   saveImageModel,
+  updateScoringWeights,
   getBackup,
   putBackupImage,
   applyBackupChunk,

@@ -34,6 +34,10 @@ async function adminCalls(page: Page) {
         form.set("id", crypto.randomUUID());
         return window.animicTest.savePromptPhraseImage({ data: form });
       },
+      () =>
+        window.animicTest.updateScoringWeights({
+          data: { ccip: 0, pixai: 25, siglip2: 25, dinov2: 25, depth: 25 },
+        }),
       () => window.animicTest.getImageModel(),
       () => window.animicTest.saveImageModel({ data: { model: "nai-diffusion-4-5-curated" } }),
       () => window.animicTest.getBackup(),
@@ -192,4 +196,52 @@ test("画像生成のモデルを切り替えると表示と保存先が変わ�
   await models.getByText("V5 Curated").click();
   await page.getByRole("button", { name: "保存する" }).click();
   await expect(current).toContainText("nai-diffusion-5-curated");
+});
+
+test("採点の重みを合計100で保存し、合計が100でない値やCCIPだけの重みは保存しない", async ({
+  page,
+}) => {
+  await executeLocalD1("DELETE FROM scoring_weight");
+  try {
+    await loginAdmin(page);
+    await openAdminMenu(page, "採点の重み");
+    await expect(page.getByText("既定の重みを使っています。")).toBeVisible();
+    const field = (name: string) => page.getByLabel(name, { exact: true });
+    await expect(field("キャラクター（CCIP）")).toHaveValue("35");
+    await expect(field("構図（Depth Anything V2）")).toHaveValue("10");
+    const sum = page.getByRole("status").filter({ hasText: "合計" });
+    await expect(sum).toHaveText("合計 100");
+
+    await field("構図（Depth Anything V2）").fill("20");
+    await expect(sum).toHaveText("合計 110");
+    await page.getByRole("button", { name: "保存する" }).click();
+    await expect(page.getByRole("alert")).toHaveText("重みの合計を100にしてください。");
+
+    for (const [name, value] of [
+      ["キャラクター（CCIP）", "100"],
+      ["タグ（PixAI Tagger）", "0"],
+      ["内容（SigLIP 2）", "0"],
+      ["画像の特徴（DINOv2）", "0"],
+      ["構図（Depth Anything V2）", "0"],
+    ])
+      await field(name).fill(value);
+    await page.getByRole("button", { name: "保存する" }).click();
+    await expect(page.getByRole("alert")).toHaveText(
+      "CCIP以外の指標にも重みを付けてください。人物のいない画像はCCIPを除いて採点します。",
+    );
+
+    await field("キャラクター（CCIP）").fill("40");
+    await field("構図（Depth Anything V2）").fill("60");
+    await page.getByRole("button", { name: "保存する" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "保存しました" })).toBeVisible();
+    await page.reload();
+    await expect(field("キャラクター（CCIP）")).toHaveValue("40");
+    await expect(field("構図（Depth Anything V2）")).toHaveValue("60");
+    await expect(page.getByText(/に保存した重みを使っています。$/)).toBeVisible();
+
+    await page.getByRole("button", { name: "既定の重みに戻す" }).click();
+    await expect(field("キャラクター（CCIP）")).toHaveValue("35");
+  } finally {
+    await executeLocalD1("DELETE FROM scoring_weight");
+  }
 });
