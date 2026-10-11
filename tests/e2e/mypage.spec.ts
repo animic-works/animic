@@ -121,7 +121,7 @@ test("ログインしていない人がトップの「マイページ」を押�
   expect((await loginRequest).postDataJSON()).toMatchObject({ callbackURL: "/mypage" });
 });
 
-test("ログインしていれば、トップのメニューにアカウントのアイコンを出してマイページへ移る", async ({
+test("ログインしていれば、トップのメニューのアカウントのアイコンからメニューを開き、マイページへ移る", async ({
   browser,
 }) => {
   for (const provider of ["google", "discord"] as const) {
@@ -133,14 +133,17 @@ test("ログインしていれば、トップのメニューにアカウント�
         email: `${crypto.randomUUID()}@example.test`,
         name: provider === "google" ? "ぐーぐる" : "でぃすこ",
       });
+      const name = provider === "google" ? "ぐーぐる" : "でぃすこ";
       await page.goto("/");
-      const link = page.getByRole("link", {
-        name: `マイページ（${provider === "google" ? "ぐーぐる" : "でぃすこ"}）`,
-      });
-      await expect(link).toBeVisible();
-      await link.click();
+      await page.getByRole("button", { name: `アカウント（${name}）` }).click();
+      const menu = page.getByRole("dialog", { name: "アカウント" });
+      await expect(menu.getByRole("heading", { name })).toBeVisible();
+      await expect(
+        menu.getByText(`${provider === "google" ? "Google" : "Discord"}でログイン中`),
+      ).toBeVisible();
+      await expect(menu.getByText("まだ戦績がありません", { exact: false })).toBeVisible();
+      await menu.getByRole("link", { name: "マイページ" }).click();
       await expect(page).toHaveURL("/mypage");
-      await expect(page.getByRole("dialog")).toHaveCount(0);
     } finally {
       await context.close();
     }

@@ -6,7 +6,6 @@ import { Button } from "@animic/react/button";
 import { ActionGroup } from "@animic/react/action-group";
 import { SectionNavigation } from "@animic/react/section-navigation";
 import { Heading } from "@animic/react/heading";
-import { Avatar } from "@animic/react/avatar";
 import { Link } from "@animic/react/link";
 import { NavigationBar, NavigationBarLabel } from "@animic/react/navigation-bar";
 import { Page } from "@animic/react/page";
@@ -16,8 +15,7 @@ import { Stack } from "@animic/react/stack";
 import { Lead } from "@animic/react/lead";
 import { usePageTransition } from "../navigation/page-transition-provider";
 import { AccountIcon } from "../shared/icons";
-import { accountIconAvatar, parseAccountIcon, providerPalette } from "../account/account-icon";
-import { ProviderIcon } from "../account/visuals/provider-icon";
+import { AccountMenu } from "./account-menu";
 import { steps } from "./home-content";
 import { matches } from "./home-samples";
 import { Gallery, HowToPlay, Scoring } from "./home-sections";
@@ -192,29 +190,11 @@ export function HomePage() {
         }
         actions={
           account ? (
-            <Link
-              appearance="quiet"
-              href="/mypage"
-              aria-label={`マイページ（${account.name}）`}
-              onClick={(event) => void openMypage(event)}
-            >
-              <Avatar
-                name={account.name}
-                fallback={Array.from(account.name)[0]}
-                // アイコンを選んでいなければ、ログインに使ったサービスの色にする。
-                {...accountIconAvatar(
-                  parseAccountIcon(account.icon),
-                  providerPalette(account.provider),
-                )}
-                size="navigation"
-                ring
-                badge={
-                  account.provider ? (
-                    <ProviderIcon provider={account.provider === "google" ? "Google" : "Discord"} />
-                  ) : undefined
-                }
-              />
-            </Link>
+            <AccountMenu
+              account={account}
+              onMypage={() => navigate("/mypage")}
+              onSignedOut={() => setAccount(null)}
+            />
           ) : (
             <Link
               appearance="subtle"
