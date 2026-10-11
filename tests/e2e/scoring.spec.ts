@@ -29,7 +29,7 @@ type Worker = { id: string; secret: string };
 
 async function issueCode(code: string, expiresAt = Date.now() + 10 * 60_000) {
   await executeLocalD1(
-    `INSERT INTO scoring_link_code (code, name, expires_at) VALUES ('${code}', 'e2e-${code}', ${expiresAt})`,
+    `INSERT OR REPLACE INTO scoring_link_code (code, name, expires_at) VALUES ('${code}', 'e2e-${code}', ${expiresAt})`,
   );
 }
 
@@ -528,7 +528,7 @@ test("画像選択の猶予までに提出しなければ、最後に完成し�
     }
 
     const hostId = await participantId(host);
-    const worker = await link(request, "E2EE-0002");
+    const worker = await link(request, "E2EE-0003");
     for (let count = 0; count < 2; count += 1) {
       const claimed = await claimJob(request, worker);
       const [inputs] = await executeLocalD1(

@@ -141,6 +141,14 @@ async function openBattle(page: Page, browser: Browser) {
     await window.animicTest.startBattle({ data });
   }, code);
   await page.goto(`/rooms/${code}`);
+  // 画面が動き出す前に入力すると、入力欄が作り直されて消えるため、操作できるようになるまで待つ。
+  const input = page.getByRole("combobox", { name: "プロンプト（キャラ）" });
+  await expect
+    .poll(async () => {
+      await input.fill("、");
+      return input.inputValue();
+    })
+    .toBe("");
   return guest;
 }
 
