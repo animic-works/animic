@@ -264,11 +264,11 @@ test("表現の辞書を初期データから始め、色・サフィックス�
   await executeLocalD1("DELETE FROM prompt_group");
   await loginAdmin(page);
   await openAdminMenu(page, "表現の辞書");
-  // D1が空なら、初期データ（22ジャンル）を登録してから表示する。
-  const groups = page.getByRole("radiogroup", { name: "グループ" });
-  await expect(groups.getByRole("radio")).toHaveCount(22);
+  // D1が空なら、初期データ（23ジャンル）を登録してから表示する。
+  const groups = page.getByRole("region", { name: "グループ" });
+  await expect(groups.getByRole("radio")).toHaveCount(23);
   await groups.getByText("髪の色").click();
-  await page.getByRole("button", { name: "グループの名前と色を変える" }).click();
+  await page.getByRole("button", { name: "グループの名前・色・入れる欄を変える" }).click();
   const editGroup = page.getByRole("dialog", { name: "グループを編集" });
   await expect(editGroup.getByRole("radio", { name: "ピンク", exact: true })).toBeChecked();
   await editGroup.getByRole("button", { name: "やめる" }).click();
@@ -285,12 +285,12 @@ test("表現の辞書を初期データから始め、色・サフィックス�
     await expect(dialog).toHaveCount(0);
   }
   // 追加したグループを選んだ状態になる。
-  await expect(groups.getByRole("radio")).toHaveCount(24);
+  await expect(groups.getByRole("radio")).toHaveCount(25);
   await expect(page.getByRole("region", { name: "E2Eの目の表現" })).toContainText(
     "表現がまだありません",
   );
   await page.getByRole("button", { name: "E2Eの目を前へ" }).click();
-  await expect(groups.getByRole("radio").nth(22)).toHaveAccessibleName(/^E2Eの目/);
+  await expect(groups.getByRole("radio").nth(23)).toHaveAccessibleName(/^E2Eの目/);
 
   await groups.getByText("E2Eの髪").click();
   for (const [label, tag] of [
@@ -385,7 +385,7 @@ test("表現の辞書を初期データから始め、色・サフィックス�
   await page.getByRole("button", { name: "グループを削除" }).click();
   const confirm = page.getByRole("dialog", { name: "グループを削除しますか？" });
   await confirm.getByRole("button", { name: "削除する" }).click();
-  await expect(groups.getByRole("radio")).toHaveCount(23);
+  await expect(groups.getByRole("radio")).toHaveCount(24);
   expect((await page.request.get(eyeImage)).status()).toBe(404);
 
   // 次に開いた対戦画面の検索と入力候補に、編集した内容が出る。
@@ -465,7 +465,9 @@ test("書き出したZIPを読み込むと、選んだ項目（お題と画像�
       },
     });
     const groupId = crypto.randomUUID();
-    await window.animicTest.savePromptGroup({ data: { id: groupId, label: "服", tone: "cyan" } });
+    await window.animicTest.savePromptGroup({
+      data: { id: groupId, label: "服", tone: "cyan", target: "character" },
+    });
     const id = crypto.randomUUID();
     await window.animicTest.savePromptPhrase({
       data: {

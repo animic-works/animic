@@ -27,7 +27,7 @@ async function adminCalls(page: Page) {
         }),
       () =>
         window.animicTest.savePromptGroup({
-          data: { id: crypto.randomUUID(), label: "e2e", tone: "slate" },
+          data: { id: crypto.randomUUID(), label: "e2e", tone: "slate", target: "both" },
         }),
       () => {
         const form = new FormData();

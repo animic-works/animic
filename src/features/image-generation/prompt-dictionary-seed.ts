@@ -1,18 +1,25 @@
-import type { PromptGroup, PromptTone } from "./prompt-phrases";
+import type { PromptGroup, PromptTarget, PromptTone } from "./prompt-phrases";
 
 // 表現の辞書の初期データ。D1にグループが1つもなければ、この内容を登録する（prompt-phrases.server.ts）。
 // Danbooruのtag groups（https://danbooru.donmai.us/wiki_pages/tag_groups）から、キャラクターの絵作りによく使うタグを選んでいる。
-// どの表現もベース・キャラのどちらの欄にも入れられる。各ジャンルの先頭にはよく使う表現を置き、
+// 全体（人数・背景・画風など）はベース、見た目・しぐさはキャラの欄に入れるジャンルにする。各ジャンルの先頭にはよく使う表現を置き、
 // タグが重なる表現（ニーハイ・ブーツ・メイドなど）は先に出たほうだけを残す。
 
 /** `entries`は[表示名, タグ]の組 */
-type SeedGroup = { key: string; label: string; tone: PromptTone; entries: [string, string][] };
+type SeedGroup = {
+  key: string;
+  label: string;
+  tone: PromptTone;
+  target: PromptTarget;
+  entries: [string, string][];
+};
 
 const groups: SeedGroup[] = [
   {
     key: "who",
     label: "人数",
     tone: "slate",
+    target: "base",
     entries: [
       ["1人の女の子", "1girl"],
       ["2人の女の子", "2girls"],
@@ -25,6 +32,7 @@ const groups: SeedGroup[] = [
     key: "hair",
     label: "髪の色",
     tone: "pink",
+    target: "character",
     entries: [
       ["ピンクの髪", "pink hair"],
       ["金髪", "blonde hair"],
@@ -48,6 +56,7 @@ const groups: SeedGroup[] = [
     key: "style",
     label: "髪型",
     tone: "amber",
+    target: "character",
     entries: [
       ["ツインテール", "twintails"],
       ["ボブ", "bob cut"],
@@ -71,6 +80,7 @@ const groups: SeedGroup[] = [
     key: "eyes",
     label: "目",
     tone: "cyan",
+    target: "character",
     entries: [
       ["青い目", "blue eyes"],
       ["赤い目", "red eyes"],
@@ -91,6 +101,7 @@ const groups: SeedGroup[] = [
     key: "face",
     label: "表情",
     tone: "orange",
+    target: "character",
     entries: [
       ["笑顔", "smile"],
       ["ウインク", "one eye closed"],
@@ -113,6 +124,7 @@ const groups: SeedGroup[] = [
     key: "outfit",
     label: "服",
     tone: "purple",
+    target: "character",
     entries: [
       ["セーラー服", "sailor uniform"],
       ["パーカー", "hoodie"],
@@ -140,6 +152,7 @@ const groups: SeedGroup[] = [
     key: "head",
     label: "頭の飾り",
     tone: "rose",
+    target: "character",
     entries: [
       ["髪のリボン", "hair ribbon"],
       ["ヘアバンド", "hairband"],
@@ -162,6 +175,7 @@ const groups: SeedGroup[] = [
     key: "acc",
     label: "アクセサリー",
     tone: "red",
+    target: "character",
     entries: [
       ["眼鏡", "glasses"],
       ["丸眼鏡", "round eyewear"],
@@ -181,6 +195,7 @@ const groups: SeedGroup[] = [
     key: "legs",
     label: "脚・靴",
     tone: "slate",
+    target: "character",
     entries: [
       ["タイツ", "pantyhose"],
       ["ソックス", "socks"],
@@ -196,6 +211,7 @@ const groups: SeedGroup[] = [
     key: "race",
     label: "耳・種族",
     tone: "amber",
+    target: "character",
     entries: [
       ["猫耳", "cat ears"],
       ["犬耳", "dog ears"],
@@ -215,6 +231,7 @@ const groups: SeedGroup[] = [
     key: "role",
     label: "職業・属性",
     tone: "purple",
+    target: "character",
     entries: [
       ["巫女", "miko"],
       ["魔女", "witch"],
@@ -233,6 +250,7 @@ const groups: SeedGroup[] = [
     key: "hold",
     label: "持ち物",
     tone: "cyan",
+    target: "character",
     entries: [
       ["本を持つ", "holding book"],
       ["傘を持つ", "holding umbrella"],
@@ -250,6 +268,7 @@ const groups: SeedGroup[] = [
     key: "gesture",
     label: "しぐさ・視線",
     tone: "orange",
+    target: "character",
     entries: [
       ["振り返る", "looking back"],
       ["横を向く", "looking to the side"],
@@ -268,6 +287,7 @@ const groups: SeedGroup[] = [
     key: "pose",
     label: "ポーズ",
     tone: "green",
+    target: "character",
     entries: [
       ["立つ", "standing"],
       ["座る", "sitting"],
@@ -287,6 +307,7 @@ const groups: SeedGroup[] = [
     key: "bg",
     label: "背景",
     tone: "green",
+    target: "base",
     entries: [
       ["白背景", "white background"],
       ["青空", "blue sky"],
@@ -301,22 +322,17 @@ const groups: SeedGroup[] = [
   },
   {
     key: "scene",
-    label: "場所・天気",
+    label: "場所",
     tone: "cyan",
+    target: "base",
     entries: [
       ["屋外", "outdoors"],
       ["屋内", "indoors"],
-      ["夜空", "night sky"],
-      ["星空", "starry sky"],
-      ["夕焼け", "sunset"],
-      ["雲", "cloud"],
       ["森", "forest"],
       ["海辺", "beach"],
       ["街", "city"],
       ["寝室", "bedroom"],
       ["桜", "cherry blossoms"],
-      ["雪", "snow"],
-      ["雨", "rain"],
       ["カフェ", "cafe"],
       ["図書館", "library"],
       ["屋上", "rooftop"],
@@ -328,9 +344,24 @@ const groups: SeedGroup[] = [
     ],
   },
   {
+    key: "weather",
+    label: "天気",
+    tone: "orange",
+    target: "base",
+    entries: [
+      ["夜空", "night sky"],
+      ["星空", "starry sky"],
+      ["夕焼け", "sunset"],
+      ["雲", "cloud"],
+      ["雪", "snow"],
+      ["雨", "rain"],
+    ],
+  },
+  {
     key: "comp",
     label: "構図",
     tone: "forest",
+    target: "character",
     entries: [
       ["バストアップ", "upper body"],
       ["膝上（カウボーイショット）", "cowboy shot"],
@@ -350,6 +381,7 @@ const groups: SeedGroup[] = [
     key: "art",
     label: "画風",
     tone: "rose",
+    target: "base",
     entries: [
       ["アニメ塗り", "anime coloring"],
       ["水彩", "watercolor (medium)"],
@@ -367,6 +399,7 @@ const groups: SeedGroup[] = [
     key: "quality",
     label: "品質",
     tone: "yellow",
+    target: "base",
     entries: [
       ["傑作", "masterpiece"],
       ["高画質", "best quality"],
@@ -380,6 +413,7 @@ const groups: SeedGroup[] = [
     key: "light",
     label: "光・効果",
     tone: "amber",
+    target: "base",
     entries: [
       ["逆光", "backlighting"],
       ["日差し", "sunlight"],
@@ -399,6 +433,7 @@ const groups: SeedGroup[] = [
     key: "color",
     label: "色調",
     tone: "purple",
+    target: "base",
     entries: [
       ["モノクロ", "monochrome"],
       ["グレースケール", "greyscale"],
@@ -415,6 +450,7 @@ const groups: SeedGroup[] = [
     key: "season",
     label: "季節・行事",
     tone: "red",
+    target: "base",
     entries: [
       ["春", "spring (season)"],
       ["夏", "summer"],
@@ -439,6 +475,7 @@ export const initialPromptGroups: PromptGroup[] = groups.map((group, groupIndex)
   id: group.key,
   label: group.label,
   tone: group.tone,
+  target: group.target,
   sortOrder: groupIndex,
   phrases: group.entries.map(([label, tag], index) => ({
     id: `${group.key}-${tag.replaceAll(/[^A-Za-z0-9]+/g, "-")}`,

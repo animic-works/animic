@@ -8,7 +8,7 @@ import { generationTimeoutMs } from "../battle/battle-state";
 import type { GenerationOutcome } from "../battle/battle-state";
 import { roomCodeSchema } from "../room/room-state";
 import { putGeneratedImage } from "./generated-images.server";
-import { generationInputSchema, getInputHash } from "./generation-input";
+import { checkGenerationInput, generationInputEntries, getInputHash } from "./generation-input";
 import { getNovelAiQueue } from "./novelai.server";
 
 /**
@@ -17,30 +17,39 @@ import { getNovelAiQueue } from "./novelai.server";
  */
 export const generateImage = createServerFn({ method: "POST" })
   .validator(
-    v.object({
-      code: roomCodeSchema,
-      battleId: v.pipe(v.string(), v.uuid()),
-      generationId: v.pipe(v.string(), v.uuid()),
-      ...generationInputSchema.entries,
-    }),
+    v.pipe(
+      v.object({
+        code: roomCodeSchema,
+        battleId: v.pipe(v.string(), v.uuid()),
+        generationId: v.pipe(v.string(), v.uuid()),
+        ...generationInputEntries,
+      }),
+      checkGenerationInput(),
+    ),
   )
   .handler(async ({ data }) => {
     setResponseHeader("Cache-Control", "private, no-store");
     const current = await createAuth().api.getSession({ headers: getRequestHeaders() });
     if (!current) throw new Error("参加するにはセッションの再作成が必要です。");
     const room = env.ROOMS.getByName(data.code);
-    const { battleId, generationId, prompt } = data;
-    const { accepted, acceptedAt } = await room.acceptGeneration(
+    const { battleId, generationId, prompt, characters } = data;
+    const { accepted, acceptedAt, characterCount } = await room.acceptGeneration(
       battleId,
       current.user.id,
       generationId,
-      await getInputHash({ prompt }),
+      await getInputHash({ prompt, characters }),
+      characters.length,
     );
     if (!accepted) return;
+    // キャラクターの数はお題に合わせる。送られなかったキャラの欄は空のまま送る。
+    const input = {
+      prompt,
+      characters: Array.from({ length: characterCount }, (_, index) => characters[index] ?? ""),
+    };
     const finished = (async () => {
       let outcome: GenerationOutcome = { status: "failed" };
       try {
-        const result = await getNovelAiQueue().generate(prompt, acceptedAt + generationTimeoutMs);
+        const result = await getNovelAiQueue().generate(input, acceptedAt + generationTimeoutMs);
         if (result.ok)
           outcome = {
             status: "succeeded",

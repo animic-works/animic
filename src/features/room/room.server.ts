@@ -9,6 +9,7 @@ import {
   canStartBattle,
   reconcileBattle,
   acceptGeneration,
+  characterCount,
   finishGeneration,
   submitImage,
   getBattleSnapshot,
@@ -389,16 +390,30 @@ export class Room extends DurableObject<Env> {
     return { state, battle: state.battle };
   }
 
-  async acceptGeneration(battleId: string, participantId: string, id: string, inputHash: string) {
+  async acceptGeneration(
+    battleId: string,
+    participantId: string,
+    id: string,
+    inputHash: string,
+    characters = 0,
+  ) {
     const { state, battle } = this.#requireBattle(battleId);
     if (!state.members.some((member) => member.id === participantId))
       throw new Error("ルームへの参加が必要です。");
-    const result = acceptGeneration(battle, { participantId, id, inputHash }, Date.now());
+    const result = acceptGeneration(
+      battle,
+      { participantId, id, inputHash, characters },
+      Date.now(),
+    );
     state.battle = result.battle;
     this.#save(state);
     await this.#publish();
     // 生成の期限は、呼び出し側の時計ではなくこのDOが記録した受付時刻から数える。
-    return { accepted: result.accepted, acceptedAt: result.acceptedAt };
+    return {
+      accepted: result.accepted,
+      acceptedAt: result.acceptedAt,
+      characterCount: characterCount(battle.settings.difficulty),
+    };
   }
 
   async finishGeneration(battleId: string, id: string, outcome: GenerationOutcome) {

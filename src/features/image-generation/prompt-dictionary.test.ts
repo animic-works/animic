@@ -4,6 +4,7 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   browseDictionary,
   convertBlocks,
+  groupsForBlock,
   matchRange,
   normalizeQuery,
   phraseName,
@@ -15,8 +16,8 @@ import { promptGroupSchema } from "./prompt-phrases";
 import type { PromptGroup } from "./prompt-phrases";
 
 describe("initialPromptGroups", () => {
-  it("22ジャンル・266件で、タグが全体で重複しない", () => {
-    expect(initialPromptGroups).toHaveLength(22);
+  it("23ジャンル・266件で、タグが全体で重複しない", () => {
+    expect(initialPromptGroups).toHaveLength(23);
     const tags = initialPromptGroups.flatMap((group) =>
       group.phrases.map((phrase) => phrase.tag.toLowerCase()),
     );
@@ -59,6 +60,7 @@ describe("searchDictionary", () => {
         id: "style",
         label: "髪型",
         tone: "amber",
+        target: "character",
         sortOrder: 0,
         phrases: [
           {
@@ -135,5 +137,24 @@ describe("convertBlocks", () => {
       [],
       [{ text: "1人の女の子", weight: 1 }],
     ]);
+  });
+});
+
+const targetsOf = (block: number) =>
+  new Set(groupsForBlock(initialPromptGroups, block).map((group) => group.target));
+
+describe("groupsForBlock", () => {
+  it("ベースの欄にはベース・両方、キャラの欄にはキャラ・両方のグループを使う", () => {
+    expect(targetsOf(0)).toEqual(new Set(["base"]));
+    expect(targetsOf(1)).toEqual(new Set(["character"]));
+    const both = { ...initialPromptGroups[0], id: "both", target: "both" as const };
+    for (const block of [0, 1, 2])
+      expect(groupsForBlock([both], block).map((group) => group.id)).toEqual(["both"]);
+    expect(groupsForBlock(initialPromptGroups, 0).map((group) => group.id)).toEqual(
+      expect.arrayContaining(["who", "season"]),
+    );
+    expect(groupsForBlock(initialPromptGroups, 1).map((group) => group.id)).toEqual(
+      expect.arrayContaining(["hair", "comp"]),
+    );
   });
 });

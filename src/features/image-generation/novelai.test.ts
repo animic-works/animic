@@ -149,21 +149,15 @@ async function zip(data: Uint8Array<ArrayBuffer>, method: 0 | 8) {
 }
 
 describe("NovelAIへのペイロード", () => {
+  const input = { prompt: "1girl, solo", characters: [], stylePrompt: "", seed: 12345 };
   it.each(models)("$labelの固定値と品質タグを参考実装と同じ形で送る", ({ model, reference }) => {
-    expect(
-      buildGeneratePayload({ prompt: "1girl, solo", stylePrompt: "", model, seed: 12345 }),
-    ).toStrictEqual(reference);
+    expect(buildGeneratePayload({ ...input, model })).toStrictEqual(reference);
   });
   it.each(models)(
     "$labelでは規定の絵柄をプロンプトと品質タグの間に入れ、inputには加えない",
     ({ model, reference, qualityTags }) => {
       expect(
-        buildGeneratePayload({
-          prompt: "1girl, solo",
-          stylePrompt: "artist:example",
-          model,
-          seed: 12345,
-        }),
+        buildGeneratePayload({ ...input, stylePrompt: "artist:example", model }),
       ).toStrictEqual(
         withPrompt(reference, "1girl, solo", `1girl, solo, artist:example, ${qualityTags}`),
       );
@@ -173,13 +167,45 @@ describe("NovelAIへのペイロード", () => {
     "$labelでは規定の絵柄と品質タグをText:の段落より前に入れる",
     ({ model, reference, qualityTags }) => {
       const prompt = "1girl, solo\nText: Hello";
-      expect(buildGeneratePayload({ prompt, stylePrompt: "", model, seed: 12345 })).toStrictEqual(
+      expect(buildGeneratePayload({ ...input, prompt, model })).toStrictEqual(
         withPrompt(reference, prompt, `1girl, solo, ${qualityTags}\nText: Hello`),
       );
       expect(
-        buildGeneratePayload({ prompt, stylePrompt: "artist:example", model, seed: 12345 }),
+        buildGeneratePayload({ ...input, prompt, stylePrompt: "artist:example", model }),
       ).toStrictEqual(
         withPrompt(reference, prompt, `1girl, solo, artist:example, ${qualityTags}\nText: Hello`),
+      );
+    },
+  );
+  it.each(models)(
+    "$labelではキャラの欄をキャラクターごとのプロンプトにし、空の欄も中央の位置で送る",
+    ({ model, reference }) => {
+      const payload = buildGeneratePayload({
+        ...input,
+        prompt: "2girls, white background",
+        characters: ["pink hair, smile", ""],
+        model,
+      });
+      expect(payload.input).toBe("2girls, white background");
+      expect(payload.parameters.characterPrompts).toStrictEqual([
+        { prompt: "pink hair, smile", uc: "", center: { x: 0.5, y: 0.5 }, enabled: true },
+        { prompt: "", uc: "", center: { x: 0.5, y: 0.5 }, enabled: true },
+      ]);
+      expect(payload.parameters.v4_prompt).toStrictEqual({
+        ...reference.parameters.v4_prompt,
+        caption: {
+          base_caption: payload.parameters.v4_prompt.caption.base_caption,
+          char_captions: [
+            { char_caption: "pink hair, smile", centers: [{ x: 0.5, y: 0.5 }] },
+            { char_caption: "", centers: [{ x: 0.5, y: 0.5 }] },
+          ],
+        },
+      });
+      expect(payload.parameters.v4_prompt.caption.base_caption).toMatch(
+        /^2girls, white background, /,
+      );
+      expect(payload.parameters.v4_negative_prompt).toStrictEqual(
+        reference.parameters.v4_negative_prompt,
       );
     },
   );
@@ -207,6 +233,7 @@ describe("NovelAIへの生成の要求", () => {
     apiUrl: "https://novelai.example",
     token: "pst-test",
     prompt: "1girl",
+    characters: [],
     stylePrompt: "artist:example",
     model: "nai-diffusion-4-5-curated",
   } as const;

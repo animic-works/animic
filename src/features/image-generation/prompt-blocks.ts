@@ -1,7 +1,8 @@
 // 対戦画面のプロンプト入力の操作（語句の確定・出し入れ・重み・組み立て）。
 // 画面の状態は持たず、渡された語句の並びから次の並びを返す純粋な関数だけを置く
 
-import { maxPromptLength } from "./generation-input";
+import { maxPromptLength, promptLength } from "./generation-input";
+import type { GenerationInput } from "./generation-input";
 
 /** 入力方法。文章は日本語の表記、タグはDanbooruのタグで語句を入れる */
 export type PromptMode = "text" | "tag";
@@ -123,15 +124,21 @@ export function renderToken(token: PromptToken): string {
   return token.weight === 1 ? token.text : `${token.weight.toFixed(1)}::${token.text}::`;
 }
 
-/** 全欄をつないだ1つのプロンプト。空の欄は飛ばし、文章は`、`、タグは`, `でつなぐ */
+/** 1つの欄の語句をつないだプロンプト。文章は`、`、タグは`, `でつなぐ */
+function assembleBlock(tokens: readonly PromptToken[], mode: PromptMode): string {
+  return tokens.map(renderToken).join(mode === "tag" ? ", " : "、");
+}
+
+/** NovelAIへ送る入力。ベースの欄は全体のプロンプト、キャラの欄はキャラクターごとのプロンプト（空の欄は空文字列） */
 export function assemblePrompt(
   blocks: readonly (readonly PromptToken[])[],
   mode: PromptMode,
-): string {
-  return blocks
-    .flat()
-    .map(renderToken)
-    .join(mode === "tag" ? ", " : "、");
+): GenerationInput {
+  const [base = [], ...characters] = blocks;
+  return {
+    prompt: assembleBlock(base, mode),
+    characters: characters.map((tokens) => assembleBlock(tokens, mode)),
+  };
 }
 
 /** 書きかけを確定したと仮定した欄の並び（押せるかどうかの判定に使う） */
@@ -148,15 +155,16 @@ export function getGenerateBlocker(input: {
   locked: boolean;
   /** 自分の生成が未完了 */
   pending: boolean;
-  prompt: string;
+  prompt: GenerationInput;
 }): { disabled: true; reason: string | null } | { disabled: false; reason: null } {
   if (input.locked) return { disabled: true, reason: null };
   if (input.pending) return { disabled: true, reason: "生成が終わるまでお待ちください" };
-  if (!input.prompt) return { disabled: true, reason: "プロンプトを入力してください" };
-  if (input.prompt.length > maxPromptLength) {
+  const length = promptLength(input.prompt);
+  if (length === 0) return { disabled: true, reason: "プロンプトを入力してください" };
+  if (length > maxPromptLength) {
     return {
       disabled: true,
-      reason: `プロンプトが${maxPromptLength}文字を超えています（${input.prompt.length}文字）`,
+      reason: `プロンプトが${maxPromptLength}文字を超えています（${length}文字）`,
     };
   }
   return { disabled: false, reason: null };

@@ -262,7 +262,7 @@ Panda Native Specは、デザインシステムの定義から生成する機械
 
 RoomPageはloaderの初期状態を受け取り、`use-room-connection.ts`を通してWebSocket配信を購読します。ルーム参加者・ホスト・準備・設定はサーバーのSnapshotから表示し、開始・設定変更・準備・退出はServer Functionsへ渡します。ロビーの設定変更は`use-room-settings.ts`が即時に表示し、入力順に保存します。保存したバージョンへ配信が追いついたらサーバーの値を使い、保存失敗は呼び出し元へ返して後続の操作を妨げないようにします。難易度・生成時間・画像選択の猶予を設定し、接続中の参加者が2人以上のときに対戦を開始します。結果は2人なら勝ち負け、3人以上なら順位で表示します。`battle-screen.ts`は本人の参加資格と対戦状態から待機・生成中・生成完了待ち・画像選択・提出後の待機・結果を判定します。採点中は提出後の表示に、採点中であることと、時間がかかっている場合の案内を加えます。途中参加者は次の対戦を待ちます。再接続ではサーバーの状態を復元し、接続資格を失った場合は終了案内を表示します。
 
-対戦画面のプロンプト入力は`src/features/image-generation/`の`PromptComposer`が組み立て、語句・重みの操作とプロンプトの構築は`prompt-blocks.ts`、表現の辞書から候補と検索の結果を探す処理は`prompt-dictionary.ts`が担当します。入力部品は`@animic/react`を使い、辞書やプロンプトの構文を共通部品へ持ち込みません。表現の辞書は`src/routes/rooms.$code.tsx`のloaderが`listPromptGroups`（`prompt-phrases.functions.ts`）でD1から読み、RoomPage・BattlePageを通して`PromptComposer`へ渡します。参加前の人にも見せてよい情報のため、`listPromptGroups`は認証しません。管理画面での編集は、次にloaderが動いたときから反映します。
+対戦画面のプロンプト入力は`src/features/image-generation/`の`PromptComposer`が組み立て、語句・重みの操作とプロンプトの構築は`prompt-blocks.ts`、表現の辞書から候補と検索の結果を探す処理と、開いている欄に入れるグループを選ぶ処理（`groupsForBlock`）は`prompt-dictionary.ts`が担当します。入力部品は`@animic/react`を使い、辞書やプロンプトの構文を共通部品へ持ち込みません。表現の辞書は`src/routes/rooms.$code.tsx`のloaderが`listPromptGroups`（`prompt-phrases.functions.ts`）でD1から読み、RoomPage・BattlePageを通して`PromptComposer`へ渡します。参加前の人にも見せてよい情報のため、`listPromptGroups`は認証しません。管理画面での編集は、次にloaderが動いたときから反映します。
 
 D1にグループが1つもなければ、`prompt-phrases.server.ts`の`loadPromptGroups`が`prompt-dictionary-seed.ts`の初期データを登録してから返します。IDは初期データから決まった値にし、`ON CONFLICT DO NOTHING`で入れるため、同時に呼ばれても1回分だけ入ります。D1の1つのクエリに渡せる値は100個までのため、表現は件数を分けた複数のINSERTを1つの`batch`で入れます。
 
@@ -367,7 +367,7 @@ DOの状態はSQLiteストレージに永続化し、再起動・再接続後に
 
 画像生成サービスは`image-generation`のサーバー専用処理から呼び出します。Animicが管理する認証情報はサーバー側の秘密情報として保管し、クライアントのコード・レスポンス・ログには含めません。参加者の識別情報と生成サービスの認証情報を分けて扱います。
 
-参加者の生成は、`generateImage`（`src/features/image-generation/image-generation.functions.ts`）が受け付けます。入力（プロンプトだけ、1000文字まで）を`generation-input.ts`のスキーマで検証し、正規化した入力のSHA-256（`inputHash`）を付けて、ルームのDOの`acceptGeneration`に渡します。ルームのDOは受付時刻を返し、生成の期限はこの受付時刻から1分で数えます。Server Functionの時計で数えると、ルームのDOではタイムアウトした生成をNovelAIへ送ることがあるためです。同じ要求の再送なら、NovelAIを呼ばずに返します。受け付けたら、生成キューのDOの`generate`にプロンプトと期限を渡し、成功したらWebPをR2に保存して、ルームのDOの`finishGeneration`に画像のURLを渡します。失敗したら失敗を渡します。`generateImage`は生成の結果を返さず、結果は状態配信で本人に届きます。この処理は`waitUntil`（`cloudflare:workers`）に登録してから待つため、参加者が通信を切っても、Workersの上限（切断から30秒）までは続きます。それを過ぎて止まった生成は、タイムアウトで失敗になります。NovelAIの接続先は`wrangler.jsonc`の`vars`の`NOVELAI_API_URL`です。
+参加者の生成は、`generateImage`（`src/features/image-generation/image-generation.functions.ts`）が受け付けます。入力（ベースのプロンプト`prompt`とキャラの欄ごとのプロンプト`characters`、すべての欄を合わせて1000文字まで）を`generation-input.ts`で検証し、正規化した入力のSHA-256（`inputHash`）とキャラのプロンプトの数を付けて、ルームのDOの`acceptGeneration`に渡します。ルームのDOは、キャラのプロンプトがお題のキャラクターの数より多ければ拒否し、受付時刻とお題のキャラクターの数を返します。`generateImage`は送られなかったキャラの欄を空文字列で埋め、キャラクターの数をお題に合わせます。生成の期限はこの受付時刻から1分で数えます。Server Functionの時計で数えると、ルームのDOではタイムアウトした生成をNovelAIへ送ることがあるためです。同じ要求の再送なら、NovelAIを呼ばずに返します。受け付けたら、生成キューのDOの`generate`に入力と期限を渡し、成功したらWebPをR2に保存して、ルームのDOの`finishGeneration`に画像のURLを渡します。失敗したら失敗を渡します。`generateImage`は生成の結果を返さず、結果は状態配信で本人に届きます。この処理は`waitUntil`（`cloudflare:workers`）に登録してから待つため、参加者が通信を切っても、Workersの上限（切断から30秒）までは続きます。それを過ぎて止まった生成は、タイムアウトで失敗になります。NovelAIの接続先は`wrangler.jsonc`の`vars`の`NOVELAI_API_URL`です。
 
 NovelAIは1アカウントで同時に1件しか生成できないため、生成キューのDO（`NovelAiQueue`、`src/features/image-generation/novelai.server.ts`）の1つのインスタンスが、全ルームの生成を受付順の1つの待ち行列に並べ、`NOVELAI_API_TOKEN`にカンマ区切りで登録したトークンごとに同時1件までNovelAIへ送ります。順番が来た生成は、空いているトークンのうち最も長く使っていないものに割り当てます（`src/features/image-generation/novelai-tokens.ts`）。トークンが1つなら全ルームの生成を1件ずつ送り、トークンの数だけ同時に生成できる件数が増えます。429は同じトークンで送り直します。401・402を返したトークンは、生成キューのDOが再起動する（デプロイや設定の変更）まで使いません。使えるトークンがなくなった場合は、トークンがない場合と同じく生成を失敗にします。ログにはトークンそのものではなく、1始まりの番号を残します。順番が来たら、運営者が選んだモデルをこのDOのストレージから読み、Workerの環境変数`NOVELAI_STYLE_PROMPT`の規定の絵柄を参加者のプロンプトと品質タグの間に加えます。絵柄と品質タグはNovelAIの`v4_prompt`にだけ入れ、`input`には参加者のプロンプトをそのまま送ります。モデルをこのDOに置くのは、生成のたびにD1を読まないためです。モデルごとの品質タグ・ネガティブプロンプト・パラメーターは`src/features/image-generation/novelai.ts`にあります。
 
@@ -417,7 +417,7 @@ NovelAIはPNGのtEXtチャンクと、アルファ値の最下位ビット（`st
 
 画像生成の画面は、`image-generation`のServer Function（`src/features/image-generation/image-generation-admin.functions.ts`）から生成キューのDOを呼び、モデルを読み書きします。値はValibotの`picklist`で検証し、V5 CuratedとV4.5 Curated以外は保存しません。
 
-バックアップのZIP（`backup.json`と、`topic-images/`のお題の画像・`phrase-images/`の挿絵）は、ブラウザーで`fflate`を使って作成・展開します。書き出しではServer Functionから`backup.json`の内容を受け取り、画像は配信URLから読みます。読み込みでは、ZIPを検証して件数を表示し、運営者が選んだ項目（お題・対戦条件の候補・表現の辞書）について、お題の画像と挿絵を1枚ずつ保存してから、グループ・表現・お題・対戦条件の候補を20件ずつServer Functionへ送ります。選ばなかった項目の画像と書き込みは送りません。D1の1回の呼び出しで使えるクエリ数に収めるためです。書き込みはIDで上書きまたは追加するため、途中で失敗しても同じZIPを同じ項目で読み込み直せば同じ状態になります。グループの色と表現のサフィックス・注釈・挿絵がない前の形式の`backup.json`は、色を`slate`、サフィックス・注釈を空、挿絵をなしとして読み込みます。
+バックアップのZIP（`backup.json`と、`topic-images/`のお題の画像・`phrase-images/`の挿絵）は、ブラウザーで`fflate`を使って作成・展開します。書き出しではServer Functionから`backup.json`の内容を受け取り、画像は配信URLから読みます。読み込みでは、ZIPを検証して件数を表示し、運営者が選んだ項目（お題・対戦条件の候補・表現の辞書）について、お題の画像と挿絵を1枚ずつ保存してから、グループ・表現・お題・対戦条件の候補を20件ずつServer Functionへ送ります。選ばなかった項目の画像と書き込みは送りません。D1の1回の呼び出しで使えるクエリ数に収めるためです。書き込みはIDで上書きまたは追加するため、途中で失敗しても同じZIPを同じ項目で読み込み直せば同じ状態になります。グループの色・入れる欄と表現のサフィックス・注釈・挿絵がない前の形式の`backup.json`は、色を`slate`、入れる欄を`both`、サフィックス・注釈を空、挿絵をなしとして読み込みます。
 
 ### 処理の呼び出し順序
 

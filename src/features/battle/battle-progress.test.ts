@@ -62,6 +62,25 @@ describe("生成受付と完了", () => {
     ).toThrow();
     expect(() => accept(initial, "one", "b")).toThrow();
   });
+  it("お題のキャラクターより多いキャラのプロンプトを拒否し、記録には数を残さない", () => {
+    const hard = createBattle(
+      { difficulty: "hard", durationSeconds: 10, selectionSeconds: 5 },
+      { id: "topic", difficulty: "hard", imageUrl: "https://example.invalid/topic.png" },
+      ["a", "b"],
+      0,
+    );
+    const request = { id: "one", participantId: "a", inputHash: "h" };
+    expect(() => acceptGeneration(battle(), { ...request, characters: 2 }, 1000)).toThrow(
+      "お題のキャラクターより多くのキャラのプロンプトは送れません。",
+    );
+    const accepted = acceptGeneration(hard, { ...request, characters: 2 }, 1000);
+    expect(accepted.accepted).toBe(true);
+    expect(accepted.battle.generations).toEqual([
+      { ...request, acceptedAt: 1000, status: "pending" },
+    ]);
+    expect(() => acceptGeneration(hard, { ...request, characters: 3 }, 1000)).toThrow();
+  });
+
   it("時間内に受け付けた画像は時間切れ後も完成・提出できる", () => {
     const pending = reconcileBattle(accept(battle(), "one"), 10_000);
     expect(pending.selectionEndsAt).toBeNull();

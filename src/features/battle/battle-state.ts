@@ -8,6 +8,11 @@ export const battleSettingsSchema = v.object({
   durationSeconds: v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(3600)),
   selectionSeconds: v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(3600)),
 });
+/** お題のキャラクターの数。むずかしいだけ2人で、対戦画面のキャラの欄もこの数だけ出す。 */
+export function characterCount(difficulty: v.InferOutput<typeof difficultySchema>): 1 | 2 {
+  return difficulty === "hard" ? 2 : 1;
+}
+
 export const topicSchema = v.object({
   id: v.string(),
   difficulty: difficultySchema,
@@ -286,11 +291,20 @@ function decideByScores(state: BattleState, endsAt: number, now: number): Battle
 
 export function acceptGeneration(
   state: BattleState,
-  request: { id: string; participantId: string; inputHash: string },
+  request: {
+    id: string;
+    participantId: string;
+    inputHash: string;
+    /** 送ったキャラのプロンプトの数。お題のキャラクターの数まで */
+    characters?: number;
+  },
   now: number,
 ) {
+  const { characters = 0, ...generation } = request;
   if (!state.participantIds.includes(request.participantId))
     throw new Error("この対戦の参加者ではありません。");
+  if (characters > characterCount(state.settings.difficulty))
+    throw new Error("お題のキャラクターより多くのキャラのプロンプトは送れません。");
   const existing = state.generations.find((item) => item.id === request.id);
   if (existing) {
     if (
@@ -317,7 +331,7 @@ export function acceptGeneration(
     )
   )
     throw new Error("生成が終わるまでお待ちください。");
-  next.generations.push({ ...request, acceptedAt: now, status: "pending" });
+  next.generations.push({ ...generation, acceptedAt: now, status: "pending" });
   return { battle: next, accepted: true, acceptedAt: now };
 }
 

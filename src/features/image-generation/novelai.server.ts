@@ -3,6 +3,7 @@ import webpEncoderWasm from "@jsquash/webp/codec/enc/webp_enc_simd.wasm";
 import * as v from "valibot";
 
 import { toPlainWebp } from "./generated-image";
+import type { GenerationInput } from "./generation-input";
 import { defaultImageModel, imageModelSchema } from "./image-models";
 import type { ImageModel } from "./image-models";
 import { minimumTimeMs, requestImage } from "./novelai";
@@ -42,14 +43,14 @@ export class NovelAiQueue extends DurableObject<Env> {
   }
 
   /** 成功すると、メタデータと透過のないWebPを返す。 */
-  async generate(prompt: string, deadline: number) {
-    const result = await this.#run(prompt, deadline);
+  async generate(input: GenerationInput, deadline: number) {
+    const result = await this.#run(input, deadline);
     // 変換はトークンを返した後に行い、次の生成のNovelAIとの通信と重ねる。
     return result.ok ? await this.#toWebp(result.image) : result;
   }
 
   // fetchの応答を待つ間もDOは次の要求を受け付けるため、トークンの貸し借りで順番と同時に送る数を守る。
-  async #run(prompt: string, deadline: number) {
+  async #run(input: GenerationInput, deadline: number) {
     const queuedAt = Date.now();
     const token = await this.#pool.acquire();
     if (token === null) {
@@ -58,7 +59,7 @@ export class NovelAiQueue extends DurableObject<Env> {
     }
     let usable = true;
     try {
-      const result = await this.#request(token, prompt, deadline, queuedAt);
+      const result = await this.#request(token, input, deadline, queuedAt);
       // 401・402はトークンかアカウントの問題で、送り直しても同じ結果になる。
       if (!result.ok && (result.status === 401 || result.status === 402)) {
         usable = false;
@@ -83,7 +84,7 @@ export class NovelAiQueue extends DurableObject<Env> {
   }
 
   /** `token`は`#tokens`の添字。ログにはトークンそのものではなく1始まりの番号を残す。 */
-  async #request(token: number, prompt: string, deadline: number, queuedAt: number) {
+  async #request(token: number, input: GenerationInput, deadline: number, queuedAt: number) {
     // 順番が来た時点のモデルを使う。管理画面で切り替えると、順番待ちの生成も新しいモデルになる。
     const model = this.getModel();
     console.info("NovelAIへ画像生成を送ります。", {
@@ -95,7 +96,7 @@ export class NovelAiQueue extends DurableObject<Env> {
     const request = {
       apiUrl: this.env.NOVELAI_API_URL,
       token: this.#tokens[token] ?? "",
-      prompt,
+      ...input,
       stylePrompt: v.parse(stylePromptSchema, this.env.NOVELAI_STYLE_PROMPT),
       model,
       deadline,
