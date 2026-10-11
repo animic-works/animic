@@ -156,10 +156,8 @@ export function LobbyPage({
         pending={actions.pending}
         error={actions.error}
         handsOverHost={isHost && lobby.players.length > 1}
-        onClose={() => {
-          close();
-          blocker.reset?.();
-        }}
+        // 戻る操作で出した確認は、その移動だけを取り消す。開いていたほかのダイアログは閉じない。
+        onClose={() => (blocker.status === "blocked" ? blocker.reset() : close())}
         onLeave={actions.leave}
       />
       <StartAnywayDialog
