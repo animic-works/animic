@@ -2,7 +2,9 @@ import { and, asc, eq, inArray, lt, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import * as v from "valibot";
 
+import { scoringWeightsSchema } from "./scoring-metrics";
 import { scoringJob, scoringResult } from "./scoring.schema";
+import { loadScoringWeights } from "./scoring-weights.server";
 import {
   readScoringMetrics,
   readScoringTotals,
@@ -21,14 +23,17 @@ type ScoringRequest = {
   submissionImageUrl: string;
 };
 
+/** 採点ジョブを登録する。再現度の計算には、対戦を始めた時点（`startedAt`）の重みを写して使う。 */
 export async function registerScoringJobs(
   db: D1Database,
   battleId: string,
   roomCode: string,
+  startedAt: number,
   requests: ScoringRequest[],
 ) {
   if (!requests.length) return;
   const createdAt = new Date();
+  const { weights } = await loadScoringWeights(db, new Date(startedAt));
   await drizzle(db)
     .insert(scoringJob)
     .values(
@@ -49,6 +54,7 @@ export async function registerScoringJobs(
           inputs: JSON.stringify(inputs),
           state: "queued" as const,
           createdAt,
+          weights: JSON.stringify(weights),
         };
       }),
     )
@@ -169,21 +175,29 @@ export async function completeScoringJob(
 ) {
   const client = drizzle(db);
   const [job] = await client
-    .select({ workflowVersion: scoringJob.workflowVersion, inputs: scoringJob.inputs })
+    .select({
+      workflowVersion: scoringJob.workflowVersion,
+      inputs: scoringJob.inputs,
+      weights: scoringJob.weights,
+    })
     .from(scoringJob)
     .where(assignedTo(workerId, jobId));
   if (!job) return false;
   const rawResult = JSON.stringify(data);
   const inputs = v.safeParse(scoringInputsSchema, JSON.parse(job.inputs));
+  // 重みを写す前に登録したジョブは、採点ノードの`total`を使う。
+  const weights = job.weights ? v.parse(scoringWeightsSchema, JSON.parse(job.weights)) : null;
   const totals = inputs.success
-    ? readScoringTotals(job.workflowVersion, inputs.output, data)
+    ? readScoringTotals(job.workflowVersion, inputs.output, data, weights)
     : null;
   if (!totals?.length)
     return releaseScoringJob(
       db,
       workerId,
       jobId,
-      "採点結果からtotalを読み取れませんでした。",
+      weights
+        ? "採点結果から指標の点を読み取れませんでした。"
+        : "採点結果からtotalを読み取れませんでした。",
       rawResult,
     );
   await client.batch([

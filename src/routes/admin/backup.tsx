@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { BackupScreen } from "../../features/admin/backup-screen";
 
-// お題・対戦条件・よく使う表現の書き出しと読み込み。
+// お題・対戦条件・表現の辞書の書き出しと読み込み。
 export const Route = createFileRoute("/admin/backup")({
   head: () => ({ meta: [{ title: "バックアップ | 管理画面 | Animic" }] }),
   component: Backup,

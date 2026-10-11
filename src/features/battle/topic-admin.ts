@@ -14,10 +14,6 @@ export const TOPIC_STATUS_LABELS: Record<TopicStatus, string> = {
 /** 1つの難易度で公開するお題の目安（docs/product.md）。 */
 export const TOPIC_GOAL = 100;
 
-/** 画像を選ぶときの条件。ブラウザーでWebPに変換する前のファイルに使う。 */
-export const topicSourceImageTypes = ["image/png", "image/webp", "image/jpeg"];
-export const maxTopicSourceBytes = 10 * 1024 * 1024;
-
 export const topicTitleSchema = v.pipe(
   v.string(),
   v.trim(),

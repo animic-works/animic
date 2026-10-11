@@ -22,6 +22,7 @@ import { Route as AdminPromptsRouteImport } from './routes/admin/prompts'
 import { Route as MypageIndexRouteImport } from './routes/mypage/index'
 import { Route as RoomsCodeRouteImport } from './routes/rooms.$code'
 import { Route as AdminScoringJobsRouteImport } from './routes/admin/scoring/jobs'
+import { Route as AdminScoringWeightsRouteImport } from './routes/admin/scoring/weights'
 import { Route as AdminScoringWorkersRouteImport } from './routes/admin/scoring/workers'
 import { Route as AdminTopicsIndexRouteImport } from './routes/admin/topics/index'
 import { Route as AdminTopicsTopicIdRouteImport } from './routes/admin/topics/$topicId'
@@ -29,6 +30,7 @@ import { Route as AdminTopicsNewRouteImport } from './routes/admin/topics/new'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as GeneratedImagesBattleIdGenerationIdRouteImport } from './routes/generated-images.$battleId.$generationId'
 import { Route as MypageMatchesBattleIdRouteImport } from './routes/mypage/matches/$battleId'
+import { Route as PhraseImagesPhraseIdImageIdRouteImport } from './routes/phrase-images.$phraseId.$imageId'
 import { Route as TopicImagesTopicIdImageIdRouteImport } from './routes/topic-images.$topicId.$imageId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -96,6 +98,11 @@ const AdminScoringJobsRoute = AdminScoringJobsRouteImport.update({
   path: '/scoring/jobs',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminScoringWeightsRoute = AdminScoringWeightsRouteImport.update({
+  id: '/scoring/weights',
+  path: '/scoring/weights',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminScoringWorkersRoute = AdminScoringWorkersRouteImport.update({
   id: '/scoring/workers',
   path: '/scoring/workers',
@@ -132,6 +139,12 @@ const MypageMatchesBattleIdRoute = MypageMatchesBattleIdRouteImport.update({
   path: '/mypage/matches/$battleId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PhraseImagesPhraseIdImageIdRoute =
+  PhraseImagesPhraseIdImageIdRouteImport.update({
+    id: '/phrase-images/$phraseId/$imageId',
+    path: '/phrase-images/$phraseId/$imageId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const TopicImagesTopicIdImageIdRoute =
   TopicImagesTopicIdImageIdRouteImport.update({
     id: '/topic-images/$topicId/$imageId',
@@ -153,12 +166,14 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/mypage/': typeof MypageIndexRoute
   '/admin/scoring/jobs': typeof AdminScoringJobsRoute
+  '/admin/scoring/weights': typeof AdminScoringWeightsRoute
   '/admin/scoring/workers': typeof AdminScoringWorkersRoute
   '/admin/topics/$topicId': typeof AdminTopicsTopicIdRoute
   '/admin/topics/new': typeof AdminTopicsNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/generated-images/$battleId/$generationId': typeof GeneratedImagesBattleIdGenerationIdRoute
   '/mypage/matches/$battleId': typeof MypageMatchesBattleIdRoute
+  '/phrase-images/$phraseId/$imageId': typeof PhraseImagesPhraseIdImageIdRoute
   '/topic-images/$topicId/$imageId': typeof TopicImagesTopicIdImageIdRoute
   '/admin/topics/': typeof AdminTopicsIndexRoute
 }
@@ -175,12 +190,14 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/mypage': typeof MypageIndexRoute
   '/admin/scoring/jobs': typeof AdminScoringJobsRoute
+  '/admin/scoring/weights': typeof AdminScoringWeightsRoute
   '/admin/scoring/workers': typeof AdminScoringWorkersRoute
   '/admin/topics/$topicId': typeof AdminTopicsTopicIdRoute
   '/admin/topics/new': typeof AdminTopicsNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/generated-images/$battleId/$generationId': typeof GeneratedImagesBattleIdGenerationIdRoute
   '/mypage/matches/$battleId': typeof MypageMatchesBattleIdRoute
+  '/phrase-images/$phraseId/$imageId': typeof PhraseImagesPhraseIdImageIdRoute
   '/topic-images/$topicId/$imageId': typeof TopicImagesTopicIdImageIdRoute
   '/admin/topics': typeof AdminTopicsIndexRoute
 }
@@ -199,12 +216,14 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/mypage/': typeof MypageIndexRoute
   '/admin/scoring/jobs': typeof AdminScoringJobsRoute
+  '/admin/scoring/weights': typeof AdminScoringWeightsRoute
   '/admin/scoring/workers': typeof AdminScoringWorkersRoute
   '/admin/topics/$topicId': typeof AdminTopicsTopicIdRoute
   '/admin/topics/new': typeof AdminTopicsNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/generated-images/$battleId/$generationId': typeof GeneratedImagesBattleIdGenerationIdRoute
   '/mypage/matches/$battleId': typeof MypageMatchesBattleIdRoute
+  '/phrase-images/$phraseId/$imageId': typeof PhraseImagesPhraseIdImageIdRoute
   '/topic-images/$topicId/$imageId': typeof TopicImagesTopicIdImageIdRoute
   '/admin/topics/': typeof AdminTopicsIndexRoute
 }
@@ -224,12 +243,14 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/mypage/'
     | '/admin/scoring/jobs'
+    | '/admin/scoring/weights'
     | '/admin/scoring/workers'
     | '/admin/topics/$topicId'
     | '/admin/topics/new'
     | '/api/auth/$'
     | '/generated-images/$battleId/$generationId'
     | '/mypage/matches/$battleId'
+    | '/phrase-images/$phraseId/$imageId'
     | '/topic-images/$topicId/$imageId'
     | '/admin/topics/'
   fileRoutesByTo: FileRoutesByTo
@@ -246,12 +267,14 @@ export interface FileRouteTypes {
     | '/admin'
     | '/mypage'
     | '/admin/scoring/jobs'
+    | '/admin/scoring/weights'
     | '/admin/scoring/workers'
     | '/admin/topics/$topicId'
     | '/admin/topics/new'
     | '/api/auth/$'
     | '/generated-images/$battleId/$generationId'
     | '/mypage/matches/$battleId'
+    | '/phrase-images/$phraseId/$imageId'
     | '/topic-images/$topicId/$imageId'
     | '/admin/topics'
   id:
@@ -269,12 +292,14 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/mypage/'
     | '/admin/scoring/jobs'
+    | '/admin/scoring/weights'
     | '/admin/scoring/workers'
     | '/admin/topics/$topicId'
     | '/admin/topics/new'
     | '/api/auth/$'
     | '/generated-images/$battleId/$generationId'
     | '/mypage/matches/$battleId'
+    | '/phrase-images/$phraseId/$imageId'
     | '/topic-images/$topicId/$imageId'
     | '/admin/topics/'
   fileRoutesById: FileRoutesById
@@ -290,6 +315,7 @@ export interface RootRouteChildren {
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   GeneratedImagesBattleIdGenerationIdRoute: typeof GeneratedImagesBattleIdGenerationIdRoute
   MypageMatchesBattleIdRoute: typeof MypageMatchesBattleIdRoute
+  PhraseImagesPhraseIdImageIdRoute: typeof PhraseImagesPhraseIdImageIdRoute
   TopicImagesTopicIdImageIdRoute: typeof TopicImagesTopicIdImageIdRoute
 }
 
@@ -386,6 +412,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminScoringJobsRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/scoring/weights': {
+      id: '/admin/scoring/weights'
+      path: '/scoring/weights'
+      fullPath: '/admin/scoring/weights'
+      preLoaderRoute: typeof AdminScoringWeightsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/scoring/workers': {
       id: '/admin/scoring/workers'
       path: '/scoring/workers'
@@ -435,6 +468,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MypageMatchesBattleIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/phrase-images/$phraseId/$imageId': {
+      id: '/phrase-images/$phraseId/$imageId'
+      path: '/phrase-images/$phraseId/$imageId'
+      fullPath: '/phrase-images/$phraseId/$imageId'
+      preLoaderRoute: typeof PhraseImagesPhraseIdImageIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/topic-images/$topicId/$imageId': {
       id: '/topic-images/$topicId/$imageId'
       path: '/topic-images/$topicId/$imageId'
@@ -452,6 +492,7 @@ interface AdminRouteRouteChildren {
   AdminPromptsRoute: typeof AdminPromptsRoute
   AdminIndexRoute: typeof AdminIndexRoute
   AdminScoringJobsRoute: typeof AdminScoringJobsRoute
+  AdminScoringWeightsRoute: typeof AdminScoringWeightsRoute
   AdminScoringWorkersRoute: typeof AdminScoringWorkersRoute
   AdminTopicsTopicIdRoute: typeof AdminTopicsTopicIdRoute
   AdminTopicsNewRoute: typeof AdminTopicsNewRoute
@@ -465,6 +506,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminPromptsRoute: AdminPromptsRoute,
   AdminIndexRoute: AdminIndexRoute,
   AdminScoringJobsRoute: AdminScoringJobsRoute,
+  AdminScoringWeightsRoute: AdminScoringWeightsRoute,
   AdminScoringWorkersRoute: AdminScoringWorkersRoute,
   AdminTopicsTopicIdRoute: AdminTopicsTopicIdRoute,
   AdminTopicsNewRoute: AdminTopicsNewRoute,
@@ -487,6 +529,7 @@ const rootRouteChildren: RootRouteChildren = {
   GeneratedImagesBattleIdGenerationIdRoute:
     GeneratedImagesBattleIdGenerationIdRoute,
   MypageMatchesBattleIdRoute: MypageMatchesBattleIdRoute,
+  PhraseImagesPhraseIdImageIdRoute: PhraseImagesPhraseIdImageIdRoute,
   TopicImagesTopicIdImageIdRoute: TopicImagesTopicIdImageIdRoute,
 }
 export const routeTree = rootRouteImport

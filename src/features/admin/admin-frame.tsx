@@ -19,10 +19,11 @@ import { AdminError } from "./admin-parts";
 const NAV = [
   { href: "/admin/topics", label: "お題" },
   { href: "/admin/battle-options", label: "対戦条件" },
-  { href: "/admin/prompts", label: "よく使う表現" },
+  { href: "/admin/prompts", label: "表現の辞書" },
   { href: "/admin/image-generation", label: "画像生成" },
   { href: "/admin/scoring/workers", label: "採点ワーカー" },
   { href: "/admin/scoring/jobs", label: "採点ジョブ" },
+  { href: "/admin/scoring/weights", label: "採点の重み" },
   { href: "/admin/backup", label: "バックアップ" },
 ] as const;
 type AdminHref = (typeof NAV)[number]["href"];

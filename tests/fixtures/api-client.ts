@@ -28,12 +28,14 @@ import {
   listPromptGroups,
   savePromptGroup,
   savePromptPhrase,
+  savePromptPhraseImage,
 } from "../../src/features/image-generation/prompt-phrases.functions";
 import {
   getImageModel,
   saveImageModel,
 } from "../../src/features/image-generation/image-generation-admin.functions";
 import { generateImage } from "../../src/features/image-generation/image-generation.functions";
+import { updateScoringWeights } from "../../src/features/scoring/scoring-weights.functions";
 import {
   applyBackupChunk,
   getBackup,
@@ -69,8 +71,10 @@ const api = {
   listPromptGroups,
   savePromptGroup,
   savePromptPhrase,
+  savePromptPhraseImage,
   getImageModel,
   saveImageModel,
+  updateScoringWeights,
   getBackup,
   putBackupImage,
   applyBackupChunk,

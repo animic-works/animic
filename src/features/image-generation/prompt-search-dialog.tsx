@@ -8,22 +8,47 @@ import { Dialog } from "@animic/react/dialog";
 import { Input } from "@animic/react/input";
 import { SegmentedControl } from "@animic/react/segmented-control";
 import { Text } from "@animic/react/text";
-import type { DictionaryTone } from "./prompt-dictionary";
 import { Highlight } from "./prompt-field";
+import type { PromptTone } from "./prompt-phrases";
+
+// 挿絵のない表現のカードに出す絵
+const NO_IMAGE = (
+  <>
+    <svg
+      width="36"
+      height="36"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      aria-hidden="true"
+    >
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <circle cx="8" cy="8" r="1.5" />
+      <path d="m4 18 5-5 4 3 4-6 4 8" />
+    </svg>
+    <Text variant="caption" tone="muted">
+      No Image
+    </Text>
+  </>
+);
+
 /** 左のジャンル。keyがnullは「すべて」、pickedは欄に入っている数 */
 export type SearchGenre = {
   key: string | null;
   label: string;
-  tone: DictionaryTone;
+  tone: PromptTone;
   count: number;
   picked: number;
 };
 
-/** 右のカード。pressedは欄に入っているか */
+/** 右のカード。labelは表示名とサフィックス、imageは挿絵のURL（nullなら「No Image」）、noteは注釈（空なら出さない）、pressedは欄に入っているか */
 export type SearchCard = {
   id: string;
   label: string;
   tag: string;
+  image: string | null;
+  note: string;
   genre: string;
   pressed: boolean;
   labelMatch: [number, number] | null;
@@ -114,26 +139,7 @@ export function PromptSearchDialog(props: PromptSearchDialogProps) {
           <ChoiceCard
             key={card.id}
             label={`${card.label}を${props.target}に${card.pressed ? "入れない" : "入れる"}`}
-            media={
-              <>
-                <svg
-                  width="36"
-                  height="36"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  aria-hidden="true"
-                >
-                  <rect x="3" y="3" width="18" height="18" rx="2" />
-                  <circle cx="8" cy="8" r="1.5" />
-                  <path d="m4 18 5-5 4 3 4-6 4 8" />
-                </svg>
-                <Text variant="caption" tone="muted">
-                  No Image
-                </Text>
-              </>
-            }
+            {...(card.image ? { src: card.image } : { media: NO_IMAGE })}
             selected={card.pressed}
             disabled={props.disabled}
             onSelect={() => props.onToggle(card.id)}
@@ -147,6 +153,7 @@ export function PromptSearchDialog(props: PromptSearchDialogProps) {
             <Text variant="caption" tone="muted">
               <Highlight text={card.tag} range={card.tagMatch} />
             </Text>
+            {card.note && <Text variant="caption">{card.note}</Text>}
           </ChoiceCard>
         ))}
       </CollectionBrowser>

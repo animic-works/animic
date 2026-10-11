@@ -228,7 +228,7 @@ test("失敗・読めない出力・期限切れ・画像の取得失敗は1回�
   expect(unavailable.error).toContain("画像");
 });
 
-test("生成した画像を提出すると、採点ワーカーへR2の生成画像を渡し、採点の結果で勝敗が決まる", async ({
+test("生成した画像を提出すると、採点ワーカーへR2の生成画像を渡し、対戦を始めたときの重みで計算した再現度で勝敗が決まる", async ({
   browser,
   request,
 }) => {
@@ -236,6 +236,10 @@ test("生成した画像を提出すると、採点ワーカーへR2の生成画
   // 採点ワーカーが自分のURLから取得できるお題にする。ほかのテストのお題と重ならない難易度で出題する。
   await executeLocalD1(
     `INSERT OR REPLACE INTO topic (id, difficulty, image_url) VALUES ('e2e-scoring-topic', 'hard', '${origin}/og-image.png')`,
+  );
+  // この対戦は、始める前に保存した重み（構図だけ）で採点する。
+  await executeLocalD1(
+    `DELETE FROM scoring_weight; INSERT INTO scoring_weight (id, weights, created_at) VALUES ('e2e-before-start', '{"ccip":0,"pixai":0,"siglip2":0,"dinov2":0,"depth":100}', ${Date.now() - 1000})`,
   );
   // 匿名参加の回数制限を、ほかのファイルのテストと分ける。
   const hostContext = await browser.newContext({
@@ -264,6 +268,10 @@ test("生成した画像を提出すると、採点ワーカーへR2の生成画
       },
     );
     expect(started.error).toBeNull();
+    // 対戦の後に変えた重みは、この対戦の採点に使わない。
+    await executeLocalD1(
+      `INSERT INTO scoring_weight (id, weights, created_at) VALUES ('e2e-after-start', '{"ccip":35,"pixai":25,"siglip2":20,"dinov2":10,"depth":10}', ${Date.now() + 1000})`,
+    );
     const battleId = (await snapshot(host)).battle?.id ?? "";
     const imageUrls = new Map<string, string>();
     for (const participant of [host, guest]) {
@@ -310,8 +318,19 @@ test("生成した画像を提出すると、採点ワーカーへR2の生成画
       const submission = Buffer.from(claimed.sourceImages[1]?.base64 ?? "", "base64");
       expect(submission.toString("latin1", 0, 4)).toBe("RIFF");
       expect(submission.toString("latin1", 8, 12)).toBe("WEBP");
-      const total = submitter === hostId ? 71.4 : 60;
-      const reported = similarity(JSON.stringify({ total }));
+      // 構図だけで計算するため、採点ノードのtotal（既定の重み）ではホストが負ける点にする。
+      const depth = submitter === hostId ? 71.4 : 60;
+      const others = submitter === hostId ? 10 : 100;
+      const reported = similarity(
+        JSON.stringify({
+          total: 0,
+          ccip: { score: others },
+          pixai: { score: others },
+          siglip2: { score: others },
+          dinov2: { score: others },
+          depth: { score: depth },
+        }),
+      );
       expect(
         (await post(request, worker, `jobs/${claimed.jobId}/complete`, reported)).status(),
       ).toBe(200);
@@ -335,6 +354,8 @@ test("生成した画像を提出すると、採点ワーカーへR2の生成画
   } finally {
     await hostContext.close();
     await guestContext.close();
-    await executeLocalD1("DELETE FROM topic WHERE id = 'e2e-scoring-topic'");
+    await executeLocalD1(
+      "DELETE FROM topic WHERE id = 'e2e-scoring-topic'; DELETE FROM scoring_weight",
+    );
   }
 });

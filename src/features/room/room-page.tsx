@@ -8,6 +8,7 @@ import { ResultPage } from "../battle/result-page";
 import { getBattleScreen } from "../battle/battle-screen";
 import { LobbyPage } from "./lobby-page";
 import { useRoomConnection } from "./use-room-connection";
+import type { PromptGroup } from "../image-generation/prompt-phrases";
 import type { BattleOptions } from "./battle-options";
 import type { RoomSnapshot } from "./room-state";
 const silent = new Set(["接続中…", "接続済み"]);
@@ -17,11 +18,14 @@ export function RoomPage({
   participantId,
   inviteUrl,
   battleOptions,
+  promptGroups,
 }: {
   initial: RoomSnapshot;
   participantId: string;
   inviteUrl: string;
   battleOptions: BattleOptions;
+  /** 対戦画面の入力候補と検索に使う表現の辞書 */
+  promptGroups: PromptGroup[];
 }) {
   const received = useRoomConnection(initial);
   const { room, connection } = received;
@@ -99,6 +103,7 @@ export function RoomPage({
         names={names}
         icons={icons}
         participantId={participantId}
+        promptGroups={promptGroups}
       />
     );
   if (screen.kind === "result")

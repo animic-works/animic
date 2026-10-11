@@ -3,7 +3,7 @@ import type { WebPModule } from "@jsquash/webp/codec/enc/webp_enc.js";
 import { defaultOptions } from "@jsquash/webp/meta.js";
 import { initEmscriptenModule } from "@jsquash/webp/utils.js";
 
-// お題の画像（topic-image-file.ts）と同じ品質にする。
+// 管理画面で登録する画像（src/lib/webp-file.ts）と同じ品質にする。
 const webpQuality = 90;
 
 let encoder: Promise<WebPModule> | undefined;

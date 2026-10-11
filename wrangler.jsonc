@@ -24,6 +24,10 @@
       "binding": "GENERATED_IMAGES",
       "bucket_name": "animic-generated-images",
     },
+    {
+      "binding": "PHRASE_IMAGES",
+      "bucket_name": "animic-phrase-images",
+    },
   ],
   "vars": {
     "NOVELAI_API_URL": "https://image.novelai.net",

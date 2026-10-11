@@ -43,11 +43,27 @@ describe("illust-similarity-v2", () => {
     expect(() => buildScoringWorkflow(scoringWorkflowVersion, inputs.slice(0, 1))).toThrow();
     expect(() => buildScoringWorkflow("unknown", inputs)).toThrow();
   });
-  it("採点ノードが出力したJSON文字列から提出者のtotalを読み取る", () => {
+  it("重みがなければ、採点ノードが出力したJSON文字列から提出者のtotalを読み取る", () => {
     const text = JSON.stringify({ depth: { raw: 0.78, score: 67 }, total: 71.4 });
-    expect(readScoringTotals(scoringWorkflowVersion, inputs, run([text]))).toEqual([
+    expect(readScoringTotals(scoringWorkflowVersion, inputs, run([text]), null)).toEqual([
       { participantId: "a", total: 71.4 },
     ]);
+  });
+  it("重みがあれば、指標ごとの点から計算し直し、採点ノードのtotalは使わない", () => {
+    const text = JSON.stringify({
+      total: 65.95,
+      ccip: { skipped: "no person in one of the images" },
+      pixai: { score: 80 },
+      siglip2: { score: 60 },
+      dinov2: { score: 40 },
+      depth: { score: 20 },
+    });
+    const weights = { ccip: 0, pixai: 0, siglip2: 0, dinov2: 50, depth: 50 };
+    expect(readScoringTotals(scoringWorkflowVersion, inputs, run([text]), weights)).toEqual([
+      { participantId: "a", total: 30 },
+    ]);
+    const empty = JSON.stringify({ total: 50, ccip: { skipped: "no person" } });
+    expect(readScoringTotals(scoringWorkflowVersion, inputs, run([empty]), weights)).toBeNull();
   });
   it("totalを読み取れない出力はnullにする", () => {
     for (const data of [
@@ -59,7 +75,7 @@ describe("illust-similarity-v2", () => {
       [],
       "unexpected",
     ])
-      expect(readScoringTotals(scoringWorkflowVersion, inputs, data)).toBeNull();
+      expect(readScoringTotals(scoringWorkflowVersion, inputs, data, null)).toBeNull();
   });
   it("指標ごとの点を読み、点のない指標はnullにする", () => {
     const text = JSON.stringify({

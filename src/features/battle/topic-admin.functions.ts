@@ -5,11 +5,12 @@ import { drizzle } from "drizzle-orm/d1";
 import * as v from "valibot";
 
 import { requireAdmin } from "../../lib/admin.server";
+import { maxWebpBytes } from "../../lib/webp";
 import { difficultySchema } from "./battle-state";
 import { topic } from "./battle.schema";
 import { topicFieldsSchema, topicStatusSchema } from "./topic-admin";
 import { putTopicImage, topicImageUrl } from "./topic-images.server";
-import { maxTopicImageBytes, topicIdSchema, topicImageKey } from "./topic-images";
+import { topicIdSchema, topicImageKey } from "./topic-images";
 
 function formText(form: FormData, name: string) {
   const value = form.get(name);
@@ -24,7 +25,7 @@ function readForm(form: unknown) {
 
 async function saveImage(topicId: string, file: File | null) {
   if (!file) return { error: "画像を選んでください。" } as const;
-  if (file.size > maxTopicImageBytes) return { error: "画像が5MBを超えています。" } as const;
+  if (file.size > maxWebpBytes) return { error: "画像が5MBを超えています。" } as const;
   const imageId = crypto.randomUUID();
   const error = await putTopicImage({ topicId, imageId }, new Uint8Array(await file.arrayBuffer()));
   if (error) return { error } as const;
