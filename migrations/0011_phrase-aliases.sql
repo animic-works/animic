@@ -122,6 +122,8 @@ UPDATE `prompt_phrase` SET `aliases` = '["桜の花"]' WHERE `id` = 'scene-cherr
 UPDATE `prompt_phrase` SET `aliases` = '["喫茶店"]' WHERE `id` = 'scene-cafe' AND `aliases` = '[]';--> statement-breakpoint
 UPDATE `prompt_phrase` SET `aliases` = '["図書室"]' WHERE `id` = 'scene-library' AND `aliases` = '[]';--> statement-breakpoint
 UPDATE `prompt_phrase` SET `aliases` = '["日没","夕日"]' WHERE `id` = 'weather-sunset' AND `aliases` = '[]';--> statement-breakpoint
+-- 0009で「場所・天気」から「天気」へ移した既存の環境の表現は、IDが`scene-`のまま。
+UPDATE `prompt_phrase` SET `aliases` = '["日没","夕日"]' WHERE `id` = 'scene-sunset' AND `aliases` = '[]';--> statement-breakpoint
 UPDATE `prompt_phrase` SET `aliases` = '["上半身"]' WHERE `id` = 'comp-upper-body' AND `aliases` = '[]';--> statement-breakpoint
 UPDATE `prompt_phrase` SET `aliases` = '["全身絵"]' WHERE `id` = 'comp-full-body' AND `aliases` = '[]';--> statement-breakpoint
 UPDATE `prompt_phrase` SET `aliases` = '["ポートレート","肖像"]' WHERE `id` = 'comp-portrait' AND `aliases` = '[]';--> statement-breakpoint

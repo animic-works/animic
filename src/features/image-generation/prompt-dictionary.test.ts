@@ -65,14 +65,17 @@ describe("初期データの別名", () => {
         /UPDATE `prompt_phrase` SET `aliases` = '([^']*)' WHERE `id` = '([^']+)' AND `aliases` = '\[\]';/g,
       ),
     ].map(([, aliases = "", id = ""]) => [id, v.parse(v.array(v.string()), JSON.parse(aliases))]);
-    expect(Object.fromEntries(updates)).toEqual(
-      Object.fromEntries(
-        phrases
-          .filter((phrase) => phrase.aliases.length > 0)
-          .map((phrase) => [phrase.id, phrase.aliases]),
-      ),
+    const seeded = Object.fromEntries(
+      phrases
+        .filter((phrase) => phrase.aliases.length > 0)
+        .map((phrase) => [phrase.id, phrase.aliases]),
     );
-    expect(updates).toHaveLength(149);
+    // 0009で「天気」へ移した既存の環境の表現は、IDが`scene-`のまま残る。
+    expect(Object.fromEntries(updates)).toEqual({
+      ...seeded,
+      "scene-sunset": seeded["weather-sunset"],
+    });
+    expect(updates).toHaveLength(150);
   });
 });
 
