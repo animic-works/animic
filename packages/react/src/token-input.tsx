@@ -73,7 +73,8 @@ export function TokenInput({ inputRef, ...props }: TokenInputProps) {
       !props.disabled &&
       (props.suggestions.length > 0 || Boolean(props.value.trim() && props.empty)),
     onOpenChange: ({ open: nextOpen }) => setOpen(nextOpen),
-    onInputValueChange: ({ inputValue }) => props.onValueChange(inputValue, composing.current),
+    // 入力の反映は下の`onChange`で行う。Arkの`onInputValueChange`はマイクロタスクで遅れて届き、
+    // その前にReactがcontrolled inputを前の値へ戻すため、IMEの変換が1文字ごとに打ち切られる
     onSelect: ({ value }) => {
       if (value[0]) props.onSuggestion(value[0]);
     },
@@ -134,6 +135,7 @@ export function TokenInput({ inputRef, ...props }: TokenInputProps) {
           aria-label={props.label}
           placeholder={props.placeholder}
           onKeyDownCapture={onKeyDown}
+          onChange={(event) => props.onValueChange(event.currentTarget.value, composing.current)}
           onFocus={() => combobox.setOpen(true)}
           onBlur={() => {
             if (

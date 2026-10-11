@@ -3,6 +3,12 @@ import type { Browser, Page, WebSocketRoute } from "@playwright/test";
 import { create, join } from "./api";
 import { executeLocalD1 } from "./d1";
 
+declare global {
+  interface Window {
+    compositionStarts: number;
+  }
+}
+
 test.use({ reducedMotion: "reduce" });
 // 同じ難易度のお題を残すと、ほかのテストの出題が入れ替わるため片付ける。
 test.afterAll(async () => {
@@ -151,6 +157,34 @@ async function openBattle(page: Page, browser: Browser) {
     .toBe("");
   return guest;
 }
+
+test("ローマ字入力の変換を1文字ごとに打ち切らない", async ({ page, browser }) => {
+  test.setTimeout(60000);
+  const guest = await openBattle(page, browser);
+  try {
+    const input = page.getByRole("combobox", { name: "プロンプト（キャラ）" });
+    await input.focus();
+    await input.evaluate((el) => {
+      window.compositionStarts = 0;
+      el.addEventListener("compositionstart", () => window.compositionStarts++);
+    });
+    // 合成イベントを直接送ると、入力欄の値を書き戻したときに変換が終わる動きを再現できないため、ブラウザーのIMEを使う。
+    const cdp = await page.context().newCDPSession(page);
+    for (const text of ["s", "そ", "そr", "そろ"]) {
+      await cdp.send("Input.imeSetComposition", {
+        text,
+        selectionStart: text.length,
+        selectionEnd: text.length,
+      });
+      await expect(input).toHaveValue(text);
+    }
+    await cdp.send("Input.insertText", { text: "そろ" });
+    await expect(input).toHaveValue("そろ");
+    expect(await page.evaluate(() => window.compositionStarts)).toBe(1);
+  } finally {
+    await guest.close();
+  }
+});
 
 test("再読み込みしても、すべての欄の語句・書きかけ・入力方法を戻す", async ({ page, browser }) => {
   test.setTimeout(60000);
