@@ -19,7 +19,6 @@ import { Route as AdminBackupRouteImport } from './routes/admin/backup'
 import { Route as AdminBattleOptionsRouteImport } from './routes/admin/battle-options'
 import { Route as AdminImageGenerationRouteImport } from './routes/admin/image-generation'
 import { Route as AdminPromptsRouteImport } from './routes/admin/prompts'
-import { Route as DevBattleRouteImport } from './routes/dev.battle'
 import { Route as MypageIndexRouteImport } from './routes/mypage/index'
 import { Route as RoomsCodeRouteImport } from './routes/rooms.$code'
 import { Route as AdminScoringJobsRouteImport } from './routes/admin/scoring/jobs'
@@ -83,11 +82,6 @@ const AdminPromptsRoute = AdminPromptsRouteImport.update({
   id: '/prompts',
   path: '/prompts',
   getParentRoute: () => AdminRouteRoute,
-} as any)
-const DevBattleRoute = DevBattleRouteImport.update({
-  id: '/dev/battle',
-  path: '/dev/battle',
-  getParentRoute: () => rootRouteImport,
 } as any)
 const MypageIndexRoute = MypageIndexRouteImport.update({
   id: '/mypage/',
@@ -168,7 +162,6 @@ export interface FileRoutesByFullPath {
   '/admin/battle-options': typeof AdminBattleOptionsRoute
   '/admin/image-generation': typeof AdminImageGenerationRoute
   '/admin/prompts': typeof AdminPromptsRoute
-  '/dev/battle': typeof DevBattleRoute
   '/rooms/$code': typeof RoomsCodeRoute
   '/admin/': typeof AdminIndexRoute
   '/mypage/': typeof MypageIndexRoute
@@ -193,7 +186,6 @@ export interface FileRoutesByTo {
   '/admin/battle-options': typeof AdminBattleOptionsRoute
   '/admin/image-generation': typeof AdminImageGenerationRoute
   '/admin/prompts': typeof AdminPromptsRoute
-  '/dev/battle': typeof DevBattleRoute
   '/rooms/$code': typeof RoomsCodeRoute
   '/admin': typeof AdminIndexRoute
   '/mypage': typeof MypageIndexRoute
@@ -220,7 +212,6 @@ export interface FileRoutesById {
   '/admin/battle-options': typeof AdminBattleOptionsRoute
   '/admin/image-generation': typeof AdminImageGenerationRoute
   '/admin/prompts': typeof AdminPromptsRoute
-  '/dev/battle': typeof DevBattleRoute
   '/rooms/$code': typeof RoomsCodeRoute
   '/admin/': typeof AdminIndexRoute
   '/mypage/': typeof MypageIndexRoute
@@ -248,7 +239,6 @@ export interface FileRouteTypes {
     | '/admin/battle-options'
     | '/admin/image-generation'
     | '/admin/prompts'
-    | '/dev/battle'
     | '/rooms/$code'
     | '/admin/'
     | '/mypage/'
@@ -273,7 +263,6 @@ export interface FileRouteTypes {
     | '/admin/battle-options'
     | '/admin/image-generation'
     | '/admin/prompts'
-    | '/dev/battle'
     | '/rooms/$code'
     | '/admin'
     | '/mypage'
@@ -299,7 +288,6 @@ export interface FileRouteTypes {
     | '/admin/battle-options'
     | '/admin/image-generation'
     | '/admin/prompts'
-    | '/dev/battle'
     | '/rooms/$code'
     | '/admin/'
     | '/mypage/'
@@ -322,7 +310,6 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   StartRoute: typeof StartRoute
   TermsRoute: typeof TermsRoute
-  DevBattleRoute: typeof DevBattleRoute
   RoomsCodeRoute: typeof RoomsCodeRoute
   MypageIndexRoute: typeof MypageIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -403,13 +390,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/prompts'
       preLoaderRoute: typeof AdminPromptsRouteImport
       parentRoute: typeof AdminRouteRoute
-    }
-    '/dev/battle': {
-      id: '/dev/battle'
-      path: '/dev/battle'
-      fullPath: '/dev/battle'
-      preLoaderRoute: typeof DevBattleRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/mypage/': {
       id: '/mypage/'
@@ -543,7 +523,6 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   StartRoute: StartRoute,
   TermsRoute: TermsRoute,
-  DevBattleRoute: DevBattleRoute,
   RoomsCodeRoute: RoomsCodeRoute,
   MypageIndexRoute: MypageIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
