@@ -397,7 +397,7 @@ export function HomeContentScreen({
             採点方法
           </Heading>
           <Text variant="body.sm" tone="muted">
-            1つ目の項目のグラフには、「採点の重み」で保存した今の重みを出します。
+            1つ目の項目のグラフには、「採点の重み」で保存した今の重みを出します。2つ目・3つ目の項目には今のボーナスの点を添え、点が0のボーナスの項目はトップページに出しません。
           </Text>
           <Grid columns={3} space="compact">
             {content.scoringSteps.map((item, index) => (

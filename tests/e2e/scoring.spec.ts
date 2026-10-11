@@ -318,21 +318,22 @@ async function expectLoaded(image: Locator) {
     .toBeGreaterThan(0);
 }
 
-test("生成した画像を提出すると、採点ワーカーへR2の生成画像を渡し、対戦を始めたときの重みで計算した再現度で勝敗が決まる", async ({
+test("生成した画像を提出すると、採点ワーカーへR2の生成画像を渡し、対戦を始めたときの重みで計算した再現度にボーナスを加えた最終スコアで勝敗が決まる", async ({
   browser,
   request,
 }) => {
   test.setTimeout(90_000);
   await withScoringRoom(browser, ["203.0.113.37", "203.0.113.38"], async (host, guest, code) => {
-    // この対戦は、始める前に保存した重み（構図だけ）で採点する。
+    // この対戦は、始める前に保存した重み（構図だけ）とボーナスで採点する。
+    // ボーナスの対象は再現度65点以上のため、ホストだけが両方のボーナスを取る。
     await executeLocalD1(
-      `DELETE FROM scoring_weight; INSERT INTO scoring_weight (id, weights, created_at) VALUES ('e2e-before-start', '{"ccip":0,"pixai":0,"siglip2":0,"dinov2":0,"depth":100}', ${Date.now() - 1000})`,
+      `DELETE FROM scoring_weight; INSERT INTO scoring_weight (id, weights, speed_bonus, generation_bonus, bonus_min_similarity, created_at) VALUES ('e2e-before-start', '{"ccip":0,"pixai":0,"siglip2":0,"dinov2":0,"depth":100}', 5, 2, 65, ${Date.now() - 1000})`,
     );
     const { battleId, imageUrls } = await submitBoth(host, guest, code, {
-      // 対戦の後に変えた重みは、この対戦の採点に使わない。
+      // 対戦の後に変えた重みとボーナスは、この対戦に使わない。
       afterStart: () =>
         executeLocalD1(
-          `INSERT INTO scoring_weight (id, weights, created_at) VALUES ('e2e-after-start', '{"ccip":35,"pixai":25,"siglip2":20,"dinov2":10,"depth":10}', ${Date.now() + 1000})`,
+          `INSERT INTO scoring_weight (id, weights, speed_bonus, generation_bonus, bonus_min_similarity, created_at) VALUES ('e2e-after-start', '{"ccip":35,"pixai":25,"siglip2":20,"dinov2":10,"depth":10}', 20, 20, 0, ${Date.now() + 1000})`,
         ),
     });
     const hostId = await participantId(host);
@@ -403,11 +404,24 @@ test("生成した画像を提出すると、採点ワーカーへR2の生成画
       ).toEqual(
         [...imageUrls].map(([id, imageUrl]) => ({
           participantId: id,
-          total: id === hostId ? 71.4 : 60,
+          // 最終スコアは再現度に、取ったボーナス（5点と2点）を加えた値。
+          total: id === hostId ? 78.4 : 60,
           imageUrl: new URL(imageUrl).pathname,
         })),
       );
     }
+
+    // 戦績には最終スコアと再現度を分けて保存する。
+    await expect
+      .poll(() =>
+        executeLocalD1(
+          `SELECT participant_id, total, similarity FROM battle_record WHERE battle_id = '${battleId}' ORDER BY total DESC`,
+        ),
+      )
+      .toEqual([
+        { participant_id: hostId, total: 78.4, similarity: 71.4 },
+        { participant_id: await participantId(guest), total: 60, similarity: 60 },
+      ]);
 
     await guest.goto(`/rooms/${code}`);
     await expect(guest.getByRole("heading", { name: "YOU LOSE…" })).toBeVisible({
@@ -421,6 +435,8 @@ test("生成した画像を提出すると、採点ワーカーへR2の生成画
     const breakdown = guestView.getByRole("dialog", { name: "あなたのスコアの内訳" });
     await expect(breakdown.getByText("60.0").first()).toBeVisible();
     await expect(breakdown.getByText("1回")).toBeVisible();
+    // 再現度が下限より低いため、どちらのボーナスも取れない。
+    await expect(breakdown.getByText("ボーナス +0")).toHaveCount(2);
     await expect(breakdown.getByRole("meter", { name: /画像の特徴/ })).toHaveAttribute(
       "aria-valuenow",
       "88.5",

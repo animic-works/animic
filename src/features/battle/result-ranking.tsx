@@ -147,7 +147,7 @@ export function RankingResult({
               </ResultRankingReveal>
               {me?.rank != null && (
                 <ActionGroup align="center">
-                  <ResultBreakdown battle={battle} participantId={participantId} />
+                  <ResultBreakdown battle={battle} />
                 </ActionGroup>
               )}
               <ActionGroup align="center">

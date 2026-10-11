@@ -8,10 +8,10 @@ import { galleryItem, homeItem, siteSetting } from "./home-content.schema";
 
 export const ogImageKey = "og_image";
 
-/** トップページに出す内容を読む。遊び方・採点方法の重みのグラフには、今の採点の重みを出す。 */
+/** トップページに出す内容を読む。採点方法の重みのグラフとボーナスの点には、今の値を出す。 */
 export async function loadHomeContent(db: D1Database): Promise<HomeContent> {
   const client = drizzle(db);
-  const [items, gallery, [og], { weights }] = await Promise.all([
+  const [items, gallery, [og], { weights, bonus }] = await Promise.all([
     client.select().from(homeItem),
     client.select().from(galleryItem).orderBy(asc(galleryItem.sortOrder), asc(galleryItem.id)),
     client.select().from(siteSetting).where(eq(siteSetting.key, ogImageKey)),
@@ -25,6 +25,7 @@ export async function loadHomeContent(db: D1Database): Promise<HomeContent> {
     howSteps: mergeHomeItems(howSteps, saved),
     scoringSteps: mergeHomeItems(scoringSteps, saved),
     weights,
+    bonus,
     gallery: gallery.map(toGalleryItem),
     ogImage: og ? siteImagePath(og.value) : null,
   };

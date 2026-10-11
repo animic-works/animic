@@ -36,7 +36,10 @@ async function adminCalls(page: Page) {
       },
       () =>
         window.animicTest.updateScoringWeights({
-          data: { ccip: 0, pixai: 25, siglip2: 25, dinov2: 25, depth: 25 },
+          data: {
+            weights: { ccip: 0, pixai: 25, siglip2: 25, dinov2: 25, depth: 25 },
+            bonus: { speedPoints: 3, generationPoints: 3, minSimilarity: 0 },
+          },
         }),
       () => window.animicTest.getImageModel(),
       () => window.animicTest.saveImageModel({ data: { model: "nai-diffusion-4-5-curated" } }),
@@ -198,16 +201,22 @@ test("画像生成のモデルを切り替えると表示と保存先が変わ�
   await expect(current).toContainText("nai-diffusion-5-curated");
 });
 
-test("採点の重みを合計100で保存し、合計が100でない値やCCIPだけの重みは保存しない", async ({
+test("採点の重みとボーナスを保存し、合計が100でない重み・CCIPだけの重み・範囲外のボーナスは保存しない", async ({
   page,
 }) => {
   await executeLocalD1("DELETE FROM scoring_weight");
   try {
     await loginAdmin(page);
     await openAdminMenu(page, "採点の重み");
-    await expect(page.getByText("既定の重みを使っています。")).toBeVisible();
+    await expect(page.getByText("既定値を使っています。")).toBeVisible();
     const field = (name: string) => page.getByLabel(name, { exact: true });
     await expect(field("キャラクター（CCIP）")).toHaveValue("35");
+    const speed = field("最速提出ボーナス（点）");
+    const generation = field("最少生成ボーナス（点）");
+    const minimum = field("ボーナスの対象になる再現度の下限（点）");
+    await expect(speed).toHaveValue("3");
+    await expect(generation).toHaveValue("3");
+    await expect(minimum).toHaveValue("0");
     await expect(field("構図（Depth Anything V2）")).toHaveValue("10");
     const sum = page.getByRole("status").filter({ hasText: "合計" });
     await expect(sum).toHaveText("合計 100");
@@ -232,15 +241,45 @@ test("採点の重みを合計100で保存し、合計が100でない値やCCIP�
 
     await field("キャラクター（CCIP）").fill("40");
     await field("構図（Depth Anything V2）").fill("60");
+    for (const [input, value, message] of [
+      [speed, "21", "最速提出ボーナスは0〜20点にしてください。"],
+      [speed, "1.5", "最速提出ボーナスを数字で入力してください。"],
+      [minimum, "101", "対象になる再現度の下限は0〜100点にしてください。"],
+    ] as const) {
+      await input.fill(value);
+      await page.getByRole("button", { name: "保存する" }).click();
+      await expect(page.getByRole("alert")).toHaveText(message);
+      await input.fill(input === speed ? "3" : "0");
+    }
+    await speed.fill("0");
+    await generation.fill("5");
+    await minimum.fill("40");
     await page.getByRole("button", { name: "保存する" }).click();
     await expect(page.getByRole("status").filter({ hasText: "保存しました" })).toBeVisible();
     await page.reload();
     await expect(field("キャラクター（CCIP）")).toHaveValue("40");
     await expect(field("構図（Depth Anything V2）")).toHaveValue("60");
-    await expect(page.getByText(/に保存した重みを使っています。$/)).toBeVisible();
+    await expect(speed).toHaveValue("0");
+    await expect(generation).toHaveValue("5");
+    await expect(minimum).toHaveValue("40");
+    await expect(page.getByText(/に保存した値を使っています。$/)).toBeVisible();
 
-    await page.getByRole("button", { name: "既定の重みに戻す" }).click();
+    // トップページの採点方法には今のボーナスを出し、0点の最速提出ボーナスのカードは出さない。
+    await page.goto("/#score");
+    const scoring = page.locator("#score");
+    await expect(scoring.getByRole("listitem")).toHaveCount(2);
+    await expect(scoring.getByRole("heading", { name: "提出速度" })).toHaveCount(0);
+    await expect(
+      scoring.getByText(
+        "いちばん少ない回数で提出した人に5点（同点なら分け合います）。再現度40点以上の人が対象です。",
+      ),
+    ).toBeVisible();
+
+    await page.goto("/admin/scoring/weights");
+    await page.getByRole("button", { name: "既定値に戻す" }).click();
     await expect(field("キャラクター（CCIP）")).toHaveValue("35");
+    await expect(speed).toHaveValue("3");
+    await expect(minimum).toHaveValue("0");
   } finally {
     await executeLocalD1("DELETE FROM scoring_weight");
   }

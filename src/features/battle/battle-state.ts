@@ -1,5 +1,12 @@
 import * as v from "valibot";
 
+import {
+  computeFinalScores,
+  finalScoreSchema,
+  noScoreBonus,
+  scoreBonusSchema,
+} from "../scoring/final-score";
+import type { ScoreBonus } from "../scoring/final-score";
 import { imageSrcSchema, toImageSrc } from "./image-src";
 
 export const difficultySchema = v.picklist(["easy", "normal", "hard"]);
@@ -88,6 +95,8 @@ export const battleStateSchema = v.object({
   generations: v.optional(v.array(generationSchema), []),
   submissions: v.optional(v.array(submissionSchema), []),
   selectionEndsAt: v.optional(v.nullable(v.number()), null),
+  // 対戦を始めたときのボーナス。記録する前に始まった対戦は、ボーナスなしとして扱う。
+  scoreBonus: v.optional(scoreBonusSchema, () => ({ ...noScoreBonus })),
   scoring: v.optional(
     v.object({ endsAt: v.nullable(v.number()), entries: v.array(scoringEntrySchema) }),
     () => ({ endsAt: null, entries: [] }),
@@ -114,6 +123,7 @@ export const battleSnapshotSchema = v.object({
   submissionsClosed: v.boolean(),
   generationClosed: v.boolean(),
   scoringEndsAt: v.nullable(v.number()),
+  // 全員の最終スコア。内訳はほかの参加者に見せないため、本人の分だけを`myScore`で配信する。
   scores: v.nullable(
     v.array(
       v.object({
@@ -123,6 +133,7 @@ export const battleSnapshotSchema = v.object({
       }),
     ),
   ),
+  myScore: v.nullable(finalScoreSchema),
   myGenerations: v.array(
     v.variant("status", [
       generationSnapshotOptions[0],
@@ -152,6 +163,7 @@ export function createBattle(
   participantIds: string[],
   now: number,
   previousBattleId: string | null = null,
+  scoreBonus: ScoreBonus = noScoreBonus,
 ): BattleState {
   if (
     !canStartBattle(participantIds.length) ||
@@ -167,6 +179,7 @@ export function createBattle(
     generations: [],
     submissions: [],
     selectionEndsAt: null,
+    scoreBonus: structuredClone(scoreBonus),
     scoring: { endsAt: null, entries: [] },
     topic: structuredClone(topic),
     settings: structuredClone(settings),
@@ -258,19 +271,43 @@ function getNoImageAt(state: BattleState, participantId: string) {
   return decidedAt;
 }
 
+/**
+ * 提出して採点できた人の最終スコアと内訳。再現度（採点エントリーの`total`）に、
+ * 対戦を始めたときのボーナスを加える（`computeFinalScores`）。
+ */
+function getFinalScores(state: BattleState) {
+  return computeFinalScores(
+    state.submissions.flatMap((item) => {
+      if (item.status !== "submitted") return [];
+      const entry = state.scoring.entries.find(
+        (candidate) => candidate.participantId === item.participantId,
+      );
+      return entry?.status === "succeeded"
+        ? [
+            {
+              participantId: item.participantId,
+              similarity: entry.total,
+              submittedAt: item.submittedAt,
+              withinTimeLimit: item.eligibleForSpeedBonus,
+              generationCount: item.successfulGenerationCount,
+            },
+          ]
+        : [];
+    }),
+    state.scoreBonus,
+  );
+}
+
 // 1対1では、採点期限までに両者の採点がそろわなければ勝負不成立にする。
 // 3人以上では、採点に失敗した人と期限までに採点がそろわなかった人を順位なしにし、残りの最高点で決める。
+// 勝敗は再現度にボーナスを加えた最終スコアで決める。
 function decideByScores(state: BattleState, endsAt: number, now: number): BattleState["result"] {
   const entries = state.submissions
     .filter((item) => item.status === "submitted")
     .map((item) =>
       state.scoring.entries.find((entry) => entry.participantId === item.participantId),
     );
-  const totals = entries.flatMap((entry) =>
-    entry?.status === "succeeded"
-      ? [{ participantId: entry.participantId, total: entry.total }]
-      : [],
-  );
+  const totals = getFinalScores(state);
   const settled = entries.every((entry) => entry && entry.status !== "pending");
   if (state.participantIds.length === 2) {
     if (totals.length !== entries.length) {
@@ -378,7 +415,7 @@ export function submitImage(
   return reconcileBattle(next, now);
 }
 
-/** 提出を記録し、採点を待つ。`submittedAt`が生成終了時刻より前のときだけ速度の加点の対象にする。 */
+/** 提出を記録し、採点を待つ。`submittedAt`が生成終了時刻より前のときだけ最速提出ボーナスの対象にする。 */
 function addSubmission(
   state: BattleState,
   participantId: string,
@@ -459,16 +496,15 @@ export function applyScoringJobs(
 }
 
 // 採点による勝敗が確定するまで、相手の提出画像と採点結果を公開しない。
+// 結果の確定後は採点エントリーを変えないため、勝敗を決めたときと同じ最終スコアになる。
 function getScores(state: BattleState) {
   const scored =
     state.result?.kind === "draw" ||
     (state.result?.kind === "win" && state.result.reason === "higher-score");
   if (!scored) return null;
-  return state.scoring.entries.flatMap((entry) => {
-    const imageUrl = getSubmittedImageUrl(state, entry.participantId);
-    return entry.status === "succeeded" && imageUrl
-      ? [{ participantId: entry.participantId, total: entry.total, imageUrl }]
-      : [];
+  return getFinalScores(state).flatMap((score) => {
+    const imageUrl = getSubmittedImageUrl(state, score.participantId);
+    return imageUrl ? [{ ...score, imageUrl }] : [];
   });
 }
 
@@ -477,6 +513,7 @@ export function getBattleSnapshot(
   participantId: string | null,
   now: number,
 ): BattleSnapshot {
+  const scores = getScores(state);
   return v.parse(battleSnapshotSchema, {
     ...state,
     serverTime: now,
@@ -493,7 +530,12 @@ export function getBattleSnapshot(
     ),
     scoringEndsAt: state.scoring.endsAt,
     scores:
-      getScores(state)?.map((item) => ({ ...item, imageUrl: toImageSrc(item.imageUrl) })) ?? null,
+      scores?.map(({ participantId: id, total, imageUrl }) => ({
+        participantId: id,
+        total,
+        imageUrl: toImageSrc(imageUrl),
+      })) ?? null,
+    myScore: scores?.find((item) => item.participantId === participantId) ?? null,
   });
 }
 
@@ -519,8 +561,7 @@ export function serializeBattleResult(
     participantIds: battle.participantIds,
     submissions: battle.submissions,
     result: battle.result,
-    scores:
-      getScores(battle)?.map(({ participantId, total }) => ({ participantId, total })) ?? null,
+    scores: getScores(battle)?.map(({ imageUrl: _imageUrl, ...score }) => score) ?? null,
     startedAt: battle.startedAt,
     submittedImages: battle.generations
       .filter(
@@ -551,9 +592,10 @@ export function startNextBattle(
   topic: Topic,
   participantIds: string[],
   now: number,
+  scoreBonus: ScoreBonus,
 ): BattleState {
   if (current && current.previousBattleId === previousBattleId) return current;
   if (!canStartAfter(current, previousBattleId))
     throw new Error("対戦の状態が変わっています。最新の状態を確認してください。");
-  return createBattle(settings, topic, participantIds, now, previousBattleId);
+  return createBattle(settings, topic, participantIds, now, previousBattleId, scoreBonus);
 }

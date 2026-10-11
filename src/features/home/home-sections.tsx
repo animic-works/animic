@@ -19,7 +19,8 @@ import { Text } from "@animic/react/text";
 import { getDifficulty } from "../battle/battle-labels";
 import { scoringMetrics } from "../scoring/scoring-metrics";
 import type { ScoringWeights } from "../scoring/scoring-metrics";
-import { howSteps, scoringSteps } from "./home-content";
+import type { ScoreBonus } from "../scoring/final-score";
+import { bonusNote, howSteps, scoringSteps } from "./home-content";
 import type { GalleryItem, HomeItem } from "./home-content";
 import {
   HowBackdrop,
@@ -111,12 +112,26 @@ export function HowToPlay({
   );
 }
 
-export function Scoring({ steps, weights }: { steps: HomeItem[]; weights: ScoringWeights }) {
-  // 採点方法の説明には、管理画面の「採点の重み」で保存した今の重みを出す。
+export function Scoring({
+  steps,
+  weights,
+  bonus,
+}: {
+  steps: HomeItem[];
+  weights: ScoringWeights;
+  bonus: ScoreBonus;
+}) {
+  // 採点方法の説明には、管理画面の「採点の重み」で保存した今の重みとボーナスを出す。
+  // 点が0のボーナスはないものとして、その項目を出さない。
   const metricWeights = scoringMetrics.map((metric) => ({
     ...metric,
     weight: weights[metric.key],
   }));
+  const shown = steps.flatMap((step) => {
+    const kind = scoringStep(step.id)?.bonus ?? null;
+    const note = kind ? bonusNote(kind, bonus) : null;
+    return kind && !note ? [] : [{ ...step, note, weighted: kind === null }];
+  });
   return (
     <Section inset="navigation" align="start" id="score" aria-labelledby="score-title">
       <Stack>
@@ -131,8 +146,12 @@ export function Scoring({ steps, weights }: { steps: HomeItem[]; weights: Scorin
           </Stack>
         </HomeReveal>
         <div role="list">
-          <Grid columns={3} space="section" collapse="single">
-            {steps.map((step, item) => (
+          <Grid
+            columns={shown.length === 1 ? 1 : shown.length === 2 ? 2 : 3}
+            space="section"
+            collapse="single"
+          >
+            {shown.map((step, item) => (
               <div key={step.id} role="listitem">
                 <HomeReveal order={item === 0 ? 1 : item === 1 ? 2 : 3} fill>
                   <Surface appearance="illustrated" padding="frame" fill>
@@ -149,7 +168,12 @@ export function Scoring({ steps, weights }: { steps: HomeItem[]; weights: Scorin
                           <Text as="p" variant="body.detail" tone="supporting">
                             {step.description}
                           </Text>
-                          {scoringStep(step.id)?.upcoming === false && (
+                          {step.note && (
+                            <Text as="p" variant="caption" emphasis="strong">
+                              {step.note}
+                            </Text>
+                          )}
+                          {step.weighted && (
                             <Stack space="compact">
                               <ScoreWeightsBar weights={metricWeights} />
                               <Grid columns={2} space="compact" collapse="none">

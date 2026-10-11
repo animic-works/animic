@@ -44,13 +44,13 @@ function MatchDetail({ detail }: { detail: Detail }) {
             <ImagePair
               sizing="fill"
               summary={
-                detail.total === null ? undefined : (
+                detail.score === null ? undefined : (
                   <>
                     <Text variant="caption" tone="inverse">
                       再現度
                     </Text>
                     <Text variant="numeric.supporting" tone="inverse">
-                      {detail.total.toFixed(1)}
+                      {detail.score.similarity.toFixed(1)}
                     </Text>
                   </>
                 )
@@ -109,7 +109,7 @@ function MatchDetail({ detail }: { detail: Detail }) {
                 スコアの内訳
               </Heading>
               <ScoreBreakdown
-                total={detail.total}
+                score={detail.score}
                 submission={detail.submission}
                 metrics={detail.metrics}
               />

@@ -20,6 +20,7 @@ export async function getBattleHistory(db: D1Database, participantId: string) {
       participantCount: battleRecord.participantCount,
       rank: battleRecord.rank,
       total: battleRecord.total,
+      similarity: battleRecord.similarity,
       imageUrl: battleRecord.imageUrl,
     })
     .from(battleRecord)

@@ -255,8 +255,8 @@ function MatchHistory({ history, onStart }: { history: BattleHistory; onStart: (
           },
           {
             label: "平均の再現度",
-            value: formatTotal(stats.averageTotal),
-            unit: stats.averageTotal === null ? "" : "%",
+            value: formatTotal(stats.averageSimilarity),
+            unit: stats.averageSimilarity === null ? "" : "%",
           },
         ]}
       />
@@ -301,15 +301,15 @@ function MatchHistory({ history, onStart }: { history: BattleHistory; onStart: (
                   }
                   image={record.imageUrl}
                   supplement={
-                    record.total === null ? (
+                    record.similarity === null ? (
                       <Text variant="caption" tone="muted">
                         {record.imageUrl ? "採点なし" : "未提出"}
                       </Text>
                     ) : (
                       <Stack space="tight">
-                        <Meter label="再現度" presentation="track" value={record.total} />
+                        <Meter label="再現度" presentation="track" value={record.similarity} />
                         <Text variant="caption" tone="muted">
-                          再現度 {record.total.toFixed(1)}
+                          再現度 {record.similarity.toFixed(1)}
                         </Text>
                       </Stack>
                     )
