@@ -223,6 +223,28 @@ export const workspace = defineSlotRecipe({
       true: {},
     },
     collapsedContent: { true: {}, false: {} },
+    // 編集欄の面。`caution`は使わなくなった編集欄を、上下に黒の斜め縞を付けた黄色の面にする。
+    editorTone: {
+      default: {},
+      caution: {
+        editor: {
+          borderColor:
+            "color-mix(in srgb, token(colors.accent.highlight) 88%, token(colors.fg.accent.highlight))",
+          background:
+            "repeating-linear-gradient(-45deg, token(colors.fg.default) 0 14px, transparent 14px 28px) top / 100% 18px no-repeat, repeating-linear-gradient(-45deg, token(colors.fg.default) 0 14px, transparent 14px 28px) bottom / 100% 18px no-repeat, token(colors.accent.highlight)",
+          color: "fg.default",
+          animation: "cautionIn 550ms cubic-bezier(0.3, 1.6, 0.5, 1) both",
+          _motionReduce: { animation: "none" },
+          // 上下の縞（18px）に中身が掛からないよう余白を取る。
+          _workspaceDocked: {
+            paddingTop: "1.6rem",
+            paddingBottom: "max(1.5rem, env(safe-area-inset-bottom, 0px))",
+          },
+        },
+        // 縞の上でもつまみが見えるよう、つまみの線を白くする。
+        grip: { "&::after": { background: "bg.surface" } },
+      },
+    },
   },
   compoundVariants: [
     {
@@ -234,5 +256,5 @@ export const workspace = defineSlotRecipe({
       },
     },
   ],
-  defaultVariants: { expanded: true, collapsedContent: false },
+  defaultVariants: { expanded: true, collapsedContent: false, editorTone: "default" },
 });

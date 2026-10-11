@@ -11,6 +11,8 @@ export interface WorkspaceProps {
   /** 畳んだときに編集欄の代わりに出す内容。省略すると、畳んでも`editor`を出したままにする。 */
   collapsedEditor?: ReactNode;
   editorLabel: string;
+  /** 編集欄の面。`caution`は使わなくなった編集欄を注意の面にする（中身は利用側が差し替える）。 */
+  editorTone?: "default" | "caution";
   expanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
   children: ReactNode;
@@ -28,6 +30,7 @@ export function Workspace(props: WorkspaceProps) {
   const c = workspace({
     expanded: props.expanded,
     collapsedContent: props.collapsedEditor !== undefined,
+    editorTone: props.editorTone,
   });
   const id = useId();
   const start = useRef<number | null>(null);

@@ -74,7 +74,15 @@ export const readout = defineSlotRecipe({
     },
     tone: {
       neutral: {},
-      highlight: { root: { "--animic-readout-background": "token(colors.bg.accent.highlight)" } },
+      // 期限が迫った別の段階（画像を選ぶ時間など）。黄色の面にする。
+      highlight: {
+        root: {
+          "--animic-readout-background": "token(colors.accent.highlight)",
+          "--animic-readout-border":
+            "color-mix(in srgb, token(colors.accent.highlight) 88%, token(colors.fg.accent.highlight))",
+          "--animic-readout-ink": "token(colors.fg.default)",
+        },
+      },
       primary: {
         root: {
           "--animic-readout-background": "token(colors.bg.accent.primary)",

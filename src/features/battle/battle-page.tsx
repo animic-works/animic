@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Badge } from "@animic/react/badge";
 import { Heading } from "@animic/react/heading";
 import { Page } from "@animic/react/page";
 import { Stack } from "@animic/react/stack";
@@ -40,9 +41,7 @@ function SelectionNotice({
 }) {
   return (
     <Stack align="center" justify="center" fill>
-      <Text variant="eyebrow.strong" tone="accent">
-        TIME UP
-      </Text>
+      <Text variant="eyebrow.strong">TIME UP</Text>
       <Heading level={2} size="title">
         {empty ? "時間切れ" : "生成終了！"}
       </Heading>
@@ -50,16 +49,18 @@ function SelectionNotice({
         <Text variant="label">提出できる画像がありません</Text>
       ) : (
         <>
-          <Text variant="label">
-            {stage === "finishing" ? (
-              "生成の完了を待っています"
-            ) : (
-              <>
-                残り <Text variant="numeric.display">{seconds}</Text> 秒で1枚提出
-              </>
-            )}
-          </Text>
-          <Text variant="body.sm" align="center" tone="supporting">
+          {stage === "finishing" ? (
+            <Text variant="label">生成の完了を待っています</Text>
+          ) : (
+            <Badge tone="inverse" size="md">
+              残り{" "}
+              <Text variant="numeric.display" tone="highlight">
+                {seconds}
+              </Text>{" "}
+              秒で1枚提出
+            </Badge>
+          )}
+          <Text variant="body.sm" align="center">
             履歴から選んで「この1枚で提出」
             <br />
             生成中の画像も、完成すれば選べます
@@ -155,6 +156,7 @@ export function BattlePage({
         expanded={expanded}
         onExpandedChange={setExpanded}
         editorLabel="プロンプト欄"
+        editorTone={stage === "finishing" || stage === "selecting" ? "caution" : "default"}
         editor={
           stage === "finishing" || stage === "selecting" ? (
             <SelectionNotice stage={stage} seconds={clock.seconds} empty={noImage} />

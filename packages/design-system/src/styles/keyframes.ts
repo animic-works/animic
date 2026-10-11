@@ -22,6 +22,8 @@ export const keyframes = defineKeyframes({
   },
   progressStripes: { to: { backgroundPosition: "32px 0, 0 0" } },
   progressPulse: { "50%": { opacity: 0.55 } },
+  // 注意を促す面が、少し傾いた小さい状態から弾んで現れる。
+  cautionIn: { from: { opacity: 0, transform: "scale(0.85) rotate(-3deg)" } },
   readoutPulse: {
     "0%, 60%, 100%": { transform: "scale(1)" },
     "15%": { transform: "scale(1.14)" },
