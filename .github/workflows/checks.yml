@@ -7,13 +7,13 @@ permissions:
 concurrency:
   group: checks-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
+env:
+  VP_GIT_HOOKS: "0"
 jobs:
-  quality:
-    name: Quality
+  static:
+    name: Static checks and unit tests
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    env:
-      VP_GIT_HOOKS: "0"
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -69,10 +69,27 @@ jobs:
         run: vp pm audit -- --audit-level high
       - name: Generate Workers types
         run: vp run typegen
+      - name: Format, lint, types and unused code
+        run: vp run check
       - name: Test game rules
         run: vp run test
       - name: Generate and test design system
         run: vp run test:design-system
+  design-system-browser:
+    name: Design system browser
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: voidzero-dev/setup-vp@3754dd7dbdb32bd8f6d28b6043de13ad3a75f21f # v1.21.1
+        with:
+          version: "0.3.3"
+          node-version-file: .node-version
+          cache: true
+          run-install: false
+      - run: vp install --frozen-lockfile
       - name: Install test browser
         run: vp exec playwright install --with-deps --no-shell chromium
       - name: Test design system in the browser
@@ -86,18 +103,51 @@ jobs:
           path: test-results/design-system/
           retention-days: 7
           if-no-files-found: warn
-      - name: Build and test production preview
+  e2e:
+    name: E2E (${{ matrix.shard }}/4)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: voidzero-dev/setup-vp@3754dd7dbdb32bd8f6d28b6043de13ad3a75f21f # v1.21.1
+        with:
+          version: "0.3.3"
+          node-version-file: .node-version
+          cache: true
+          run-install: false
+      - run: vp install --frozen-lockfile
+      - name: Install test browser
+        run: vp exec playwright install --with-deps --no-shell chromium
+      - name: Build and test E2E preview
         id: e2e
-        run: vp run test:e2e
+        run: vp run test:e2e --shard=${{ matrix.shard }}/4 --reporter=list
       - name: Upload E2E failure traces
         if: ${{ failure() && steps.e2e.outcome == 'failure' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: e2e-failure-traces
-          path: test-results/
+          name: e2e-failure-traces-${{ matrix.shard }}
+          path: test-results/e2e/
           retention-days: 7
           if-no-files-found: warn
       - name: Verify generated routes
         run: git diff --exit-code -- src/routeTree.gen.ts
-      - name: Format, lint, types and unused code
-        run: vp run check
+  quality:
+    name: Quality
+    if: ${{ !cancelled() }}
+    needs: [static, design-system-browser, e2e]
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Require every check to pass
+        env:
+          STATIC_RESULT: ${{ needs.static.result }}
+          DESIGN_SYSTEM_RESULT: ${{ needs.design-system-browser.result }}
+          E2E_RESULT: ${{ needs.e2e.result }}
+        run: |
+          [[ "$STATIC_RESULT" == success && "$DESIGN_SYSTEM_RESULT" == success && "$E2E_RESULT" == success ]]
