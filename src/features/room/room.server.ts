@@ -16,7 +16,7 @@ import {
   serializeBattleResult,
   getScoringRequests,
   applyScoringJobs,
-  generationTimeoutMs,
+  getBattleDeadline,
 } from "../battle/battle-state";
 import type { BattleSettings, Topic, GenerationOutcome } from "../battle/battle-state";
 import { persistBattleResult } from "../battle/battle-results.server";
@@ -144,26 +144,12 @@ export class Room extends DurableObject<Env> {
     if (pending) deadlines.push(Math.max(now, pending.retry_at));
     const battle = state.battle;
     if (battle) {
-      for (const item of battle.generations)
-        if (item.status === "pending")
-          deadlines.push(Math.max(now, item.acceptedAt + generationTimeoutMs));
-      if (now < battle.generationEndsAt) deadlines.push(battle.generationEndsAt);
-      else if (
-        battle.selectionEndsAt === null &&
-        !battle.generations.some((item) => item.status === "pending")
-      )
-        deadlines.push(now);
-      if (
-        battle.selectionEndsAt !== null &&
-        battle.submissions.length < battle.participantIds.length
-      )
-        deadlines.push(Math.max(now, battle.selectionEndsAt));
+      const battleDeadline = getBattleDeadline(battle, now);
+      if (battleDeadline !== null) deadlines.push(battleDeadline);
       if (getScoringRequests(battle).length) {
         this.#scoringCheckAt ??= now + scoringCheckIntervalMs;
         deadlines.push(Math.max(now, this.#scoringCheckAt));
       }
-      if (!battle.result && battle.scoring.endsAt !== null)
-        deadlines.push(Math.max(now, battle.scoring.endsAt));
     }
     if (this.#sockets().length) {
       deadlines.push(now + 30_000);
