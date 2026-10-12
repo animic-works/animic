@@ -53,7 +53,7 @@ export function InviteDialog({
           <CodeDisplay value={code} presentation="cells" />
         </Center>
         <Center>
-          <QrCode value={inviteUrl} label="ルームURLのQRコード" />
+          <QrCode value={inviteUrl} label="ルームURLのQRコード" logoSrc="/favicon.svg" />
         </Center>
         <Button appearance="secondary" shape="pill" onClick={onClose}>
           閉じる
