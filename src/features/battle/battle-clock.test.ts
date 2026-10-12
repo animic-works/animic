@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { getBattleClock, getBattleDeadline, isScoringSlow } from "./battle-clock";
+import { getBattleClock, getBattleDeadline, getWaitingClock, isScoringSlow } from "./battle-clock";
 
 const battle = {
   generationEndsAt: 60_000,
@@ -30,6 +30,25 @@ describe("残り時間の表示", () => {
       tone: "highlight",
       percent: 20,
     });
+  });
+});
+
+describe("提出した後の待機中の残り時間", () => {
+  const open = { ...battle, submissionsClosed: false };
+  it("生成の残りを数え、生成が終わったら画像選択の猶予を数える", () => {
+    expect(getWaitingClock(open, 30_000, 45_000)).toMatchObject({
+      stage: "generating",
+      clock: { label: "0:30" },
+    });
+    expect(getWaitingClock(open, 0, 12_000)).toMatchObject({
+      stage: "selecting",
+      clock: { label: "0:12" },
+    });
+  });
+  it("画像選択の猶予が決まっていない間・終わった後・全員の提出がそろった後は出さない", () => {
+    expect(getWaitingClock(open, 0, null)).toBeNull();
+    expect(getWaitingClock(open, 0, 0)).toBeNull();
+    expect(getWaitingClock({ ...battle, submissionsClosed: true }, 30_000, 45_000)).toBeNull();
   });
 });
 
