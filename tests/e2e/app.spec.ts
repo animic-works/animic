@@ -12,7 +12,7 @@ test.describe("SSR", () => {
     const response = await page.goto("/");
     expect(response?.status()).toBe(200);
     expect(response?.headers()["x-robots-tag"]).toBe("noindex");
-    await expect(page).toHaveTitle("Animic");
+    await expect(page).toHaveTitle("Animic | その一枚に、どこまで近づける？");
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     const logo = page.locator("main").getByRole("img", { name: "Animic", exact: true }).first();
     await expect(logo).toBeVisible();

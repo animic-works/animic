@@ -3,6 +3,7 @@ import { createStartHandler, defaultStreamHandler } from "@tanstack/react-start/
 import * as v from "valibot";
 
 import { createAuth } from "./lib/auth.server";
+import { isSearchIndexable } from "./lib/search-indexing";
 import { roomCodeSchema } from "./features/room/room-state";
 import {
   handleScoringWorkerRequest,
@@ -22,7 +23,7 @@ export default {
       const response = isScoringWorkerRequest(url)
         ? await handleScoringWorkerRequest(request)
         : await handleStart(request);
-      if (url.hostname === "animic.party" && url.pathname === "/") return response;
+      if (isSearchIndexable(url, response)) return response;
       const headers = new Headers(response.headers);
       headers.set("X-Robots-Tag", "noindex");
       return new Response(response.body, {

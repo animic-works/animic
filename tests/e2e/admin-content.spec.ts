@@ -685,6 +685,35 @@ test("トップページの遊び方・ギャラリー・OGP画像を管理画�
     expect(served.headers()["content-type"]).toBe("image/png");
     const bytes = await served.body();
     expect(bytes.readUInt32BE(16)).toBe(1200);
+    expect(bytes.readUInt32BE(20)).toBe(630);
+    await expect(page.locator('meta[property="og:image:type"]')).toHaveAttribute(
+      "content",
+      "image/png",
+    );
+    await expect(page.locator('meta[property="og:image:width"]')).toHaveAttribute(
+      "content",
+      "1200",
+    );
+    await expect(page.locator('meta[property="og:image:height"]')).toHaveAttribute(
+      "content",
+      "630",
+    );
+    await expect(page.locator('meta[name="twitter:image"]')).toHaveAttribute(
+      "content",
+      ogImage ?? "",
+    );
+    // SNSや検索エンジンはログインせずに公開画像を取得する。
+    const imagePath = new URL(ogImage ?? "").pathname;
+    const publicImage = await page.request.get(imagePath, {
+      headers: { Host: "animic.party", Cookie: "" },
+    });
+    expect(publicImage.status()).toBe(200);
+    expect(publicImage.headers()["x-robots-tag"]).toBeUndefined();
+    const previewImage = await page.request.get(imagePath, {
+      headers: { Host: "dev.animic.party", Cookie: "" },
+    });
+    expect(previewImage.status()).toBe(200);
+    expect(previewImage.headers()["x-robots-tag"]).toBe("noindex");
     expect(bytes.includes(secret)).toBe(false);
   } finally {
     await executeLocalD1(
