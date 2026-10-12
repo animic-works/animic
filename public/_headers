@@ -1,0 +1,10 @@
+# Viteが内容のハッシュを付けたファイルだけを長期キャッシュする。
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Workerを通らない静的ファイルも、非本番ホストでは検索対象にしない。
+https://:version.:subdomain.workers.dev/*
+  X-Robots-Tag: noindex
+
+https://:subdomain.animic.party/*
+  X-Robots-Tag: noindex

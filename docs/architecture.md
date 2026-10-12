@@ -253,7 +253,11 @@ Panda Native Specは、デザインシステムの定義から生成する機械
 
 ## 検索とSNS共有
 
-検索と共有の対象は[ゲーム仕様](product.md#検索とsns共有)に従います。トップ固有のcanonicalとOGPは`src/routes/index.tsx`で設定し、OGP画像のURLはloaderで読んだトップページの内容から作ります。robots.txtとsitemap.xmlは`public/`に置き、サイトマップには公開する正規URLだけを記載します。`src/server.ts`では`animic.party`のトップだけを検索対象とし、それ以外のホスト・パスのページ・APIレスポンスに`X-Robots-Tag: noindex`を付けます。一般公開する説明ページを追加する際は、検索対象の判定とサイトマップを合わせて更新します。画像・CSS・JavaScriptなどの静的アセットは取得を許可し、トップの表示と共有に利用できるようにします。robots.txtでクロールを禁止するだけでは検索除外を保証できず、非公開情報の保護には認証・認可が必要です。
+検索と共有の対象は[ゲーム仕様](product.md#検索とsns共有)に従います。トップ固有のtitle・description・canonical・OGPと、サイト名を伝えるWebSiteのJSON-LDは`src/routes/index.tsx`で初期HTMLへ出します。検索・共有の文言はトップページのキャッチコピーとゲーム内容の紹介文を使います。OGP画像のURLはloaderで読んだトップページの内容から作り、未登録なら`public/og-image.png`を使います。登録画像も既定画像もPNGの1200×630pxで、寸法は`home-content.ts`の`ogImageSize`と揃えます。ヒーロー画像はpreloadで先に取得します。
+
+robots.txtとsitemap.xmlは`public/`に置き、サイトマップには公開する正規URLだけを記載します。`src/server.ts`は`src/lib/search-indexing.ts`で検索対象を判定します。`animic.party`で200を返すトップのHTMLと、公開用の`/site-images/<画像ID>`のPNG・WebPだけを対象とし、それ以外のWorkerレスポンスには`X-Robots-Tag: noindex`を付けます。トップでもエラー応答は検索対象にしません。一般公開する説明ページを追加する際は、検索対象の判定とサイトマップを合わせて更新します。
+
+Workerを通らない静的ファイルのヘッダーは`public/_headers`で設定します。workers.devとanimic.partyのサブドメインでは静的ファイルにもnoindexを付けます。Viteが内容のハッシュを付ける`/assets/*`だけを1年間のimmutableキャッシュとし、固定URLの画像・robots.txt・sitemap.xmlには適用しません。画像・CSS・JavaScriptの取得自体は許可し、トップの表示と共有に利用できるようにします。robots.txtでクロールを禁止するだけでは検索除外を保証できず、非公開情報の保護には認証・認可が必要です。
 
 ## 画面とAPIの構成
 
