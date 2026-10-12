@@ -472,9 +472,12 @@ test("前回ログインしていたブラウザーでは「マイページ」�
     window.animicSeenActions = seen;
     const record = () => {
       const header = document.querySelector("[data-animic-navigation]");
-      const actions = header?.lastElementChild;
-      if (actions && getComputedStyle(actions).visibility === "visible")
-        seen.add(actions.textContent?.includes("マイページ") ? "マイページ" : "アイコン");
+      // HTMLの解析途中では、最後の子がまだ補助操作の欄とは限らない。
+      // 空の欄や別のナビ要素をアイコンと数えず、実際の操作要素を記録する。
+      const mypage = header?.querySelector('a[href="/mypage"]');
+      const account = header?.querySelector('button[aria-label^="アカウント"]');
+      if (mypage?.checkVisibility({ visibilityProperty: true })) seen.add("マイページ");
+      if (account?.checkVisibility({ visibilityProperty: true })) seen.add("アイコン");
       requestAnimationFrame(record);
     };
     requestAnimationFrame(record);
