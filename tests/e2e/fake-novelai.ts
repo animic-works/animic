@@ -20,12 +20,17 @@ export const novelAiSlowMarker = "e2e-novelai-slow";
 const requestSchema = v.object({
   input: v.string(),
   parameters: v.object({
+    steps: v.number(),
     v4_prompt: v.object({
       caption: v.object({ char_captions: v.array(v.object({ char_caption: v.string() })) }),
     }),
   }),
 });
-const callsSchema = v.object({ count: v.number(), maxConcurrent: v.number() });
+const callsSchema = v.object({
+  count: v.number(),
+  maxConcurrent: v.number(),
+  steps: v.array(v.number()),
+});
 
 function chunk(type: string, data: Buffer) {
   const length = Buffer.alloc(4);
@@ -66,18 +71,20 @@ async function readBody(request: IncomingMessage) {
 
 /** 偽のNovelAIを起動し、停止する関数を返す。 */
 export default async function startFakeNovelAi() {
-  const prompts: string[] = [];
+  const calls: { prompt: string; steps: number }[] = [];
   let active = 0;
   let maxConcurrent = 0;
   const server = createServer(async (request, response) => {
     const url = new URL(request.url ?? "/", fakeNovelAiUrl);
     if (request.method === "GET" && url.pathname === "/e2e/calls") {
       const prompt = url.searchParams.get("prompt") ?? "";
+      const matched = calls.filter((item) => item.prompt.includes(prompt));
       response.writeHead(200, { "Content-Type": "application/json" });
       response.end(
         JSON.stringify({
-          count: prompts.filter((item) => item.includes(prompt)).length,
+          count: matched.length,
           maxConcurrent,
+          steps: matched.map((item) => item.steps),
         }),
       );
       return;
@@ -97,7 +104,7 @@ export default async function startFakeNovelAi() {
       base,
       ...parameters.v4_prompt.caption.char_captions.map((c) => c.char_caption),
     ].join("\n");
-    prompts.push(input);
+    calls.push({ prompt: input, steps: parameters.steps });
     active += 1;
     maxConcurrent = Math.max(maxConcurrent, active);
     try {
@@ -120,7 +127,7 @@ export default async function startFakeNovelAi() {
   return () => new Promise<void>((resolve) => server.close(() => resolve()));
 }
 
-/** プロンプトに`prompt`を含む要求を受けた回数と、同時に処理した要求の最大数。 */
+/** プロンプトに`prompt`を含む要求を受けた回数と各要求のステップ数、同時に処理した要求の最大数。 */
 export async function getNovelAiCalls(prompt: string) {
   const response = await fetch(`${fakeNovelAiUrl}/e2e/calls?${new URLSearchParams({ prompt })}`);
   return v.parse(callsSchema, await response.json());
