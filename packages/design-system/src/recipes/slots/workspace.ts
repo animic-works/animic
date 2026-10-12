@@ -103,16 +103,13 @@ export const workspace = defineSlotRecipe({
       gridTemplateRows: "minmax(0, 1fr)",
       _workspaceShort: { minHeight: "0" },
       _workspaceCompact: { minHeight: "0", _workspaceTall: { _workspaceFlow: stackedBody } },
-      _workspaceVertical: {
-        minHeight: "0",
-        _workspaceFlow: stackedBody,
-        _workspaceDocked: {
-          display: "grid",
-          gridTemplateColumns: "minmax(0, 1fr)",
-          gridTemplateRows: "auto minmax(0, 1fr)",
-          padding: "0",
-          gap: "0",
-        },
+      _workspaceVertical: { minHeight: "0", _workspaceFlow: stackedBody },
+      _workspaceDocked: {
+        display: "grid",
+        gridTemplateColumns: "minmax(0, 1fr)",
+        gridTemplateRows: "auto minmax(0, 1fr)",
+        padding: "0",
+        gap: "0",
       },
       _workspaceLandscape: {
         _workspaceHorizontal: {
@@ -199,9 +196,7 @@ export const workspace = defineSlotRecipe({
       // 畳んだ編集欄は内容の高さにし、空いた高さを比較の領域へ回す。
       // 編集欄の中身は、利用側が畳んだときの表示に切り替える（`collapsedContent`では差し替える）。
       false: {
-        body: {
-          _workspaceVertical: { _workspaceDocked: { gridTemplateRows: "minmax(0, 1fr) auto" } },
-        },
+        body: { _workspaceDocked: { gridTemplateRows: "minmax(0, 1fr) auto" } },
         editor: { _workspaceDocked: { height: "auto", minHeight: "0", paddingTop: "1.3rem" } },
         // 比較の領域の高さを測り、画像をその高さまで大きくして上から詰める。
         // 履歴は画像の下の1行に並べる（Comparisonが変数を読む）。
@@ -209,14 +204,21 @@ export const workspace = defineSlotRecipe({
           _workspaceDocked: {
             alignContent: "start",
             containerType: "size",
+            "--animic-comparison-tools-columns": "minmax(0, 1fr)",
+            "--animic-thumbnail-aspect": "13 / 19",
+          },
+          _workspaceDockedPhone: {
             // 画像の下の見出し・履歴・提出の操作と余白の分（約14.5rem）を引いた高さ。
             "--animic-comparison-media-block": "calc(100cqh - 14.5rem)",
-            "--animic-comparison-tools-columns": "minmax(0, 1fr)",
             // 履歴は縦長の比率で一回り大きく並べる（ThumbnailListが変数を読む）。
             // 画像が幅で頭打ちになる縦長の画面では、残りの高さまで履歴を大きくする。
             "--animic-thumbnail-size":
               "clamp(4.25rem, calc((100cqh - (50cqw - 0.875rem - 5px) * 19 / 13 - 9rem) * 13 / 19), 6.5rem)",
-            "--animic-thumbnail-aspect": "13 / 19",
+          },
+          // タブレットの比較欄は見出しと枠を持つため、その分も含めて約21remを引き、履歴は一定の大きさにする。
+          _workspaceDockedTablet: {
+            "--animic-comparison-media-block": "calc(100cqh - 21rem)",
+            "--animic-thumbnail-size": "4.25rem",
           },
         },
       },
