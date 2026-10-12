@@ -259,6 +259,72 @@ export function WinnerSparkles() {
   );
 }
 
+const resultCard = css({
+  position: "relative",
+  height: "[100%]",
+  // 勝者のカードは、表彰台の1位のカードと同じく1位の色の光で縁取る。
+  "&[data-winner=true]": {
+    filter:
+      "[drop-shadow(0 0 0.5rem rgb(255 45 135 / 0.35)) drop-shadow(0 0.9rem 1.4rem rgb(255 45 135 / 0.3))]",
+  },
+});
+const resultCardCrown = css({
+  position: "absolute",
+  top: "[-1.6rem]",
+  left: "[50%]",
+  width: "[12rem]",
+  height: "[3.6rem]",
+  translate: "[-50% 0]",
+  pointerEvents: "none",
+  _artworkCompact: { top: "[-1.3rem]", width: "[8rem]", height: "[2.8rem]" },
+});
+const resultCardSparkles = css({
+  position: "absolute",
+  inset: "[0]",
+  width: "[100%]",
+  height: "[100%]",
+});
+const resultCardCrownMark = css({
+  position: "absolute",
+  top: "[0]",
+  left: "[50%]",
+  translate: "[-50% 0]",
+  _artworkCompact: { scale: "[0.8]", transformOrigin: "[top center]" },
+});
+/**
+ * 1対1の結果のカードの外枠。勝者のカードには、3人以上の表彰台の1位と同じ王冠をカードの上端の中央に載せ、
+ * まわりにきらめきを置き、1位の色の光で縁取る。カードは比較の欄の高さいっぱいに広げ、左右の大きさをそろえる。
+ */
+export function ResultCardFrame({
+  winner,
+  animate,
+  children,
+}: {
+  winner: boolean;
+  /** `false`なら王冠を登場の動きなしで出す。 */
+  animate: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div className={resultCard} data-winner={winner}>
+      {children}
+      {winner && (
+        <span className={resultCardCrown} aria-hidden="true">
+          <svg className={resultCardSparkles} viewBox="0 0 120 36" aria-hidden="true">
+            {sparkle(18, 22, 0.9, "#fddb13")}
+            {sparkle(32, 8, 0.6, "#ff2d87")}
+            {sparkle(90, 8, 0.7, "#fddb13")}
+            {sparkle(104, 24, 0.55, "#00b4fc")}
+          </svg>
+          <span className={resultCardCrownMark}>
+            <Crown animate={animate} />
+          </span>
+        </span>
+      )}
+    </div>
+  );
+}
+
 const shardFloat = keyframes({
   "0%, 100%": { transform: "translateY(0)" },
   "50%": { transform: "translateY(-6px)" },

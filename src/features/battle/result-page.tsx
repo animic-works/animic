@@ -28,6 +28,7 @@ import {
 } from "./battle-outcome";
 import { BattleRoomBadge } from "./battle-header";
 import { useReducedMotion } from "./battle-preferences";
+import { shortenName } from "./display-name";
 import type { BattleSnapshot } from "./battle-state";
 import {
   ResultBreakdown,
@@ -40,68 +41,92 @@ import { RankingResult } from "./result-ranking";
 import { ResultReveal, RevealCounter } from "./result-reveal";
 import { ResultShareLink } from "./result-share";
 import { useRevealElapsed } from "./use-reveal-clock";
-import { ResultBurst, ResultConfetti, ResultShards, VerdictReveal } from "./visuals/result-artwork";
+import {
+  ResultBurst,
+  ResultConfetti,
+  ResultShards,
+  ResultCardFrame,
+  VerdictReveal,
+} from "./visuals/result-artwork";
 function ParticipantResult({
   entry,
   name,
   icon,
   mine,
   seat,
+  animate,
 }: {
   entry: ResultEntry;
   name: string;
   icon: AccountIcon | null;
   mine: boolean;
   seat: number;
+  /** `false`なら勝者の王冠を登場の動きなしで出す。 */
+  animate: boolean;
 }) {
+  // 勝者のカードは、3人以上の表彰台の1位と同じく王冠ときらめきと光で飾り、上端を1位の色の帯にする。
+  // 左右のカードは名前の長さや札の数によらず同じ大きさにそろえる。
   return (
-    <Surface appearance="card" padding="content">
-      <Stack>
-        <Cluster>
-          <Avatar
-            name={name}
-            fallback={Array.from(name)[0]}
-            {...accountIconAvatar(icon, playerPalettes[seat % playerPalettes.length])}
-          />
-          <Heading level={2} size="title">
-            {name}
-          </Heading>
-          <Badge>{mine ? "あなた" : "対戦相手"}</Badge>
-          {entry.winner && <Badge tone="highlight">WINNER</Badge>}
-        </Cluster>
-        {entry.imageUrl ? (
-          <Media src={entry.imageUrl} alt={`${name}さんの提出画像`} aspect="portrait" />
-        ) : (
-          <MediaPlaceholder
-            label={entry.submitted ? "提出済み" : "未提出"}
-            // 1対1で提出した相手の画像がないのは、採点で勝敗が決まらなかった場合だけ。
-            description={
-              entry.submitted && !mine ? "採点できなかったため、画像は公開されません" : undefined
-            }
-          >
-            <Text>{entry.submitted ? "提出済み" : "未提出"}</Text>
-          </MediaPlaceholder>
-        )}
-        {entry.total !== null && (
-          <Stack space="tight" align="center">
-            <Text variant="caption">最終スコア</Text>
-            <Text
-              variant="numeric.display"
-              tone={getScoreRank(entry.total).text}
-              emphasis={getScoreRank(entry.total).emphasis}
-            >
-              {entry.total.toLocaleString("ja-JP", { maximumFractionDigits: 2 })}
-              <Text variant="caption">pt</Text>
-            </Text>
+    <ResultCardFrame winner={entry.winner} animate={animate}>
+      <Surface
+        appearance="card"
+        padding="content"
+        fill
+        accent={entry.winner ? "primary" : undefined}
+      >
+        <Stack>
+          {/*
+            名前の長さで左右のカードの画像の位置がずれないよう、アバターと札の行と、名前の行を分ける。
+            長い名前は1行に収まるよう縮める（全体の名前は`title`で伝える）。
+          */}
+          <Stack space="tight">
+            <Cluster layout="nowrap">
+              <Avatar
+                size="small"
+                name={name}
+                fallback={Array.from(name)[0]}
+                {...accountIconAvatar(icon, playerPalettes[seat % playerPalettes.length])}
+              />
+              <Badge>{mine ? "あなた" : "対戦相手"}</Badge>
+            </Cluster>
+            <Heading level={2} size="title" title={name}>
+              {shortenName(name, 6)}
+            </Heading>
           </Stack>
-        )}
-        {!entry.submitted && (
-          <Text variant="caption" tone="muted">
-            時間内に提出されませんでした
-          </Text>
-        )}
-      </Stack>
-    </Surface>
+          {entry.imageUrl ? (
+            <Media src={entry.imageUrl} alt={`${name}さんの提出画像`} aspect="portrait" />
+          ) : (
+            <MediaPlaceholder
+              label={entry.submitted ? "提出済み" : "未提出"}
+              // 1対1で提出した相手の画像がないのは、採点で勝敗が決まらなかった場合だけ。
+              description={
+                entry.submitted && !mine ? "採点できなかったため、画像は公開されません" : undefined
+              }
+            >
+              <Text>{entry.submitted ? "提出済み" : "未提出"}</Text>
+            </MediaPlaceholder>
+          )}
+          {entry.total !== null && (
+            <Stack space="tight" align="center">
+              <Text variant="caption">最終スコア</Text>
+              <Text
+                variant="numeric.display"
+                tone={getScoreRank(entry.total).text}
+                emphasis={getScoreRank(entry.total).emphasis}
+              >
+                {entry.total.toLocaleString("ja-JP", { maximumFractionDigits: 2 })}
+                <Text variant="caption">pt</Text>
+              </Text>
+            </Stack>
+          )}
+          {!entry.submitted && (
+            <Text variant="caption" tone="muted">
+              時間内に提出されませんでした
+            </Text>
+          )}
+        </Stack>
+      </Surface>
+    </ResultCardFrame>
   );
 }
 /** ヘッダーの下に横幅いっぱいに通す、発表の進み具合の線。 */
@@ -249,6 +274,7 @@ function ResultScreen({
       icon={icons.get(entry.participantId) ?? null}
       mine={entry.participantId === participantId}
       seat={battle.participantIds.indexOf(entry.participantId)}
+      animate={animate}
     />
   );
   return (
@@ -277,7 +303,11 @@ function ResultScreen({
             </VerdictReveal>
             <Text align="center">{headline.message}</Text>
           </Stack>
-          <ComparisonStage first={mine && participant(mine)} second={theirs && participant(theirs)}>
+          <ComparisonStage
+            fill
+            first={mine && participant(mine)}
+            second={theirs && participant(theirs)}
+          >
             <Stack align="center">
               <Badge>
                 お題・{levels[battle.settings.difficulty].label}・{battle.settings.durationSeconds}
