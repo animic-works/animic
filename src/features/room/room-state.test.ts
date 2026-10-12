@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
+import * as v from "valibot";
 import {
   acceptGeneration,
   createBattle,
@@ -9,16 +10,12 @@ import {
 import type { BattleState, ScoringJobOutcome } from "../battle/battle-state";
 import {
   applyRoomScoring,
-  battleLimitError,
   canJoinRoom,
   getIdleDeadline,
-  getReadyError,
-  getSettingsError,
-  hasBattlesLeft,
   reconcileRoom,
   getRoomDeadline,
-  roomBattleLimit,
   roomCapacity,
+  roomStateSchema,
 } from "./room-state";
 import type { RoomState } from "./room-state";
 
@@ -27,7 +24,6 @@ function room(): RoomState {
     creation: null,
     code: "ABCDEFGH",
     battle: null,
-    battleCount: 0,
     settings: null,
     version: 1,
     hostId: "host",
@@ -43,6 +39,18 @@ function room(): RoomState {
 }
 
 describe("ルームの接続と期限", () => {
+  it("2戦制限があった時の保存状態も、ルームと対戦を維持して読み込める", () => {
+    const state = {
+      ...room(),
+      battle: createBattle(
+        { difficulty: "easy", durationSeconds: 60, selectionSeconds: 10 },
+        { id: "topic", difficulty: "easy", imageUrl: "https://example.invalid/topic.png" },
+        ["host", "first"],
+        0,
+      ),
+    };
+    expect(v.parse(roomStateSchema, { ...state, battleCount: 2 })).toEqual(state);
+  });
   it("ホストの切断から30秒待ち、参加順で引き継ぐ", () => {
     const state = reconcileRoom(room(), new Set(["second", "first"]), 1000);
     expect(reconcileRoom(state, new Set(["second", "first"]), 30_999).hostId).toBe("host");
@@ -141,41 +149,6 @@ describe("ルームの定員", () => {
   });
   it("参加済みの人の再参加は定員に達していても受け付ける", () => {
     expect(canJoinRoom({ members: members(roomCapacity) }, "m0")).toBe(true);
-  });
-});
-
-describe("ルームの対戦の数", () => {
-  const ended = reconcileBattle(
-    createBattle(
-      { difficulty: "easy", durationSeconds: 10, selectionSeconds: 5 },
-      { id: "topic", difficulty: "easy", imageUrl: "https://example.invalid/topic.png" },
-      ["host", "first"],
-      0,
-    ),
-    20_000,
-  );
-  it("上限の数まで対戦を始められる", () => {
-    expect(hasBattlesLeft(roomBattleLimit - 1)).toBe(true);
-    expect(hasBattlesLeft(roomBattleLimit)).toBe(false);
-  });
-  it("上限の数の対戦を終えたら、開始と同じくルールの変更を受け付けない", () => {
-    const state = { ...room(), battle: ended, battleCount: roomBattleLimit - 1 };
-    expect(getSettingsError(state, "host", ended.id)).toBeNull();
-    expect(getSettingsError(state, "first", ended.id)).toBe("ホストのみ条件を変更できます。");
-    expect(getSettingsError({ ...state, battleCount: roomBattleLimit }, "host", ended.id)).toBe(
-      battleLimitError,
-    );
-  });
-  it("上限の数の対戦を終えたら、準備完了を受け付けない", () => {
-    const state = { ...room(), battle: ended, battleCount: roomBattleLimit - 1 };
-    expect(getReadyError(state, "first")).toBeNull();
-    expect(getReadyError(state, "outsider")).toBe("ルームへの参加が必要です。");
-    expect(getReadyError({ ...state, battle: { ...ended, result: null } }, "first")).toBe(
-      "対戦中は準備状態を変更できません。",
-    );
-    expect(getReadyError({ ...state, battleCount: roomBattleLimit }, "first")).toBe(
-      battleLimitError,
-    );
   });
 });
 

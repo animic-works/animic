@@ -7,7 +7,6 @@ import {
   battleStateSchema,
   battleSettingsSchema,
   battleSnapshotSchema,
-  canStartAfter,
   reconcileBattle,
 } from "../battle/battle-state";
 import type { ScoringJobOutcome } from "../battle/battle-state";
@@ -30,13 +29,6 @@ export function canJoinRoom(state: Pick<RoomState, "members">, participantId: st
     state.members.length < roomCapacity
   );
 }
-/** 1つのルームで行える対戦の数。 */
-export const roomBattleLimit = 2;
-/** 始めた対戦の数（`battleCount`）から、このルームでまだ対戦を始められるか。 */
-export function hasBattlesLeft(battleCount: number) {
-  return battleCount < roomBattleLimit;
-}
-export const battleLimitError = `このルームで遊べる対戦は${roomBattleLimit}回までです。`;
 /** 対戦の結果が出た後、操作のない接続を切るまでの時間。 */
 export const idleConnectionMs = 5 * 60_000;
 /**
@@ -69,8 +61,6 @@ export const roomStateSchema = v.object({
   code: roomCodeSchema,
   settings: v.optional(v.nullable(battleSettingsSchema), null),
   battle: v.optional(v.nullable(battleStateSchema), null),
-  // このルームで始めた対戦の数。この値を保存する前に作ったルームは0から数える。
-  battleCount: v.optional(v.number(), 0),
   version: v.number(),
   hostId: v.nullable(v.string()),
   members: v.array(memberSchema),
@@ -83,7 +73,6 @@ export const roomSnapshotSchema = v.object({
   code: roomCodeSchema,
   settings: v.optional(v.nullable(battleSettingsSchema), null),
   battle: v.optional(v.nullable(battleSnapshotSchema), null),
-  battleCount: v.number(),
   version: v.number(),
   hostId: v.nullable(v.string()),
   members: v.array(v.object({ ...memberSchema.entries, connected: v.boolean() })),
@@ -116,35 +105,6 @@ export function reconcileRoom(state: RoomState, connected: Set<string>, now: num
     }
   }
   return next;
-}
-
-/**
- * ホストが次の対戦の条件を変更できない理由。変更できれば`null`。
- * 対戦の数が上限に達したルームでは、開始と同じく受け付けない。
- */
-export function getSettingsError(
-  state: RoomState,
-  participantId: string,
-  previousBattleId: string | null,
-) {
-  if (
-    state.closed ||
-    !canStartAfter(state.battle, previousBattleId) ||
-    state.hostId !== participantId
-  )
-    return "ホストのみ条件を変更できます。";
-  return hasBattlesLeft(state.battleCount) ? null : battleLimitError;
-}
-
-/**
- * 参加者が準備状態を変更できない理由。変更できれば`null`。
- * 対戦の数が上限に達したルームでは、開始と同じく受け付けない。
- */
-export function getReadyError(state: RoomState, participantId: string) {
-  if (state.closed || !state.members.some((member) => member.id === participantId))
-    return "ルームへの参加が必要です。";
-  if (state.battle && !state.battle.result) return "対戦中は準備状態を変更できません。";
-  return hasBattlesLeft(state.battleCount) ? null : battleLimitError;
 }
 
 /**

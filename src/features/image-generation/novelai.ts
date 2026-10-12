@@ -62,6 +62,7 @@ export function buildGeneratePayload(request: {
   characters: readonly string[];
   stylePrompt: string;
   model: ImageModel;
+  steps: number;
   seed: number;
 }) {
   const settings = modelSettings[request.model];
@@ -86,7 +87,7 @@ export function buildGeneratePayload(request: {
       use_coords: false,
       width: 832,
       height: 1216,
-      steps: 28,
+      steps: request.steps,
       scale: 5,
       sampler: "k_euler_ancestral",
       seed: request.seed,
@@ -177,6 +178,7 @@ export async function requestImage(request: {
   characters: readonly string[];
   stylePrompt: string;
   model: ImageModel;
+  steps: number;
   deadline: number;
 }): Promise<ImageResult> {
   if (request.deadline - Date.now() < minimumTimeMs) return { ok: false, reason: "deadline" };
@@ -192,6 +194,7 @@ export async function requestImage(request: {
           characters: request.characters,
           stylePrompt: request.stylePrompt,
           model: request.model,
+          steps: request.steps,
           seed: Math.floor(Math.random() * 1_000_000_000),
         }),
       ),

@@ -32,14 +32,10 @@ import type { RoomCreation } from "./room-creation";
 import { session } from "../../lib/auth-schema";
 import {
   applyRoomScoring,
-  battleLimitError,
   canJoinRoom,
   reconcileRoom,
   getIdleDeadline,
-  getReadyError,
   getRoomDeadline,
-  getSettingsError,
-  hasBattlesLeft,
   roomCapacity,
   roomCloseDelayMs,
   roomStateSchema,
@@ -163,7 +159,6 @@ export class Room extends DurableObject<Env> {
     return {
       code: state.code,
       battle: state.battle ? getBattleSnapshot(state.battle, participantId, Date.now()) : null,
-      battleCount: state.battleCount,
       settings: state.settings,
       version: state.version,
       hostId: state.hostId,
@@ -373,7 +368,6 @@ export class Room extends DurableObject<Env> {
       code,
       version: 0,
       battle: null,
-      battleCount: 0,
       settings: null,
       hostId: participantId,
       members: [{ id: participantId, name, ready: false, icon }],
@@ -416,9 +410,13 @@ export class Room extends DurableObject<Env> {
     previousBattleId: string | null,
   ) {
     const state = this.#reconcile();
-    if (!state) throw new Error("ホストのみ条件を変更できます。");
-    const error = getSettingsError(state, participantId, previousBattleId);
-    if (error) throw new Error(error);
+    if (
+      !state ||
+      state.closed ||
+      !canStartAfter(state.battle, previousBattleId) ||
+      state.hostId !== participantId
+    )
+      throw new Error("ホストのみ条件を変更できます。");
     state.settings = settings;
     this.#save(state);
     this.#touch(participantId);
@@ -439,7 +437,7 @@ export class Room extends DurableObject<Env> {
       !canStartBattle(state.members.filter((member) => connected.has(member.id)).length)
     )
       return "接続中の参加者が2人以上の状態で、ホストが開始してください。";
-    return hasBattlesLeft(state.battleCount) ? null : battleLimitError;
+    return null;
   }
 
   async startBattle(
@@ -458,7 +456,6 @@ export class Room extends DurableObject<Env> {
       throw new Error("ホストのみ開始できます。");
     if (state.battle && state.battle.previousBattleId === previousBattleId) return;
     this.#touch(participantId);
-    if (!hasBattlesLeft(state.battleCount)) throw new Error(battleLimitError);
     if (JSON.stringify(state.settings) !== JSON.stringify(settings))
       throw new Error("対戦の条件が変更されています。");
     const connected = this.#connected();
@@ -472,7 +469,6 @@ export class Room extends DurableObject<Env> {
       now,
       bonus,
     );
-    state.battleCount += 1;
     for (const member of state.members) member.ready = false;
     this.#save(state);
     await this.#publish();
@@ -547,9 +543,8 @@ export class Room extends DurableObject<Env> {
   async setReady(participantId: string, ready: boolean) {
     const state = this.#reconcile();
     const member = state?.members.find((item) => item.id === participantId);
-    if (!state || !member) throw new Error("ルームへの参加が必要です。");
-    const error = getReadyError(state, participantId);
-    if (error) throw new Error(error);
+    if (!state || state.closed || !member) throw new Error("ルームへの参加が必要です。");
+    if (state.battle && !state.battle.result) throw new Error("対戦中は準備状態を変更できません。");
     member.ready = ready;
     this.#save(state);
     this.#touch(participantId);

@@ -25,7 +25,12 @@ export async function executeLocalD1(sql: string) {
       return v.parse(resultSchema, JSON.parse(stdout))[0]?.results ?? [];
     } catch (error) {
       // 別プロセスのWranglerとpreviewが同じローカルSQLiteを開く。
-      if (attempt >= 5 || !(error instanceof Error && error.message.includes("SQLITE_BUSY")))
+      if (attempt >= 5 || !(error instanceof Error)) throw error;
+      // --jsonのエラーは標準出力に返り、execFileのmessageには含まれない。
+      const messages = [error.message, "stdout" in error ? error.stdout : undefined];
+      if (
+        !messages.some((message) => typeof message === "string" && message.includes("SQLITE_BUSY"))
+      )
         throw error;
       await setTimeout(500);
     }
