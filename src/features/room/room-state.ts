@@ -3,10 +3,14 @@ import * as v from "valibot";
 import { accountIconSchema } from "../account/account-icon";
 import {
   abandonBattle,
+  applyScoringJobs,
   battleStateSchema,
   battleSettingsSchema,
   battleSnapshotSchema,
+  canStartAfter,
+  reconcileBattle,
 } from "../battle/battle-state";
+import type { ScoringJobOutcome } from "../battle/battle-state";
 
 // 読み間違えやすい0・O・1・I・Lを除く。
 export const ROOM_CODE_CHARS = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
@@ -32,6 +36,7 @@ export const roomBattleLimit = 2;
 export function hasBattlesLeft(battleCount: number) {
   return battleCount < roomBattleLimit;
 }
+export const battleLimitError = `このルームで遊べる対戦は${roomBattleLimit}回までです。`;
 /** 対戦の結果が出た後、操作のない接続を切るまでの時間。 */
 export const idleConnectionMs = 5 * 60_000;
 /**
@@ -110,6 +115,55 @@ export function reconcileRoom(state: RoomState, connected: Set<string>, now: num
       }
     }
   }
+  return next;
+}
+
+/**
+ * ホストが次の対戦の条件を変更できない理由。変更できれば`null`。
+ * 対戦の数が上限に達したルームでは、開始と同じく受け付けない。
+ */
+export function getSettingsError(
+  state: RoomState,
+  participantId: string,
+  previousBattleId: string | null,
+) {
+  if (
+    state.closed ||
+    !canStartAfter(state.battle, previousBattleId) ||
+    state.hostId !== participantId
+  )
+    return "ホストのみ条件を変更できます。";
+  return hasBattlesLeft(state.battleCount) ? null : battleLimitError;
+}
+
+/**
+ * 参加者が準備状態を変更できない理由。変更できれば`null`。
+ * 対戦の数が上限に達したルームでは、開始と同じく受け付けない。
+ */
+export function getReadyError(state: RoomState, participantId: string) {
+  if (state.closed || !state.members.some((member) => member.id === participantId))
+    return "ルームへの参加が必要です。";
+  if (state.battle && !state.battle.result) return "対戦中は準備状態を変更できません。";
+  return hasBattlesLeft(state.battleCount) ? null : battleLimitError;
+}
+
+/**
+ * 採点ジョブの結果を反映したルームの状態。採点ジョブを確かめる間にルームを閉じる時刻や採点期限を
+ * 過ぎた場合に、遅れて届いた採点で勝敗を決めないよう、同じ時刻で期限を反映してから採点を反映する。
+ * 閉じたルームや、別の対戦・結果の確定した対戦には反映せず`null`を返す。
+ */
+export function applyRoomScoring(
+  state: RoomState,
+  connected: Set<string>,
+  battleId: string,
+  jobs: ScoringJobOutcome[],
+  now: number,
+): RoomState | null {
+  const next = reconcileRoom(state, connected, now);
+  if (next.closed || !next.battle || next.battle.id !== battleId) return null;
+  const battle = reconcileBattle(next.battle, now);
+  if (battle.result) return null;
+  next.battle = applyScoringJobs(battle, jobs, now);
   return next;
 }
 

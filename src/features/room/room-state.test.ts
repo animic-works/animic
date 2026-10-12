@@ -1,8 +1,19 @@
 import { describe, expect, it } from "vite-plus/test";
-import { createBattle } from "../battle/battle-state";
 import {
+  acceptGeneration,
+  createBattle,
+  finishGeneration,
+  reconcileBattle,
+  submitImage,
+} from "../battle/battle-state";
+import type { BattleState, ScoringJobOutcome } from "../battle/battle-state";
+import {
+  applyRoomScoring,
+  battleLimitError,
   canJoinRoom,
   getIdleDeadline,
+  getReadyError,
+  getSettingsError,
   hasBattlesLeft,
   reconcileRoom,
   getRoomDeadline,
@@ -134,9 +145,105 @@ describe("ルームの定員", () => {
 });
 
 describe("ルームの対戦の数", () => {
+  const ended = reconcileBattle(
+    createBattle(
+      { difficulty: "easy", durationSeconds: 10, selectionSeconds: 5 },
+      { id: "topic", difficulty: "easy", imageUrl: "https://example.invalid/topic.png" },
+      ["host", "first"],
+      0,
+    ),
+    20_000,
+  );
   it("上限の数まで対戦を始められる", () => {
     expect(hasBattlesLeft(roomBattleLimit - 1)).toBe(true);
     expect(hasBattlesLeft(roomBattleLimit)).toBe(false);
+  });
+  it("上限の数の対戦を終えたら、開始と同じくルールの変更を受け付けない", () => {
+    const state = { ...room(), battle: ended, battleCount: roomBattleLimit - 1 };
+    expect(getSettingsError(state, "host", ended.id)).toBeNull();
+    expect(getSettingsError(state, "first", ended.id)).toBe("ホストのみ条件を変更できます。");
+    expect(getSettingsError({ ...state, battleCount: roomBattleLimit }, "host", ended.id)).toBe(
+      battleLimitError,
+    );
+  });
+  it("上限の数の対戦を終えたら、準備完了を受け付けない", () => {
+    const state = { ...room(), battle: ended, battleCount: roomBattleLimit - 1 };
+    expect(getReadyError(state, "first")).toBeNull();
+    expect(getReadyError(state, "outsider")).toBe("ルームへの参加が必要です。");
+    expect(getReadyError({ ...state, battle: { ...ended, result: null } }, "first")).toBe(
+      "対戦中は準備状態を変更できません。",
+    );
+    expect(getReadyError({ ...state, battleCount: roomBattleLimit }, "first")).toBe(
+      battleLimitError,
+    );
+  });
+});
+
+// 2人とも提出して採点を待つ対戦（全員の提出は4000で確定し、採点期限は304_000）。
+function scoringRoom(): RoomState {
+  let battle = createBattle(
+    { difficulty: "easy", durationSeconds: 600, selectionSeconds: 60 },
+    { id: "topic", difficulty: "easy", imageUrl: "https://example.invalid/topic.png" },
+    ["host", "first"],
+    0,
+  );
+  for (const id of ["host", "first"]) {
+    battle = acceptGeneration(battle, { id, participantId: id, inputHash: id }, 1000).battle;
+    battle = finishGeneration(
+      battle,
+      id,
+      { status: "succeeded", imageUrl: `https://example.invalid/${id}.png` },
+      2000,
+    );
+  }
+  battle = submitImage(submitImage(battle, "host", "host", 3000), "first", "first", 4000);
+  return { ...room(), battle };
+}
+function scored(battle: BattleState | null): ScoringJobOutcome[] {
+  return (battle?.scoring.entries ?? []).map((entry) => ({
+    id: entry.jobId,
+    state: "succeeded",
+    totals: [
+      { participantId: entry.participantId, total: entry.participantId === "host" ? 80 : 60 },
+    ],
+  }));
+}
+describe("採点結果の反映", () => {
+  const everyone = new Set(["host", "first"]);
+  it("期限内に届いた採点で勝敗を決める", () => {
+    const state = scoringRoom();
+    expect(
+      applyRoomScoring(state, everyone, state.battle?.id ?? "", scored(state.battle), 5000)?.battle
+        ?.result,
+    ).toEqual({ kind: "win", reason: "higher-score", winnerId: "host", decidedAt: 5000 });
+  });
+  it("ルームを閉じる時刻の後に届いた採点は反映せず、閉じた時刻の勝負不成立にする", () => {
+    const state = { ...scoringRoom(), closesAt: 100_000 };
+    const id = state.battle?.id ?? "";
+    expect(applyRoomScoring(state, new Set(), id, scored(state.battle), 99_999)).not.toBeNull();
+    expect(applyRoomScoring(state, new Set(), id, scored(state.battle), 100_000)).toBeNull();
+    expect(reconcileRoom(state, new Set(), 100_000).battle?.result).toEqual({
+      kind: "no-contest",
+      reason: "room-closed",
+      decidedAt: 100_000,
+    });
+  });
+  it("採点期限の後に届いた採点は反映しない", () => {
+    const state = scoringRoom();
+    const id = state.battle?.id ?? "";
+    expect(applyRoomScoring(state, everyone, id, scored(state.battle), 304_000)).toBeNull();
+    expect(state.battle && reconcileBattle(state.battle, 304_000).result).toEqual({
+      kind: "no-contest",
+      reason: "scoring-failed",
+      decidedAt: 304_000,
+    });
+  });
+  it("別の対戦や、結果の決まった対戦には反映しない", () => {
+    const state = scoringRoom();
+    const id = state.battle?.id ?? "";
+    expect(applyRoomScoring(state, everyone, "other", scored(state.battle), 5000)).toBeNull();
+    const decided = applyRoomScoring(state, everyone, id, scored(state.battle), 5000);
+    expect(decided && applyRoomScoring(decided, everyone, id, [], 6000)).toBeNull();
   });
 });
 

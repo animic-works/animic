@@ -234,3 +234,48 @@ test("対戦画面で「生成する」から生成して表示し、送れな�
     await guestContext.close();
   }
 });
+
+test("応答が届かなかった要求をサーバーが受け付けていたら、同じ入力でもう一度押すと次の生成として送る", async ({
+  page,
+  browser,
+}) => {
+  test.setTimeout(60_000);
+  const { code, guestContext } = await startBattle(page, browser, 600);
+  try {
+    const marker = `e2e-${crypto.randomUUID()}`;
+    const sent: string[] = [];
+    page.on("request", (request) => {
+      const body = request.postData() ?? "";
+      if (request.url().includes("/_serverFn/") && body.includes(marker)) sent.push(body);
+    });
+    await page.goto(`/rooms/${code}`);
+    await expect(page.getByRole("timer")).toBeVisible();
+    const input = page.getByRole("combobox", { name: "プロンプト（キャラ）" });
+    const generateButton = page.getByRole("button", { name: "生成する", exact: true });
+    await input.fill(`${marker}、`);
+    await expect(page.getByRole("button", { name: `「${marker}」を書き直す` })).toBeVisible();
+
+    // 要求はサーバーへ届け、応答だけを失わせる。
+    await page.route("**/_serverFn/**", async (route) => {
+      if (!route.request().postData()?.includes(marker)) return route.fallback();
+      await route.fetch();
+      await route.abort();
+    });
+    await generateButton.click();
+    await expect(
+      page.getByRole("status").filter({ hasText: "画像を生成できませんでした" }),
+    ).toBeVisible();
+    await expect(page.getByRole("img", { name: "1回目の画像" })).toBeVisible();
+    await page.unrouteAll();
+
+    // 受け付け済みの処理IDで送り直さず、同じ入力の次の生成として受け付けられる。
+    await generateButton.click();
+    await expect(page.getByRole("img", { name: "2回目の画像" })).toBeVisible();
+    expect((await getNovelAiCalls(marker)).count).toBe(2);
+    const ids = sent.map((body) => body.match(/[0-9a-f]{8}-[0-9a-f-]{27}/g)?.toSorted());
+    expect(ids).toHaveLength(2);
+    expect(ids[1]).not.toEqual(ids[0]);
+  } finally {
+    await guestContext.close();
+  }
+});

@@ -16,7 +16,6 @@ import {
   getScoredParticipantIds,
   serializeBattleResult,
   getScoringRequests,
-  applyScoringJobs,
   getBattleDeadline,
 } from "../battle/battle-state";
 import type { BattleSettings, Topic, GenerationOutcome } from "../battle/battle-state";
@@ -32,12 +31,15 @@ import { isRoomCreationRetry } from "./room-creation";
 import type { RoomCreation } from "./room-creation";
 import { session } from "../../lib/auth-schema";
 import {
+  applyRoomScoring,
+  battleLimitError,
   canJoinRoom,
   reconcileRoom,
   getIdleDeadline,
+  getReadyError,
   getRoomDeadline,
+  getSettingsError,
   hasBattlesLeft,
-  roomBattleLimit,
   roomCapacity,
   roomCloseDelayMs,
   roomStateSchema,
@@ -53,7 +55,6 @@ const attachmentSchema = v.object({
   activeAt: v.optional(v.number()),
 });
 const scoringCheckIntervalMs = 3000;
-const battleLimitError = `このルームで遊べる対戦は${roomBattleLimit}回までです。`;
 // 画面は15秒ごとにpingを送る。隠れたタブではブラウザーがタイマーを1分ごとにまとめることがあるため、
 // 余裕を見て、これより長くpingのない接続を切れたものとして扱う。
 const staleSocketMs = 90_000;
@@ -252,7 +253,8 @@ export class Room extends DurableObject<Env> {
   // 採点ジョブの登録と結果の取得は冪等にし、失敗しても次のAlarmでやり直す。
   async #syncScoring() {
     this.#scoringCheckAt = null;
-    const state = this.#read();
+    // 閉じる時刻や採点期限を過ぎた対戦の採点ジョブを登録しないよう、期限を反映した状態から始める。
+    const state = this.#reconcile();
     const battle = state?.battle;
     const requests = battle ? getScoringRequests(battle) : [];
     if (!state || state.closed || !battle || !requests.length) return;
@@ -262,15 +264,16 @@ export class Room extends DurableObject<Env> {
         this.env.DB,
         requests.map((request) => request.jobId),
       );
-      // D1との通信中に対戦が進んだ場合も、現在の対戦の状態から反映する。
+      // D1との通信中に対戦が進んだ場合や期限を過ぎた場合も、現在の状態に期限を反映してから反映する。
       const current = this.#read();
-      // 結果の確定後に登録が届いた場合も、そのジョブを割り当てない。
-      if (!current?.battle || current.battle.id !== battle.id || current.battle.result) {
+      const next =
+        current && applyRoomScoring(current, this.#connected(), battle.id, jobs, Date.now());
+      // 結果の確定後やルームを閉じた後に登録が届いた場合も、そのジョブを割り当てない。
+      if (!next) {
         await cancelScoringJobs(this.env.DB, battle.id);
         return;
       }
-      current.battle = applyScoringJobs(current.battle, jobs, Date.now());
-      this.#save(current);
+      this.#save(next);
     } catch {
       console.error("採点ジョブを確認できませんでした。再試行します。", { battleId: battle.id });
     }
@@ -413,13 +416,9 @@ export class Room extends DurableObject<Env> {
     previousBattleId: string | null,
   ) {
     const state = this.#reconcile();
-    if (
-      !state ||
-      state.closed ||
-      !canStartAfter(state.battle, previousBattleId) ||
-      state.hostId !== participantId
-    )
-      throw new Error("ホストのみ条件を変更できます。");
+    if (!state) throw new Error("ホストのみ条件を変更できます。");
+    const error = getSettingsError(state, participantId, previousBattleId);
+    if (error) throw new Error(error);
     state.settings = settings;
     this.#save(state);
     this.#touch(participantId);
@@ -449,10 +448,11 @@ export class Room extends DurableObject<Env> {
     topic: Topic,
     previousBattleId: string | null,
   ) {
-    // 最終スコアのボーナスは、対戦を始めた時刻に使う値を記録する。再現度の重みも同じ時刻で引く。
+    // 最終スコアのボーナスは、開始を求められた時刻に使う値を記録する（再現度の重みは対戦の開始時刻で引く）。
     // D1を待つ間にほかの操作が進むため、状態は読み込んだ後に確かめる。
+    const { bonus } = await loadScoringWeights(this.env.DB, new Date());
+    // 持ち時間をD1との通信の分だけ短くしないよう、対戦の時刻は読み込んだ後の時刻から数える。
     const now = Date.now();
-    const { bonus } = await loadScoringWeights(this.env.DB, new Date(now));
     const state = this.#reconcile();
     if (!state || state.closed || state.hostId !== participantId)
       throw new Error("ホストのみ開始できます。");
@@ -547,8 +547,9 @@ export class Room extends DurableObject<Env> {
   async setReady(participantId: string, ready: boolean) {
     const state = this.#reconcile();
     const member = state?.members.find((item) => item.id === participantId);
-    if (!state || state.closed || !member) throw new Error("ルームへの参加が必要です。");
-    if (state.battle && !state.battle.result) throw new Error("対戦中は準備状態を変更できません。");
+    if (!state || !member) throw new Error("ルームへの参加が必要です。");
+    const error = getReadyError(state, participantId);
+    if (error) throw new Error(error);
     member.ready = ready;
     this.#save(state);
     this.#touch(participantId);
