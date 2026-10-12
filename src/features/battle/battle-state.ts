@@ -258,6 +258,29 @@ export function reconcileBattle(state: BattleState, now: number): BattleState {
 }
 
 /**
+ * 対戦の状態を次に進めるため、ルームのDOがAlarmを予約する時刻。過ぎた期限は`now`にして取り落とさない。
+ * 結果の確定後は生成中の処理のタイムアウトだけを待ち、生成終了時刻・選択期限・採点期限では予約しない。
+ */
+export function getBattleDeadline(state: BattleState, now: number): number | null {
+  const deadlines: number[] = [];
+  for (const item of state.generations)
+    if (item.status === "pending")
+      deadlines.push(Math.max(now, item.acceptedAt + generationTimeoutMs));
+  if (!state.result) {
+    if (now < state.generationEndsAt) deadlines.push(state.generationEndsAt);
+    else if (
+      state.selectionEndsAt === null &&
+      !state.generations.some((item) => item.status === "pending")
+    )
+      deadlines.push(now);
+    if (state.selectionEndsAt !== null && state.submissions.length < state.participantIds.length)
+      deadlines.push(Math.max(now, state.selectionEndsAt));
+    if (state.scoring.endsAt !== null) deadlines.push(Math.max(now, state.scoring.endsAt));
+  }
+  return deadlines.length ? Math.min(...deadlines) : null;
+}
+
+/**
  * 本人の生成がすべて失敗に終わった（または生成していない）参加者の、提出できる画像がないと決まった時刻
  * （生成終了時刻と最後の失敗の遅い方）を返す。成功した画像か生成中の画像があれば`null`。
  */

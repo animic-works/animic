@@ -6,6 +6,7 @@ import {
   battleStateSchema,
   createBattle,
   finishGeneration,
+  getBattleDeadline,
   getBattleSnapshot,
   generationTimeoutMs,
   getScoringRequests,
@@ -637,6 +638,33 @@ it("結果保存には提出画像だけを含め、入力ハッシュや未提�
   expect(record).not.toContain("unused.png");
   expect(record).not.toContain("inputHash");
   expect(record).not.toContain("prompt-");
+});
+
+describe("Alarmの予約時刻", () => {
+  it("生成終了時刻を予約し、過ぎても選択期限が決まっていなければすぐに実行する", () => {
+    const state = bothGenerated();
+    expect(getBattleDeadline(state, 3000)).toBe(10_000);
+    expect(getBattleDeadline(state, 10_001)).toBe(10_001);
+    expect(getBattleDeadline(reconcileBattle(state, 10_001), 10_001)).toBe(15_000);
+  });
+  it("制限時間の前に結果が決まったら、生成終了時刻を過ぎても予約しない", () => {
+    const state = bothSubmitted();
+    expect(getBattleDeadline(state, 5000)).toBe(10_000);
+    const scored = applyScoringJobs(state, jobs(state, { a: 71.4, b: 60 }), 6000);
+    expect(getBattleDeadline(scored, 6000)).toBeNull();
+    const ended = reconcileBattle(scored, 10_001);
+    expect(ended.selectionEndsAt).toBeNull();
+    expect(getBattleDeadline(ended, 10_001)).toBeNull();
+  });
+  it("結果の確定後も、生成中の処理はタイムアウトの時刻まで予約する", () => {
+    let state = success(success(accept(accept(battle(), "one"), "other", "b"), "one"), "other");
+    state = accept(state, "two", "a", 3000);
+    state = submitImage(submitImage(state, "a", "one", 4000), "b", "other", 4000);
+    const scored = applyScoringJobs(state, jobs(state, { a: 71.4, b: 60 }), 5000);
+    const expiresAt = 3000 + generationTimeoutMs;
+    expect(getBattleDeadline(scored, 5000)).toBe(expiresAt);
+    expect(getBattleDeadline(reconcileBattle(scored, expiresAt), expiresAt)).toBeNull();
+  });
 });
 
 describe("同じルームでの再戦", () => {
