@@ -62,6 +62,7 @@ export function RankingResult({
   icons,
   animate,
   onRematch,
+  topLabel = "トップへ戻る",
   onTop,
 }: {
   code: string;
@@ -73,6 +74,7 @@ export function RankingResult({
   animate: boolean;
   /** 省略すると再戦の操作を出さない。 */
   onRematch?: () => void;
+  topLabel?: string;
   onTop: () => void;
 }) {
   const ranking = getRanking(battle, participantId);
@@ -198,11 +200,11 @@ export function RankingResult({
               shape="pill"
               size="lg"
               appearance="secondary"
-              compactLabel="トップへ"
-              aria-label="トップへ戻る"
+              compactLabel={topLabel === "トップへ戻る" ? "トップへ" : "終了"}
+              aria-label={topLabel}
               onClick={onTop}
             >
-              トップへ戻る
+              {topLabel}
             </Button>
           </ActionGroup>
           <Container size="summary" gutter="none">

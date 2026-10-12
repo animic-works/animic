@@ -18,12 +18,14 @@ export function InviteDialog({
   inviteUrl,
   onClose,
   onCopyUrl,
+  onDiscordInvite,
 }: {
   open: boolean;
   code: string;
   inviteUrl: string;
   onClose: () => void;
   onCopyUrl: () => void;
+  onDiscordInvite?: () => void;
 }) {
   return (
     <Dialog
@@ -36,6 +38,11 @@ export function InviteDialog({
       description="リンクを送るか、コードを伝えるか、QRコードを読み取ってもらおう。"
     >
       <Stack>
+        {onDiscordInvite && (
+          <Button shape="pill" onClick={onDiscordInvite}>
+            Discordで招待
+          </Button>
+        )}
         <Cluster layout="nowrap">
           <Input aria-label="ルームURL" value={inviteUrl} readOnly />
           <Button shape="pill" onClick={onCopyUrl}>

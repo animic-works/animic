@@ -36,8 +36,6 @@ import {
   reconcileRoom,
   getIdleDeadline,
   getRoomDeadline,
-  hasBattlesLeft,
-  roomBattleLimit,
   roomCapacity,
   roomCloseDelayMs,
   roomStateSchema,
@@ -53,7 +51,6 @@ const attachmentSchema = v.object({
   activeAt: v.optional(v.number()),
 });
 const scoringCheckIntervalMs = 3000;
-const battleLimitError = `このルームで遊べる対戦は${roomBattleLimit}回までです。`;
 // 画面は15秒ごとにpingを送る。隠れたタブではブラウザーがタイマーを1分ごとにまとめることがあるため、
 // 余裕を見て、これより長くpingのない接続を切れたものとして扱う。
 const staleSocketMs = 90_000;
@@ -161,8 +158,8 @@ export class Room extends DurableObject<Env> {
     const connected = this.#connected();
     return {
       code: state.code,
+      discordInstanceId: state.discordInstanceId,
       battle: state.battle ? getBattleSnapshot(state.battle, participantId, Date.now()) : null,
-      battleCount: state.battleCount,
       settings: state.settings,
       version: state.version,
       hostId: state.hostId,
@@ -356,11 +353,19 @@ export class Room extends DurableObject<Env> {
     await this.#schedule();
   }
 
-  async create(code: string, creation: RoomCreation, icon: AccountIcon | null) {
+  async create(
+    code: string,
+    creation: RoomCreation,
+    icon: AccountIcon | null,
+    discordInstanceId?: string,
+  ) {
     const previous = this.#reconcile();
     if (previous) {
       if (!isRoomCreationRetry(previous.creation, creation)) return false;
-      if (previous.closed) throw new Error("この作成要求のルームは終了しています。");
+      if (previous.closed) {
+        if (discordInstanceId && previous.discordInstanceId === discordInstanceId) return false;
+        throw new Error("この作成要求のルームは終了しています。");
+      }
       await this.#schedule();
       return true;
     }
@@ -368,9 +373,9 @@ export class Room extends DurableObject<Env> {
     this.#save({
       creation,
       code,
+      discordInstanceId,
       version: 0,
       battle: null,
-      battleCount: 0,
       settings: null,
       hostId: participantId,
       members: [{ id: participantId, name, ready: false, icon }],
@@ -440,7 +445,7 @@ export class Room extends DurableObject<Env> {
       !canStartBattle(state.members.filter((member) => connected.has(member.id)).length)
     )
       return "接続中の参加者が2人以上の状態で、ホストが開始してください。";
-    return hasBattlesLeft(state.battleCount) ? null : battleLimitError;
+    return null;
   }
 
   async startBattle(
@@ -458,7 +463,6 @@ export class Room extends DurableObject<Env> {
       throw new Error("ホストのみ開始できます。");
     if (state.battle && state.battle.previousBattleId === previousBattleId) return;
     this.#touch(participantId);
-    if (!hasBattlesLeft(state.battleCount)) throw new Error(battleLimitError);
     if (JSON.stringify(state.settings) !== JSON.stringify(settings))
       throw new Error("対戦の条件が変更されています。");
     const connected = this.#connected();
@@ -472,7 +476,6 @@ export class Room extends DurableObject<Env> {
       now,
       bonus,
     );
-    state.battleCount += 1;
     for (const member of state.members) member.ready = false;
     this.#save(state);
     await this.#publish();

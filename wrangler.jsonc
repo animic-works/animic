@@ -34,6 +34,7 @@
     },
   ],
   "vars": {
+    "DISCORD_API_URL": "https://discord.com/api/v10",
     "NOVELAI_API_URL": "https://image.novelai.net",
   },
   "secrets": {
@@ -51,6 +52,7 @@
   },
   "durable_objects": {
     "bindings": [
+      { "name": "DISCORD_ROOMS", "class_name": "DiscordRoom" },
       {
         "name": "ROOMS",
         "class_name": "Room",
@@ -70,5 +72,6 @@
       "tag": "v2",
       "new_sqlite_classes": ["NovelAiQueue"],
     },
+    { "tag": "v3", "new_sqlite_classes": ["DiscordRoom"] },
   ],
 }

@@ -9,7 +9,9 @@ import { getBattleHistory, getBattleHistoryDetail } from "./battle-history.serve
 // 戦績はログインした本人だけが見られる。匿名で参加した対戦は戦績に含めない。
 async function currentAccountId() {
   setResponseHeader("Cache-Control", "private, no-store");
-  const current = await createAuth().api.getSession({ headers: getRequestHeaders() });
+  const current = await createAuth(getRequestHeaders()).api.getSession({
+    headers: getRequestHeaders(),
+  });
   return current && !current.user.isAnonymous ? current.user.id : null;
 }
 
