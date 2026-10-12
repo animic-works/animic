@@ -423,9 +423,10 @@ test("生成した画像を提出すると、採点ワーカーへR2の生成画
         { participant_id: await participantId(guest), total: 60, similarity: 60 },
       ]);
 
+    // 採点された2人を1人ずつ発表（1人8秒）してから、最終の結果を出す。
     await guest.goto(`/rooms/${code}`);
-    await expect(guest.getByRole("heading", { name: "YOU LOSE…" })).toBeVisible({
-      timeout: 15_000,
+    await expect(guest.getByRole("heading", { name: "2nd", exact: true })).toBeVisible({
+      timeout: 30_000,
     });
     await expectLoaded(guest.getByRole("img", { name: "採点ホストさんの提出画像" }));
     await expectLoaded(guest.getByRole("img", { name: "採点ゲストさんの提出画像" }));
@@ -493,10 +494,13 @@ test("採点に失敗した勝負不成立では、自分の画像を表示し�
     await expect(guest.getByText("採点できなかったため、勝負不成立です")).toBeVisible({
       timeout: 15_000,
     });
-    await expectLoaded(guest.getByRole("img", { name: "採点ゲストさんの提出画像" }));
-    await expect(guest.getByRole("img", { name: "採点ホストさんの提出画像" })).toHaveCount(0);
-    const hidden = guest.getByRole("img", { name: "提出済み" });
+    // 順位の一覧の自分の行に提出画像を出し、相手の行には画像を公開しない理由を出す。
+    const rows = guest.getByRole("list", { name: "順位" }).getByRole("listitem");
+    const submitted = 'img[src^="/generated-images/"]';
+    await expectLoaded(rows.filter({ hasText: "採点ゲスト" }).locator(submitted));
+    const hidden = rows.filter({ hasText: "採点ホスト" });
     await expect(hidden).toContainText("採点できなかったため、画像は公開されません");
+    await expect(hidden.locator(submitted)).toHaveCount(0);
   });
 });
 
