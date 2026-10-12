@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vite-plus/test";
-import { getBattleClock, getBattleDeadline, getWaitingClock, isScoringSlow } from "./battle-clock";
+import {
+  getBattleClock,
+  getBattleDeadline,
+  getExpiredActions,
+  getWaitingClock,
+  isScoringSlow,
+} from "./battle-clock";
 
 const battle = {
   generationEndsAt: 60_000,
@@ -59,5 +65,20 @@ describe("採点の待ち時間", () => {
     expect(isScoringSlow(4 * 60_000 + 30_001)).toBe(false);
     expect(isScoringSlow(4 * 60_000 + 30_000)).toBe(true);
     expect(isScoringSlow(0)).toBe(true);
+  });
+});
+
+describe("手元の残り時間が0になった後の操作", () => {
+  it("生成の期限を過ぎたら、締切の配信を待たずに生成を止める。提出は猶予の間できるため止めない", () => {
+    expect(getExpiredActions("generating", 0)).toEqual({ generation: true, submission: false });
+    expect(getExpiredActions("generating", 1)).toEqual({ generation: false, submission: false });
+  });
+  it("画像選択の猶予を過ぎたら提出を止める", () => {
+    expect(getExpiredActions("selecting", 0)).toEqual({ generation: false, submission: true });
+    expect(getExpiredActions("selecting", 500)).toEqual({ generation: false, submission: false });
+  });
+  it("期限を数えない段階では止めない", () => {
+    for (const stage of ["finishing", "waiting", "scoring"] as const)
+      expect(getExpiredActions(stage, null)).toEqual({ generation: false, submission: false });
   });
 });
