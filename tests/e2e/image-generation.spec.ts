@@ -2,7 +2,8 @@ import { expect, test } from "@playwright/test";
 import type { Browser, Page } from "@playwright/test";
 
 import type { BattleSnapshot } from "../../src/features/battle/battle-state";
-import { create, join, snapshot } from "./api";
+import { loginAdmin } from "./admin";
+import { create, join, loadApi, snapshot } from "./api";
 import { executeLocalD1 } from "./d1";
 import { getNovelAiCalls, novelAiFailMarker, novelAiSlowMarker } from "./fake-novelai";
 
@@ -149,7 +150,7 @@ test("生成中は次の生成を拒否し、全員の生成を1件ずつNovelAI
     expect(await slow).toBeNull();
     await expect.poll(() => statuses(page)).toEqual(["succeeded"]);
     await expect.poll(() => statuses(guest)).toEqual(["succeeded"]);
-    expect(await getNovelAiCalls(marker)).toEqual({ count: 2, maxConcurrent: 1 });
+    expect(await getNovelAiCalls(marker)).toMatchObject({ count: 2, maxConcurrent: 1 });
 
     expect(await generate(page, request(novelAiFailMarker))).toBeNull();
     await expect.poll(() => statuses(page)).toEqual(["succeeded", "failed"]);
@@ -231,6 +232,43 @@ test("対戦画面で「生成する」から生成して表示し、送れな�
     await expect(page.getByRole("button", { name: "2回目・失敗", exact: true })).toBeDisabled();
     await expect(page.getByRole("img", { name: "1回目の画像" })).toBeVisible();
   } finally {
+    await guestContext.close();
+  }
+});
+
+test("管理画面で決めたステップ数でNovelAIへ送り、決めていなければ28で送る", async ({
+  page,
+  browser,
+}) => {
+  test.setTimeout(60_000);
+  await loginAdmin(page);
+  await loadApi(page);
+  await page.evaluate(() => window.animicTest.saveImageSteps({ data: { steps: 18 } }));
+  const { code, battleId, guestContext } = await startBattle(page, browser, 120);
+  try {
+    expect(
+      await generate(page, {
+        code,
+        battleId,
+        generationId: crypto.randomUUID(),
+        prompt: "e2e steps setting",
+      }),
+    ).toBeNull();
+    await expect.poll(async () => (await getNovelAiCalls("e2e steps setting")).steps).toEqual([18]);
+
+    await page.evaluate(() => window.animicTest.saveImageSteps({ data: { steps: 28 } }));
+    await expect.poll(() => statuses(page)).toEqual(["succeeded"]);
+    expect(
+      await generate(page, {
+        code,
+        battleId,
+        generationId: crypto.randomUUID(),
+        prompt: "e2e steps default",
+      }),
+    ).toBeNull();
+    await expect.poll(async () => (await getNovelAiCalls("e2e steps default")).steps).toEqual([28]);
+  } finally {
+    await page.evaluate(() => window.animicTest.saveImageSteps({ data: { steps: 28 } }));
     await guestContext.close();
   }
 });

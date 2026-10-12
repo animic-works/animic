@@ -304,7 +304,7 @@ APIの結合検証は画面のレイアウトやフォームに依存させま�
 | 表現の挿絵・トップページの画像（管理画面で登録したもの）                                 | R2             |
 | トップページの遊び方・採点方法・ギャラリー・OGP画像の参照先                              | D1             |
 | ロビーで選べる対戦条件の候補・表現の辞書                                                 | D1             |
-| 運営者が選んだ画像生成のモデル                                                           | 生成キューのDO |
+| 運営者が選んだ画像生成のモデルとステップ数                                               | 生成キューのDO |
 | ルームの参加者・ホスト・準備状態・次の対戦の設定                                         | ルームのDO     |
 | 対戦の開始時刻・生成終了時刻・生成履歴の情報・生成回数・提出・採点状態・開始時のボーナス | ルームのDO     |
 | 確定した対戦結果の保存・共有用の参照・参加者ごとの戦績                                   | D1             |
@@ -424,7 +424,7 @@ NovelAIはPNGのtEXtチャンクと、アルファ値の最下位ビット（`st
 
 画像のメタデータは管理画面で消します。ブラウザーで画像を白で塗ったcanvasに描き直してWebPにし（`src/lib/webp-file.ts`）、Server FunctionへFormDataで送ります。挿絵は検索のカードに小さく出すため、長い辺を640pxまでに縮めます。サーバーは`src/lib/webp.ts`でWebPのチャンクを確かめ、EXIF・XMP・アニメーションがあれば保存しません。管理画面で登録する画像はWorkersでは変換しません。
 
-画像生成の画面は、`image-generation`のServer Function（`src/features/image-generation/image-generation-admin.functions.ts`）から生成キューのDOを呼び、モデルを読み書きします。値はValibotの`picklist`で検証し、V5 CuratedとV4.5 Curated以外は保存しません。
+画像生成の画面は、`image-generation`のServer Function（`src/features/image-generation/image-generation-admin.functions.ts`）から生成キューのDOを呼び、モデルとステップ数を読み書きします。モデルはValibotの`picklist`で検証し、V5 CuratedとV4.5 Curated以外は保存しません。ステップ数は`image-models.ts`の`imageStepsSchema`で15〜28の整数だけを受け付け、保存していなければ28を使います。生成キューのDOは、順番が来た時点のモデルとステップ数を読んでNovelAIへ送ります。
 
 バックアップのZIP（`backup.json`と、`topic-images/`のお題の画像・`phrase-images/`の挿絵）は、ブラウザーで`fflate`を使って作成・展開します。書き出しではServer Functionから`backup.json`の内容を受け取り、画像は配信URLから読みます。読み込みでは、ZIPを検証して件数を表示し、運営者が選んだ項目（お題・対戦条件の候補・表現の辞書）について、お題の画像と挿絵を1枚ずつ保存してから、グループ・表現・お題・対戦条件の候補を20件ずつServer Functionへ送ります。選ばなかった項目の画像と書き込みは送りません。D1の1回の呼び出しで使えるクエリ数に収めるためです。書き込みはIDで上書きまたは追加するため、途中で失敗しても同じZIPを同じ項目で読み込み直せば同じ状態になります。グループの色・入れる欄と表現のサフィックス・注釈・別名・挿絵がない前の形式の`backup.json`は、色を`slate`、入れる欄を`both`、サフィックス・注釈を空、別名を空の配列、挿絵をなしとして読み込みます。
 
