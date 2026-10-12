@@ -19,9 +19,11 @@ export function getResultHeadline(
       : { title: "YOU LOSE…", message: `${opponentName} さんの勝ちです。次こそは！` };
   }
   if (result.kind === "draw") return { title: "DRAW", message: "最終スコアが同点でした" };
-  return result.reason === "scoring-failed"
-    ? { title: "NO GAME", message: "採点できなかったため、勝負不成立です" }
-    : { title: "NO GAME", message: "どちらも提出しなかったため、勝負不成立です" };
+  if (result.reason === "scoring-failed")
+    return { title: "NO GAME", message: "採点できなかったため、勝負不成立です" };
+  if (result.reason === "room-closed")
+    return { title: "NO GAME", message: "全員がルームを離れたため、勝負不成立です" };
+  return { title: "NO GAME", message: "どちらも提出しなかったため、勝負不成立です" };
 }
 
 export type ResultEntry = {

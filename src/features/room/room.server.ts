@@ -36,6 +36,7 @@ import {
   reconcileRoom,
   getRoomDeadline,
   roomCapacity,
+  roomCloseDelayMs,
   roomStateSchema,
 } from "./room-state";
 import type { RoomSnapshot, RoomState } from "./room-state";
@@ -44,8 +45,18 @@ const attachmentSchema = v.object({
   participantId: v.string(),
   sessionId: v.string(),
   expiresAt: v.number(),
+  connectedAt: v.optional(v.number()),
 });
 const scoringCheckIntervalMs = 3000;
+// 画面は15秒ごとにpingを送る。隠れたタブではブラウザーがタイマーを1分ごとにまとめることがあるため、
+// 余裕を見て、これより長くpingのない接続を切れたものとして扱う。
+const staleSocketMs = 90_000;
+// 対戦結果のD1への保存を試す回数。間隔を30秒から倍に延ばし（1時間まで）、約3時間で再試行をやめる。
+const resultMaxAttempts = 10;
+
+function resultRetryDelayMs(attempts: number) {
+  return Math.min(30_000 * 2 ** (attempts - 1), 60 * 60_000);
+}
 
 export class Room extends DurableObject<Env> {
   // 操作のたびに予約し直しても、採点の確認を先へ延ばし続けない。
@@ -57,8 +68,17 @@ export class Room extends DurableObject<Env> {
       "CREATE TABLE IF NOT EXISTS room (id INTEGER PRIMARY KEY CHECK (id = 1), data TEXT NOT NULL)",
     );
     ctx.storage.sql.exec(
-      "CREATE TABLE IF NOT EXISTS result_delivery (battle_id TEXT PRIMARY KEY, data TEXT NOT NULL, retry_at INTEGER NOT NULL, saved INTEGER NOT NULL DEFAULT 0)",
+      "CREATE TABLE IF NOT EXISTS result_delivery (battle_id TEXT PRIMARY KEY, data TEXT NOT NULL, retry_at INTEGER NOT NULL, saved INTEGER NOT NULL DEFAULT 0, attempts INTEGER NOT NULL DEFAULT 0)",
     );
+    // 試した回数の列を加える前に作った表にも足す。
+    if (
+      !ctx.storage.sql
+        .exec("SELECT * FROM result_delivery LIMIT 0")
+        .columnNames.includes("attempts")
+    )
+      ctx.storage.sql.exec(
+        "ALTER TABLE result_delivery ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0",
+      );
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair("ping", "pong"));
   }
 
@@ -131,7 +151,8 @@ export class Room extends DurableObject<Env> {
     const state = this.#read();
     const pending = this.ctx.storage.sql
       .exec<{ retry_at: number }>(
-        "SELECT retry_at FROM result_delivery WHERE saved = 0 ORDER BY retry_at LIMIT 1",
+        "SELECT retry_at FROM result_delivery WHERE saved = 0 AND attempts < ? ORDER BY retry_at LIMIT 1",
+        resultMaxAttempts,
       )
       .toArray()[0];
     if (!state || state.closed) {
@@ -165,32 +186,39 @@ export class Room extends DurableObject<Env> {
 
   async #persistResults() {
     const pending = this.ctx.storage.sql
-      .exec<{ battle_id: string; data: string }>(
-        "SELECT battle_id, data FROM result_delivery WHERE saved = 0 AND retry_at <= ?",
+      .exec<{ battle_id: string; data: string; attempts: number }>(
+        "SELECT battle_id, data, attempts FROM result_delivery WHERE saved = 0 AND attempts < ? AND retry_at <= ?",
+        resultMaxAttempts,
         Date.now(),
       )
       .toArray();
     for (const item of pending) {
+      const attempts = item.attempts + 1;
       // D1への通信中に停止しても、保存済みの予定から再試行する。
       this.ctx.storage.sql.exec(
-        "UPDATE result_delivery SET retry_at = ? WHERE battle_id = ?",
-        Date.now() + 30_000,
+        "UPDATE result_delivery SET attempts = ?, retry_at = ? WHERE battle_id = ?",
+        attempts,
+        Date.now() + resultRetryDelayMs(attempts),
         item.battle_id,
       );
       await this.#schedule();
       try {
         const room = this.#read();
         if (!room) throw new Error("ルームがありません。");
-        await persistBattleResult(this.env.DB, item.battle_id, room.code, item.data);
+        // 結果が決まった対戦の採点ジョブは使わないため、保存より先に取り消す。
         await cancelScoringJobs(this.env.DB, item.battle_id);
+        await persistBattleResult(this.env.DB, item.battle_id, room.code, item.data);
         this.ctx.storage.sql.exec(
           "UPDATE result_delivery SET saved = 1 WHERE battle_id = ?",
           item.battle_id,
         );
-      } catch {
-        console.error("対戦結果を保存できませんでした。再試行します。", {
-          battleId: item.battle_id,
-        });
+      } catch (error) {
+        console.error(
+          attempts < resultMaxAttempts
+            ? "対戦結果を保存できませんでした。再試行します。"
+            : "対戦結果を保存できませんでした。再試行をやめます。",
+          { battleId: item.battle_id, attempts, error },
+        );
       }
     }
   }
@@ -222,7 +250,20 @@ export class Room extends DurableObject<Env> {
     }
   }
 
+  // 通信が途絶えてCloseが届かない接続を残すと、ルームが閉じずAlarmが続く。
+  #closeStaleSockets() {
+    const now = Date.now();
+    for (const socket of this.#sockets()) {
+      const lastSeen =
+        this.ctx.getWebSocketAutoResponseTimestamp(socket)?.getTime() ??
+        v.parse(attachmentSchema, socket.deserializeAttachment()).connectedAt;
+      if (lastSeen !== undefined && now - lastSeen > staleSocketMs)
+        socket.close(4408, "接続を確認できませんでした");
+    }
+  }
+
   async #publish() {
+    this.#closeStaleSockets();
     this.#reconcile();
     await this.#schedule();
     await this.#persistResults();
@@ -235,18 +276,23 @@ export class Room extends DurableObject<Env> {
       ),
     ];
     if (sessionIds.length) {
-      const valid = await drizzle(this.env.DB)
-        .select({ id: session.id, userId: session.userId, expiresAt: session.expiresAt })
-        .from(session)
-        .where(and(inArray(session.id, sessionIds), gt(session.expiresAt, new Date())));
-      for (const socket of sockets) {
-        const identity = v.parse(attachmentSchema, socket.deserializeAttachment());
-        const current = valid.find(
-          (item) => item.id === identity.sessionId && item.userId === identity.participantId,
-        );
-        if (!current || current.expiresAt.getTime() <= Date.now())
-          socket.close(4401, "セッションが失効しました");
-        else socket.serializeAttachment({ ...identity, expiresAt: current.expiresAt.getTime() });
+      try {
+        const valid = await drizzle(this.env.DB)
+          .select({ id: session.id, userId: session.userId, expiresAt: session.expiresAt })
+          .from(session)
+          .where(and(inArray(session.id, sessionIds), gt(session.expiresAt, new Date())));
+        for (const socket of sockets) {
+          const identity = v.parse(attachmentSchema, socket.deserializeAttachment());
+          const current = valid.find(
+            (item) => item.id === identity.sessionId && item.userId === identity.participantId,
+          );
+          if (!current || current.expiresAt.getTime() <= Date.now())
+            socket.close(4401, "セッションが失効しました");
+          else socket.serializeAttachment({ ...identity, expiresAt: current.expiresAt.getTime() });
+        }
+      } catch (error) {
+        // 保存済みの操作を失敗として返さない。セッションは次の配信（30秒以内のAlarm）で確かめる。
+        console.error("接続のセッションを確認できませんでした。", { error });
       }
     }
     const state = this.#reconcile();
@@ -281,7 +327,7 @@ export class Room extends DurableObject<Env> {
       hostId: participantId,
       members: [{ id: participantId, name, ready: false, icon }],
       hostDisconnectedUntil: null,
-      closesAt: Date.now() + 30 * 60_000,
+      closesAt: Date.now() + roomCloseDelayMs,
       closed: false,
     });
     await this.#schedule();
@@ -484,7 +530,7 @@ export class Room extends DurableObject<Env> {
       return new Response(null, { status: 403 });
     const pair = new WebSocketPair();
     this.ctx.acceptWebSocket(pair[1]);
-    pair[1].serializeAttachment(identity.output);
+    pair[1].serializeAttachment({ ...identity.output, connectedAt: Date.now() });
     this.#save(state);
     await this.#publish();
     return new Response(null, { status: 101, webSocket: pair[0] });

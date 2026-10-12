@@ -109,6 +109,7 @@ export function RoomPage({
   if (screen.kind === "result")
     return (
       <ResultPage
+        key={screen.battle.id}
         code={room.code}
         battle={screen.battle}
         receivedAt={current.at}

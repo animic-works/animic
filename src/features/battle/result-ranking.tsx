@@ -110,7 +110,9 @@ export function RankingResult({
   const message = !winner
     ? battle.result?.kind === "no-contest" && battle.result.reason === "scoring-failed"
       ? "採点できなかったため、勝負不成立です"
-      : "誰も提出しなかったため、勝負不成立です"
+      : battle.result?.kind === "no-contest" && battle.result.reason === "room-closed"
+        ? "全員がルームを離れたため、勝負不成立です"
+        : "誰も提出しなかったため、勝負不成立です"
     : me?.rank == null
       ? `${submitted ? "採点できなかったため、順位はありません" : "今回は提出できませんでした"}。1位は ${name(winner)} さん`
       : me.rank === 1
