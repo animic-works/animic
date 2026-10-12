@@ -1,4 +1,12 @@
 import { test, expect } from "@playwright/test";
+import { signIn } from "./api";
+
+declare global {
+  interface Window {
+    /** 読み込み中に補助操作の欄で見えていた表示（E2Eの記録用）。 */
+    animicSeenActions?: Set<string>;
+  }
+}
 test.use({ launchOptions: { ignoreDefaultArgs: ["--hide-scrollbars"] } });
 test.describe("ナビゲーションとスクロール", () => {
   test.use({
@@ -361,4 +369,80 @@ test("リンク列の再表示とリサイズでは下線を飛ばさず、そ�
       expect(sample.animations).toBe(0);
     }
   }
+});
+
+test("短縮した文言でも1行に収まらない幅では、2行にする前に操作をアイコンだけにする", async ({
+  page,
+}) => {
+  await page.goto("/#how", { waitUntil: "networkidle" });
+  await page.evaluate(() => document.fonts.ready);
+  const header = page.locator("header");
+  const links = header.getByRole("navigation", { name: "メインメニュー" });
+  const start = header.getByRole("button", { name: "スタート", exact: true });
+  const join = header.getByRole("button", { name: "ルームに参加", exact: true });
+  for (const width of [561, 606, 700]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(header).toHaveAttribute("data-navigation-layout", "inline");
+    const navigation = (await links.boundingBox())!;
+    for (const button of [start, join]) {
+      const box = (await button.boundingBox())!;
+      // リンクと同じ行に、文字を隠した丸い操作として並ぶ。
+      expect(box.y).toBeLessThan(navigation.y + navigation.height);
+      expect(Math.abs(box.width - box.height)).toBeLessThan(2);
+    }
+    await expect(links.getByRole("link")).toHaveCount(4);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+  }
+});
+
+test("ヒーローの操作は縦長の画面でも文言を折り返さない", async ({ page }) => {
+  await page.goto("/", { waitUntil: "networkidle" });
+  await page.evaluate(() => document.fonts.ready);
+  const join = page.getByRole("main").getByRole("button", { name: "ルームに参加する" });
+  for (const [width, height] of [
+    [561, 900],
+    [606, 1026],
+    [768, 1024],
+  ]) {
+    await page.setViewportSize({ width, height });
+    await page.evaluate(() => new Promise(requestAnimationFrame));
+    const lines = await join.locator("[data-animic-button-label]").evaluate((label) => {
+      const lineHeight = parseFloat(getComputedStyle(label).lineHeight);
+      return Math.round(label.getBoundingClientRect().height / lineHeight);
+    });
+    expect(lines).toBe(1);
+  }
+});
+
+test("前回ログインしていたブラウザーでは「マイページ」を見せずにアイコンを出し、ログインしていなければ最初から「マイページ」を出す", async ({
+  page,
+}) => {
+  // 読み込みの間、補助操作の欄に見えていたものを、最初のフレームから記録する。
+  await page.addInitScript(() => {
+    const seen = new Set<string>();
+    window.animicSeenActions = seen;
+    const record = () => {
+      const header = document.querySelector("[data-animic-navigation]");
+      const actions = header?.lastElementChild;
+      if (actions && getComputedStyle(actions).visibility === "visible")
+        seen.add(actions.textContent?.includes("マイページ") ? "マイページ" : "アイコン");
+      requestAnimationFrame(record);
+    };
+    requestAnimationFrame(record);
+  });
+  const seenActions = () => page.evaluate(() => [...(window.animicSeenActions ?? [])]);
+
+  await page.goto("/#how", { waitUntil: "networkidle" });
+  await expect(page.getByRole("link", { name: "マイページ" })).toBeVisible();
+  expect(await seenActions()).toEqual(["マイページ"]);
+
+  await signIn(page.context());
+  // 最初の確認でログインを覚え、次の読み込みからは確認が終わるまで隠す。
+  await page.reload({ waitUntil: "networkidle" });
+  await expect(page.getByRole("button", { name: /^アカウント/ })).toBeVisible();
+  await page.reload({ waitUntil: "networkidle" });
+  await expect(page.getByRole("button", { name: /^アカウント/ })).toBeVisible();
+  expect(await seenActions()).toEqual(["アイコン"]);
 });

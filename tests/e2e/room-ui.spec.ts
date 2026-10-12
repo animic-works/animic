@@ -126,3 +126,26 @@ test("ロビーから戻ろうとすると退出の確認を出し、やめれ�
   await dialog.getByRole("button", { name: "退出する", exact: true }).click();
   await expect(page).toHaveURL(/\/start$/);
 });
+
+test("ロビーは狭い画面のヘッダーにルームコードを重ねず、広い欄でもお題の見本を正方形で見せる", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const code = await openLobby(page);
+  const header = page.locator("header").first();
+  await expect(header.getByRole("button", { name: "退出" })).toBeVisible();
+  await expect(header.getByText(code)).toHaveCount(0);
+  // ルームコードは、すぐ下のプレイヤーの欄で確かめられる。
+  await expect(page.getByRole("heading", { name: "ルームコード", exact: true })).toBeVisible();
+
+  for (const [width, height] of [
+    [768, 1024],
+    [1440, 900],
+  ]) {
+    await page.setViewportSize({ width, height });
+    const topic = page.getByRole("img", { name: /お題のイメージ/ });
+    await topic.scrollIntoViewIfNeeded();
+    const box = (await topic.boundingBox())!;
+    expect(Math.abs(box.width - box.height)).toBeLessThan(2);
+  }
+});
