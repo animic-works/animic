@@ -2,7 +2,7 @@
 
 - 状態: 承認済み
 - 決定日: 2026-10-08
-- 関連: [ゲーム仕様](../product.md#画像生成)、[アーキテクチャ](../architecture.md#依存関係とクライアントサーバーの分離)、[採点の設計](../scoring.md)、[ADR 0007](0007-topic-images-and-backup.md)、[ADR 0008](0008-generated-image-webp.md)、Issue #12、Issue #35
+- 関連: [ゲーム仕様](../product.md#画像生成)、[アーキテクチャ](../architecture.md#画像生成と配信)、[採点の設計](../scoring.md)、[ADR 0007](0007-topic-images-and-backup.md)、[ADR 0008](0008-generated-image-webp.md)、Issue #12、Issue #35
 
 ## 背景
 

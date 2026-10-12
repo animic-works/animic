@@ -26,7 +26,7 @@
 ## 静的検査
 
 - 型情報を使う厳格なlintを維持します。型チェック、テスト、ビルドと合わせて変更に適した検証を実施します。
-- lint例外は必要性を説明できる範囲に限定します。設定は[vite.config.ts](../vite.config.ts)、検証手順は[CONTRIBUTING.md](../CONTRIBUTING.md#セットアップと検証)を参照してください。
+- lint例外は必要性を説明できる範囲に限定します。設定は[vite.config.ts](../vite.config.ts)、検証手順は[CONTRIBUTING.md](../CONTRIBUTING.md#変更を検証する)を参照してください。
 
 ## React Compilerと未使用コード
 
