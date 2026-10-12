@@ -1,5 +1,5 @@
 import { useSectionNavigation } from "./use-section-navigation";
-import { type MouseEvent, useEffect, useRef, useState } from "react";
+import { type MouseEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { getCurrentParticipant } from "../../lib/auth.functions";
 import { LoginDialog } from "../room/login-dialog";
 import { Button } from "@animic/react/button";
@@ -16,6 +16,7 @@ import { Lead } from "@animic/react/lead";
 import { usePageTransition } from "../navigation/page-transition-provider";
 import { AccountIcon } from "../shared/icons";
 import { AccountMenu } from "./account-menu";
+import { settleAccountHint, useAccountHint } from "./account-hint";
 import type { HomeContent } from "./home-content";
 import { Gallery, HowToPlay, Scoring } from "./home-sections";
 import { JoinRoomDialog } from "./join-room-dialog";
@@ -46,14 +47,24 @@ export function HomePage({ content }: { content: HomeContent }) {
   const [joinOpen, setJoinOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [loginPurpose, setLoginPurpose] = useState<"start" | "mypage">("start");
-  // ログインしていれば、メニューのマイページをアカウントのアイコンで表示する。
-  const [account, setAccount] =
-    useState<NonNullable<Awaited<ReturnType<typeof getCurrentParticipant>>>["account"]>(null);
+  // ログインしていれば、メニューのマイページをアカウントのアイコンで表示する（account-hint.ts）。
+  // 前回ログインしていれば、覚えたアイコンを起動直後に出し、サーバーでの確認（verified）で後から合わせる。
+  const remembered = useAccountHint();
+  const [verified, setVerified] = useState<
+    NonNullable<Awaited<ReturnType<typeof getCurrentParticipant>>>["account"] | undefined
+  >(undefined);
+  const account = verified === undefined ? remembered : verified;
+  // 描画と同じフレームで隠していた場所を出し、アイコンを遅れて見せない。
+  useLayoutEffect(() => {
+    if (account) settleAccountHint(undefined);
+  }, [account]);
   useEffect(() => {
     let active = true;
     void (async () => {
       const participant = await getCurrentParticipant().catch(() => undefined);
-      if (active) setAccount(participant?.account ?? null);
+      if (!active) return;
+      if (participant !== undefined) setVerified(participant?.account ?? null);
+      settleAccountHint(participant === undefined ? undefined : (participant?.account ?? null));
     })();
     return () => {
       active = false;
@@ -172,10 +183,11 @@ export function HomePage({ content }: { content: HomeContent }) {
               prominence="lifted"
               appearance="primary"
               feedback="press"
+              aria-label="スタート"
+              leadingIcon={<StartIcon />}
               loading={checkingLogin}
               onClick={() => void start()}
             >
-              <StartIcon />
               スタート
             </Button>
             <Button
@@ -197,7 +209,10 @@ export function HomePage({ content }: { content: HomeContent }) {
             <AccountMenu
               account={account}
               onMypage={() => navigate("/mypage")}
-              onSignedOut={() => setAccount(null)}
+              onSignedOut={() => {
+                setVerified(null);
+                settleAccountHint(null);
+              }}
             />
           ) : (
             <Link
