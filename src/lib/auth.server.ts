@@ -6,6 +6,9 @@ import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { drizzle } from "drizzle-orm/d1";
 import * as v from "valibot";
 
+import { discordActivityOrigin, isDiscordActivityRequest } from "./discord-activity";
+import { discordActivitySignIn } from "./discord-auth.server";
+
 import { e2eSignIn } from "./auth-e2e.server";
 import * as schema from "./auth-schema";
 
@@ -24,19 +27,21 @@ const configSchema = v.object({
   ),
 });
 
-export function createAuth() {
+export function createAuth(headers = new Headers()) {
   const parsed = v.safeParse(configSchema, env);
   if (!parsed.success) {
     throw new Error("BETTER_AUTH_URLと32文字以上のBETTER_AUTH_SECRETを設定してください。");
   }
   const config = parsed.output;
   const secure = new URL(config.BETTER_AUTH_URL).protocol === "https:";
+  const activity = isDiscordActivityRequest(headers, env.DISCORD_CLIENT_ID);
   const db = drizzle(env.DB, { schema });
 
   return betterAuth({
     appName: "Animic",
     baseURL: config.BETTER_AUTH_URL,
     secret: config.BETTER_AUTH_SECRET,
+    trustedOrigins: [config.BETTER_AUTH_URL, discordActivityOrigin(env.DISCORD_CLIENT_ID)],
     database: drizzleAdapter(db, {
       provider: "sqlite",
       schema,
@@ -64,16 +69,27 @@ export function createAuth() {
     rateLimit: {
       enabled: true,
       storage: "database",
-      customRules: { "/sign-in/anonymous": { window: 60, max: 20 } },
+      customRules: {
+        "/sign-in/anonymous": { window: 60, max: 20 },
+        // 同じ回線のActivity参加者が一斉に起動できるよう、短時間の3回制限を使わない。
+        "/sign-in/discord-activity": { window: 60, max: 20 },
+      },
     },
     advanced: {
       ipAddress: { ipAddressHeaders: ["cf-connecting-ip"] },
       // Better Authの自動__Secure-付与を止め、__Host-とSecure属性を一緒に設定する。
       useSecureCookies: false,
       cookiePrefix: secure ? "__Host-animic" : "animic",
-      defaultCookieAttributes: { secure, httpOnly: true, sameSite: "lax", path: "/" },
+      defaultCookieAttributes: {
+        secure: activity || secure,
+        httpOnly: true,
+        sameSite: activity ? "none" : "lax",
+        partitioned: activity,
+        path: "/",
+      },
     },
     plugins: [
+      discordActivitySignIn(),
       anonymous({
         disableDeleteAnonymousUser: true,
         // ログインしたら匿名のセッションを失効させ、同じブラウザのほかのタブのルーム接続も閉じる。

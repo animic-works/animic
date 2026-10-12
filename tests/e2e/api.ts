@@ -15,7 +15,7 @@ const signInSchema = v.object({ user: v.object({ id: v.string() }) });
 /** E2E専用のログイン（src/lib/auth-e2e.server.ts）で、OAuthを通さずにログインした状態を作る。 */
 export async function signIn(
   context: BrowserContext,
-  account: { provider: "google" | "discord"; email: string; name: string } = {
+  account: { provider: "google" | "discord"; email: string; name: string; accountId?: string } = {
     provider: "google",
     email: `${crypto.randomUUID()}@example.test`,
     name: "ホスト",

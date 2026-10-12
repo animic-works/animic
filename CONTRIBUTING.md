@@ -67,7 +67,7 @@ vp run dev
 
 `vp run check`はデザインシステムを生成してから、import境界・styling propsの検査、フォーマット・lint・型チェック・Knipを実行します。`vp check`ではフォーマットと型情報を使うlintを実行し、プロジェクト全体の型チェックは`tsc --noEmit`、未使用コードの検査はKnipが担当します。現在の設定とKnipの例外は[静的検査の設定](#静的検査の設定)を参照してください。
 
-E2Eは[playwright.config.ts](playwright.config.ts)がビルド・DBの初期化・プレビュー起動を行います。テストごとではなく実行ごとに`.wrangler/e2e/`を初期化し、開発用の`.wrangler/state/`とは分けます。Wranglerによるテストデータ操作と他のテストが同じSQLiteを同時に更新しないよう、E2Eは1 workerで順に実行します。複数人の同時操作は各テスト内で複数のブラウザコンテキストを使って確認します。認証URLと鍵、NovelAIのトークン、管理画面のパスワード、OAuthクライアントはテスト用の値を設定するため、E2Eだけなら`.env`の用意は不要です。画像の生成は、`playwright.config.ts`の`globalSetup`で起動する偽のNovelAI（`tests/e2e/fake-novelai.ts`、`http://127.0.0.1:4174`）へ送り、実際のNovelAIへは通信しません。偽のNovelAIは、テスト用のトークンを確かめ、プロンプトをテキストのチャンクに埋め込んだPNGをZIPで返します。プロンプトに目印を含めると、失敗を返したり応答を遅らせたりします。NovelAIの接続先（`wrangler.jsonc`の`vars`の`NOVELAI_API_URL`）はビルドした後に環境変数で上書きできないため、`ANIMIC_E2E=true`のビルドでだけ、`vite.config.ts`で環境変数`NOVELAI_API_URL`の値に置き換えます。E2Eのビルドには実際のNovelAIのトークンとOAuthクライアントを含めず、ブラウザへ配信するファイルとトップページのHTMLに、テスト用のNovelAIのトークンとOAuthの秘密情報が含まれないことを確認します。
+E2Eは[playwright.config.ts](playwright.config.ts)がビルド・DBの初期化・プレビュー起動を行います。テストごとではなく実行ごとに`.wrangler/e2e/`を初期化し、開発用の`.wrangler/state/`とは分けます。Wranglerによるテストデータ操作と他のテストが同じSQLiteを同時に更新しないよう、E2Eは1 workerで順に実行します。複数人の同時操作は各テスト内で複数のブラウザコンテキストを使って確認します。認証URLと鍵、NovelAIのトークン、管理画面のパスワード、OAuthクライアントはテスト用の値を設定するため、E2Eだけなら`.env`の用意は不要です。画像の生成は、`tests/e2e/global-setup.ts`で起動する偽のNovelAI（`tests/e2e/fake-novelai.ts`、`http://127.0.0.1:4174`）へ送り、実際のNovelAIへは通信しません。偽のNovelAIは、テスト用のトークンを確かめ、プロンプトをテキストのチャンクに埋め込んだPNGをZIPで返します。プロンプトに目印を含めると、失敗を返したり応答を遅らせたりします。NovelAIの接続先（`wrangler.jsonc`の`vars`の`NOVELAI_API_URL`）はビルドした後に環境変数で上書きできないため、`ANIMIC_E2E=true`のビルドでだけ、`vite.config.ts`で環境変数`NOVELAI_API_URL`の値に置き換えます。E2Eのビルドには実際のNovelAIのトークンとOAuthクライアントを含めず、ブラウザへ配信するファイルとトップページのHTMLに、テスト用のNovelAIのトークンとOAuthの秘密情報が含まれないことを確認します。
 
 E2E専用クライアントは`ANIMIC_E2E=true`のビルドにだけ含め、共通ルートのクライアントコードから読み込みます。通常のビルドや開発サーバーにはこの読み込みを追加しません。ログインした状態は、同じビルドにだけ含めるBetter Authのプラグイン（`src/lib/auth-e2e.server.ts`の`/api/auth/sign-in/e2e`）で作り、実際のOAuthは通しません。ルームを作るテストでは、このプラグインでホストをログインさせてから作ります。このプラグインは、`BETTER_AUTH_URL`がローカルのURLでなければ拒否します。E2Eのビルド成果物はデプロイせず、公開用にはこの環境変数を指定せずにビルドし直します。
 
@@ -238,6 +238,21 @@ NovelAIで生成するモデルは、管理画面（`/admin`）の「画像生�
 | Discord  | [Discord Developer Portal](https://discord.com/developers/applications)   | アプリケーションを作成し、OAuth2のRedirectsにURIを登録します。Client IDとClient Secretを`DISCORD_CLIENT_ID`・`DISCORD_CLIENT_SECRET`に設定します                |
 
 ローカルでは`.env`、本番ではWorkerの秘密情報に設定します。IDと秘密情報のどちらかが未設定のサービスは無効になり、ログインを始めると`PROVIDER_NOT_FOUND`で失敗します。ほかの機能はそのまま使えます。Googleの同意画面の公開ステータスが「テスト」の間は、登録したテストユーザーだけがログインできます。
+
+## Discord Activitiesの設定
+
+WebのDiscordログインと同じDiscord Applicationを使います。実装の接続方法は[アーキテクチャ](docs/architecture.md#discord-activities)、参加方法は[ゲーム仕様](docs/product.md#discord-activities)を参照してください。
+
+1. [Discord Developer Portal](https://discord.com/developers/applications)で対象ApplicationのActivitiesを有効にし、URL Mappingの`/`をアプリのHTTPSホストへ向けます。`/activity`だけでなく、`/api/auth`・Server Functions・画像・`/rooms/<code>/connection`も同じマッピングを通します。ルートに起動された場合もアプリが`/activity`へ転送します。
+2. `DISCORD_CLIENT_ID`・`DISCORD_CLIENT_SECRET`に同じApplicationの値、`DISCORD_BOT_TOKEN`にそのApplicationのBot tokenを設定します。ローカルでは`.env`、公開環境ではWorkerのsecretに保存します。Bot tokenはActivity Instance APIによる参加確認に使用し、BotのGateway接続は不要です。Webだけの環境ではBot tokenは不要です。
+3. Web用OAuthのリダイレクトURIは[ログインのOAuthアプリ](#ログインのoauthアプリ)の設定を維持します。`BETTER_AUTH_URL`もWeb版のURLを使い、Discordのproxy URLへ置き換えません。
+4. 開発時はHTTPSトンネルをURL Mappingへ登録し、Discordの開発者モードとテスト可能なチームメンバーのアカウントで起動します。対象プラットフォームとLaunchの設定は[公式の起動手順](https://docs.discord.com/developers/activities/building-an-activity)に従います。一般ユーザーへの公開・Discoveryは[公開設定](https://docs.discord.com/developers/discovery/enabling-discovery)で別に確認します。
+
+通常の型生成・D1 migration・DO migrationを適用します。`0012_discord-account-identity.sql`は既存accountのproviderとprovider側IDの組を一意にします。適用前に対象DBで`SELECT provider_id, account_id, COUNT(*) FROM account GROUP BY provider_id, account_id HAVING COUNT(*) > 1`を確認し、重複があれば所有ユーザーと戦績の扱いを確認してから適用します。自動でユーザーを結合・削除しません。
+
+`vp run test:e2e tests/e2e/discord-activity.spec.ts`は偽のDiscord API（`tests/e2e/fake-discord.ts`、4175番）を使い、コード交換・PKCE・参加確認・既存Webアカウントとの一致・Cookie属性・不正なOrigin・並行入室・Webとの混在・同じルームでの再戦と戦績を検証します。`ANIMIC_E2E=true`のビルドだけ、Discord APIの接続先とBot tokenをテスト用の値にします。実際のDiscordへは通信しません。
+
+実際の公開前には、DiscordのPC・モバイルで起動と初回同意、埋め込みCookieの維持、画像とWebSocketのproxy通信、同じActivityからの複数人参加、Web招待からの混在対戦、切断・再起動、同じルームでの3戦目以降の再戦、Discordの招待と外部共有を確認します。APIの模擬検証だけでは、Discordクライアントの埋め込み環境や公開設定を確認したことにはなりません。
 
 ## 作業の流れ
 

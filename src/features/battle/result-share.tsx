@@ -1,4 +1,6 @@
 import { ButtonLink } from "@animic/react/link";
+import { useToast } from "@animic/react/toast";
+import { activitySdk } from "../../lib/discord-sdk";
 import { XLogoIcon } from "../shared/icons";
 import { getShareIntentUrl, getShareText } from "./battle-outcome";
 import type { BattleSnapshot } from "./battle-state";
@@ -14,10 +16,19 @@ export function ResultShareLink({
   battle: BattleSnapshot;
   participantId: string;
 }) {
+  const toast = useToast();
   return (
     <ButtonLink
       href={getShareIntentUrl(getShareText(battle, participantId))}
       target="_blank"
+      onClick={(event) => {
+        const sdk = activitySdk();
+        if (!sdk) return;
+        event.preventDefault();
+        void sdk.commands
+          .openExternalLink({ url: getShareIntentUrl(getShareText(battle, participantId)) })
+          .catch(() => toast.show({ title: "共有画面を開けませんでした" }));
+      }}
       shape="pill"
       size="lg"
       appearance="inverse"

@@ -6,8 +6,14 @@ import { expect, test } from "@playwright/test";
 
 import { e2eNovelAiToken } from "./novelai-token";
 import { e2eOAuthClients } from "./oauth-clients";
+import { e2eDiscordBotToken } from "./fake-discord";
 
-const secrets = [e2eNovelAiToken, e2eOAuthClients.google.secret, e2eOAuthClients.discord.secret];
+const secrets = [
+  e2eNovelAiToken,
+  e2eOAuthClients.google.secret,
+  e2eOAuthClients.discord.secret,
+  e2eDiscordBotToken,
+];
 
 test("ブラウザへ配信するファイルとページにNovelAIのトークンとOAuthの秘密情報を含めない", async ({
   request,
@@ -15,7 +21,9 @@ test("ブラウザへ配信するファイルとページにNovelAIのトーク�
   const dist = new URL("../../dist/", import.meta.url);
   // サーバー側には渡っていることを確かめ、検索する文字列がビルドの値と一致していることを保証する。
   const vars = await readFile(new URL("server/.dev.vars", dist), "utf8");
-  for (const secret of secrets) expect(vars).toContain(secret);
+  // Activitiesは任意のsecretなので、E2EビルドだけのWorker varsにBotのテスト値を渡す。
+  const config = await readFile(new URL("server/wrangler.json", dist), "utf8");
+  for (const secret of secrets) expect(vars + config).toContain(secret);
   const files = (
     await readdir(fileURLToPath(new URL("client/", dist)), { recursive: true, withFileTypes: true })
   ).filter((entry) => entry.isFile());

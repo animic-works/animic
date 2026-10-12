@@ -16,7 +16,15 @@ export default defineConfig({
       persistState: process.env.ANIMIC_E2E === "true" ? { path: ".wrangler/e2e" } : true,
       // E2Eでは偽のNovelAIへ送る。`vars`はビルドした後に環境変数で上書きできないため、ビルドの設定に入れる。
       ...(process.env.ANIMIC_E2E === "true" && process.env.NOVELAI_API_URL
-        ? { config: { vars: { NOVELAI_API_URL: process.env.NOVELAI_API_URL } } }
+        ? {
+            config: {
+              vars: {
+                NOVELAI_API_URL: process.env.NOVELAI_API_URL,
+                DISCORD_API_URL: process.env.DISCORD_API_URL ?? "https://discord.com/api/v10",
+                DISCORD_BOT_TOKEN: process.env.DISCORD_BOT_TOKEN ?? "",
+              },
+            },
+          }
         : {}),
     }),
     // 共通CSSはrootのheadから配信するため、開発用のCSS収集・差し替えは不要。

@@ -265,7 +265,7 @@ Workerを通らない静的ファイルのヘッダーは`public/_headers`で設
 
 画面の要件は[ゲーム仕様](product.md#対象範囲)に従い、ルートは`src/routes/`で定義します。認証・ルーム・対戦のServer Functions、D1スキーマ、DOは画面の表示から独立させます。ブラウザ側のWebSocket接続・再接続は`src/features/room/room-connection.ts`に置きます。`use-room-connection.ts`は配信のバージョンと受信時刻を同じSnapshotに保持し、Reactの購読へ渡します。古いloaderの応答で新しい配信を上書きせず、表示は呼び出し側に委ねます。
 
-公開アプリはトップページ`/`、ルーム作成`/start`、ルーム`/rooms/$code`、マイページ`/mypage`、戦績の詳細`/mypage/matches/$battleId`、規約`/terms`・`/privacy`で構成します。`/admin`配下はお題・対戦条件・表現の辞書・トップページ・画像生成・採点ワーカー・採点ジョブ・採点の重み・バックアップの管理画面です。トップの参加コード入力はサーバーへ存在を確認し、見つからない場合は入力欄のエラーとして扱います。ルームURLの直接アクセスではloaderが形式・正規化・存在・本人の参加状態を確認し、存在しない場合は404にします。ルームに参加していない場合はRoomEntryで表示名を入力し、作成・参加のServer Functionを呼びます。作成前にはGoogleまたはDiscordでログインし、招待からの参加では任意のログインまたは匿名セッションを使います。作成要求の再送には同じ要求IDを使います。名前・役割・画面段階はクエリパラメータや端末内の参加者IDから決めません。
+公開アプリはトップページ`/`、ルーム作成`/start`、Discord Activities`/activity`、ルーム`/rooms/$code`、マイページ`/mypage`、戦績の詳細`/mypage/matches/$battleId`、規約`/terms`・`/privacy`で構成します。`/admin`配下はお題・対戦条件・表現の辞書・トップページ・画像生成・採点ワーカー・採点ジョブ・採点の重み・バックアップの管理画面です。トップの参加コード入力はサーバーへ存在を確認し、見つからない場合は入力欄のエラーとして扱います。ルームURLの直接アクセスではloaderが形式・正規化・存在・本人の参加状態を確認し、存在しない場合は404にします。ルームに参加していない場合はRoomEntryで表示名を入力し、作成・参加のServer Functionを呼びます。作成前にはGoogleまたはDiscordでログインし、招待からの参加では任意のログインまたは匿名セッションを使います。作成要求の再送には同じ要求IDを使います。名前・役割・画面段階はクエリパラメータや端末内の参加者IDから決めません。
 
 RoomPageはloaderの初期状態を受け取り、`use-room-connection.ts`を通してWebSocket配信を購読します。ルーム参加者・ホスト・準備・設定はサーバーのSnapshotから表示し、開始・設定変更・準備・退出はServer Functionsへ渡します。ロビーの設定変更は`use-room-settings.ts`が即時に表示し、入力順に保存します。保存したバージョンへ配信が追いついたらサーバーの値を使い、保存失敗は呼び出し元へ返して後続の操作を妨げないようにします。難易度・生成時間・画像選択の猶予を設定し、接続中の参加者が2人以上のときに対戦を開始します。結果は2人なら勝ち負け、3人以上なら順位で表示します。`battle-screen.ts`は本人の参加資格と対戦状態から待機・生成中・生成完了待ち・画像選択・提出後の待機・結果を判定します。採点中は提出後の表示に、採点中であることと、時間がかかっている場合の案内を加えます。途中参加者は次の対戦を待ちます。再接続ではサーバーの状態を復元し、接続資格を失った場合は終了案内を表示します。
 
@@ -390,7 +390,7 @@ NovelAIはPNGのtEXtチャンクと、アルファ値の最下位ビット（`st
 
 認証専用の`/api/auth/$`はTanStack StartのServer Routeにマウントします。ゲームの操作はServer Functionsを使い、認証用のHTTP APIへ混在させません。画面へ返す参加者情報はIDと匿名参加かどうか、ログイン済みの場合はアカウントの名前と使用したサービスに絞り、Better Authのセッション全体をルートのデータへ渡しません。SSRでのCookie更新には`tanstackStartCookies`を使います。選定理由は[ADR 0003](decisions/0003-anonymous-sessions.md)を参照してください。
 
-セッションはCookieで送受信し、URLやlocalStorageには保存しません。本番では`HttpOnly`・`Secure`・`SameSite=Lax`・`Path=/`を指定し、`Domain`を設定せず、`__Host-`で始まるCookie名を使います。セッションを含むレスポンスや参加者固有の画面は、共有キャッシュに保存しません。
+セッションはCookieで送受信し、URLやlocalStorageには保存しません。Web版の本番では`HttpOnly`・`Secure`・`SameSite=Lax`・`Path=/`を指定し、`Domain`を設定せず、`__Host-`で始まるCookie名を使います。セッションを含むレスポンスや参加者固有の画面は、共有キャッシュに保存しません。
 
 セッションの有効期限と失効状態をサーバー側で確認します。Cookieの削除だけで失効したとは扱いません。Better AuthのCookieキャッシュは使わず、D1上の状態を確認します。セッションの有効期間と更新間隔はBetter Authの標準設定に従います。匿名ユーザーの自動削除は無効にし、対戦結果の保存とは別に扱います。ルームを閉じる期限とセッションの有効期限は別に管理します。ルームの参加資格・ホスト権限はDOの現在の状態から判定し、Cookieに保存した権限を信用しません。
 
@@ -407,6 +407,18 @@ NovelAIはPNGのtEXtチャンクと、アルファ値の最下位ビット（`st
 `getCurrentParticipant`は、ログイン済みの場合だけ、アカウントの名前（マイページの表示名）と最後にログインに使ったサービス、保存したアイコンの値を返します。サービスは、ログインのたびにBetter Authが更新するアカウントの更新日時から判定します。ルームの作成（`createRoom`）は、ログインしていない参加者を拒否します。参加者がログインしても、管理画面は使えません。
 
 ログイン方法の選択・表示名の入力・ログアウトは、`src/features/room/room-entry.tsx`で`/start`と`/rooms/$code`（参加前）に表示します。トップの「スタート」は押したときにログインの状態を確かめ、ログインしていなければ移動せずにログインのダイアログ（`src/features/room/login-dialog.tsx`）を開き、ログインの後は`/start`へ戻します。トップのHTMLに参加者の情報を含めないよう、表示の時点では確かめません。ボタンは設定の有無にかかわらず2つのサービスを出し、設定のないサービスでは開始に失敗した理由を表示します。認証の後と失敗したときは元の画面へ戻し、失敗の理由はBetter Authが付ける`?error=`から表示して、URLから取り除きます。ログイン中は方法の選択を省き、アカウントの名前の先頭20文字を表示名の欄に入れておきます。選定理由は[ADR 0006](decisions/0006-participant-login.md)を参照してください。
+
+### Discord Activities
+
+`/activity`は`DiscordRoomPage`でSDKの準備・認証・入室を行い、既存の`RoomPage`を表示します。再戦はWebと同じRoomPageの操作で待機画面へ戻り、同じルームで次の対戦を開始します。SDKは`src/lib/discord-sdk.ts`から動的に読み、通常のWeb画面やSSRでは初期化しません。Discordの起動パラメータがルート`/`に届いた場合は、`src/server.ts`がクエリを保って`/activity`へ転送します。このパラメータだけでは参加資格を認めません。
+
+SDKの`authorize`には`identify`・`email`とS256のPKCE challengeを指定します。認可コードとverifierをBetter Authの`/api/auth/sign-in/discord-activity`へ送り、`discord-api.server.ts`がClient Secretでコードを交換して`/users/@me`を取得します。Bot認証のActivity Instance APIで、そのユーザーが指定した起動単位に参加していることも確かめます。`discord-auth.server.ts`はBetter Authの`handleOAuthUserInfo`に検証済み情報を渡し、通常のDiscordログインと同じ`account(providerId, accountId)`から`user.id`を解決してセッションを発行します。この組には一意制約を置きます。戦績は既存の参加者IDに保存し、別の戦績テーブルや後からの複製処理は持ちません。メールアドレスによる連携は通常のログインと同じ検証を使います。
+
+SDKの`authenticate`に必要なaccess tokenだけを応答し、ブラウザではメモリ内で使用します。URL・localStorageへ保存せず、Client Secret・Bot tokenはサーバー側だけで使用します。セッションのCookieはWebとDiscordのproxyホストで別に保ち、Discord側では`HttpOnly; Secure; SameSite=None; Partitioned; Path=/`にします。Cookie名は同じ設定を使い、Domainは指定しません。認証・セッション更新ではリクエストのOrigin、Originがない場合はRefererを、設定したClient IDの`https://<client-id>.discordsays.com`と完全一致で照合してCookie属性を選びます。信頼するOriginとWebSocket接続にもこのホストだけを追加し、CSRF・セッション・参加資格の確認を維持します。API・画像・WebSocketは同じproxyホストの相対パスを使います。
+
+`DiscordRoom` DOは`<application-id>:<instance-id>`ごとに、現在のルームコードと作成要求を保存します。`enterDiscordRoom`は認証済みアカウントのDiscord IDとActivityへの参加をサーバーで再確認してから、このDOで入室を直列化します。初回は既存のRoom DOでルームを作り、後続は同じルームへ参加します。閉じたルームの後には新しいルームを作ります。Activityへの入室以外は、Webと同じルームのServer Functions・WebSocket・対戦処理を使います。
+
+設定・検証手順は[Discord Activitiesの設定](../CONTRIBUTING.md#discord-activitiesの設定)を参照してください。
 
 ### 運営者の認証
 

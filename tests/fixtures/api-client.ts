@@ -1,4 +1,5 @@
 import { ensureParticipant } from "../../src/lib/auth.client";
+import { enterDiscordRoom } from "../../src/features/room/discord-room.functions";
 import { getCurrentParticipant } from "../../src/lib/auth.functions";
 import {
   createRoom,
@@ -52,6 +53,7 @@ let room: RoomSnapshot | null = null;
 let connection = "未接続";
 
 const api = {
+  enterDiscordRoom,
   ensureParticipant,
   getCurrentParticipant,
   createRoom,
