@@ -455,8 +455,8 @@ Cloudflare Workers Buildsの設定は次のとおりです。Nodeは[.node-versi
 
 WebのDiscordログインと同じDiscord Applicationを使います。実装の接続方法は[アーキテクチャ](docs/architecture.md#discord-activities)、参加方法は[ゲーム仕様](docs/product.md#discord-activities)を参照してください。
 
-1. [Discord Developer Portal](https://discord.com/developers/applications)で対象ApplicationのActivitiesを有効にし、URL Mappingの`/`をアプリのHTTPSホストへ向けます。`/activity`だけでなく、`/api/auth`・Server Functions・画像・`/rooms/<code>/connection`も同じマッピングを通します。ルートに起動された場合もアプリが`/activity`へ転送します。
-2. `DISCORD_CLIENT_ID`・`DISCORD_CLIENT_SECRET`に同じApplicationの値、`DISCORD_BOT_TOKEN`にそのApplicationのBot tokenを設定します。ローカルでは`.env`、公開環境ではWorkerのsecretに保存します。Bot tokenはActivity Instance APIによる参加確認に使用し、BotのGateway接続は不要です。Webだけの環境ではBot tokenは不要です。
+1. [Discord Developer Portal](https://discord.com/developers/applications)で対象ApplicationのActivitiesを有効にし、URL Mappingの`/`をアプリのHTTPSホストへ向けます。`/activity`だけでなく、`/api/auth`・Server Functions・画像・`/rooms/<code>/connection`も同じマッピングを通します。ルートに起動された場合も、起動パラメータを保ったままActivity画面を表示します。
+2. `DISCORD_CLIENT_ID`・`DISCORD_CLIENT_SECRET`に同じApplicationの値、`DISCORD_BOT_TOKEN`にそのApplicationのBot tokenを設定します。ローカルでは`.env`、公開環境ではWorkerのsecretに保存します。Bot tokenはActivity Instance APIによる参加確認に使用し、BotのGateway接続は不要です。Webだけの環境ではBot tokenは不要です。`vite.config.ts`は値が設定されている場合だけsecret名を追加し、ローカル起動とプレビューにも読み込みます。値自体をViteの`define`やWorkersの`vars`へ入れません。
 3. Web用OAuthのリダイレクトURIは[ログインのOAuthアプリ](#ログインのoauthアプリ)の設定を維持します。`BETTER_AUTH_URL`もWeb版のURLを使い、Discordのproxy URLへ置き換えません。
 4. 開発時はHTTPSトンネルをURL Mappingへ登録し、Discordの開発者モードとテスト可能なチームメンバーのアカウントで起動します。対象プラットフォームとLaunchの設定は[公式の起動手順](https://docs.discord.com/developers/activities/building-an-activity)に従います。一般ユーザーへの公開・Discoveryは[公開設定](https://docs.discord.com/developers/discovery/enabling-discovery)で別に確認します。
 
@@ -466,7 +466,7 @@ WebのDiscordログインと同じDiscord Applicationを使います。実装の
 
 #### Discord APIの模擬検証
 
-`vp run test:e2e tests/e2e/discord-activity.spec.ts`は偽のDiscord API（`tests/e2e/fake-discord.ts`、4175番）を使い、コード交換・PKCE・参加確認・既存Webアカウントとの一致・Cookie属性・不正なOrigin・並行入室・Webとの混在・同じルームでの再戦と戦績を検証します。`ANIMIC_E2E=true`のビルドだけ、Discord APIの接続先とBot tokenをテスト用の値にします。実際のDiscordへは通信しません。
+`vp run test:e2e tests/e2e/discord-activity.spec.ts`は偽のDiscord API（`tests/e2e/fake-discord.ts`、4175番）を使い、ルートURLと`/activity`からのSDK起動・SSRとクライアントの表示一致・コード交換・PKCE・参加確認・既存Webアカウントとの一致・Cookie属性・不正なOrigin・並行入室・Webとの混在・同じルームでの再戦と戦績を検証します。`ANIMIC_E2E=true`のビルドだけ、Discord APIの接続先とBot tokenをテスト用の値にします。実際のDiscordへは通信しません。
 
 #### Discordクライアントでの公開前の確認
 

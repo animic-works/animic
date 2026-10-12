@@ -20,17 +20,6 @@ const handleStart = createStartHandler(defaultStreamHandler);
 export default {
   async fetch(request: Request) {
     const url = new URL(request.url);
-    // Discordの起動URLを専用画面へ送り、SDKのハンドシェイク用クエリを保つ。
-    if (
-      url.pathname === "/" &&
-      url.searchParams.has("frame_id") &&
-      url.searchParams.has("instance_id")
-    ) {
-      return new Response(null, {
-        status: 302,
-        headers: { Location: "/activity" + url.search, "Cache-Control": "no-store" },
-      });
-    }
     const match = /^\/rooms\/([^/]+)\/connection$/.exec(url.pathname);
     if (!match) {
       // 採点ワーカーはCookieを使わずBearerで認証するため、ブラウザ向けのCSRF対策を通さない。

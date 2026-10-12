@@ -7,6 +7,7 @@ describe("検索対象", () => {
   it.each([
     ["animic.party", "/", 200, "text/html; charset=utf-8", true],
     ["animic.party", "/?utm_source=x", 200, "text/html", true],
+    ["animic.party", "/?frame_id=test&instance_id=test", 200, "text/html", false],
     ["animic.party", "/", 500, "text/html", false],
     ["animic.party", "/", 404, "text/html", false],
     ["animic.party", "/", 200, "application/json", false],
