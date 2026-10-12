@@ -3,7 +3,6 @@ import { useRef, useState } from "react";
 import { AppFrame, AppFrameWideContent } from "@animic/react/app-frame";
 import { Button } from "@animic/react/button";
 import { Cluster } from "@animic/react/cluster";
-import { CodeDisplay } from "@animic/react/code-display";
 import { IconButton } from "@animic/react/icon-button";
 import { Page } from "@animic/react/page";
 import { Split } from "@animic/react/split";
@@ -95,14 +94,7 @@ export function LobbyPage({
             </Heading>
           </Stack>
         }
-        compactContext={
-          <Button appearance="soft" shape="pill" size="xs" onClick={copyCode}>
-            <Text variant="caption" tone="supporting">
-              ルーム
-            </Text>
-            <CodeDisplay value={code} presentation="inline" size="sm" />
-          </Button>
-        }
+        // 狭い画面では、ルームコードはすぐ下のプレイヤーの欄に出すため、ヘッダーには置かない。
         compactActions={
           <IconButton appearance="quiet" label="退出" onClick={() => setDialog("leave")}>
             <ExitIcon />

@@ -32,11 +32,15 @@ export function observeNavigationLayout(page: HTMLElement, onLayout?: () => void
     const choices = [
       ["inline", "full"],
       ["inline", "short"],
+      ["inline", "icon"],
       ["stacked", "full"],
       ["stacked", "short"],
     ];
+    // 文字を拡大している場合は、文字を隠すより2行にして文言を残す。
+    const enlarged = parseFloat(getComputedStyle(document.documentElement).fontSize) > 16;
     let fits = false;
     for (const [layout, labels] of choices) {
+      if (labels === "icon" && enlarged) continue;
       header.setAttribute("data-navigation-layout", layout);
       header.setAttribute("data-navigation-labels", labels);
       const visibleLinks = [...links.querySelectorAll("a")].filter(

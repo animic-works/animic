@@ -22,6 +22,11 @@ export const navigationBar = defineSlotRecipe({
         "--animic-button-full-label-display": "none",
         "--animic-button-compact-label-display": "inline",
       },
+      // 短い文言でも1行に収まらない幅では、2行にする前に主要な操作をアイコンだけにする。
+      "&[data-navigation-labels=icon]": {
+        "--animic-button-full-label-display": "none",
+        "--animic-button-compact-label-display": "none",
+      },
       "&[data-navigation-layout=stacked]": { columnGap: "7" },
       "--animic-navigation-brand-space":
         "calc(clamp(1.25rem, 4vw, 3rem) + clamp(8rem, 12vw, 11rem) + token(spacing.5))",
@@ -132,10 +137,20 @@ export const navigationBar = defineSlotRecipe({
       flexShrink: 0,
       "& > *": { flexShrink: 0, whiteSpace: "nowrap" },
       "[data-navigation-overflow] & > *": { maxWidth: "100%", whiteSpace: "normal", flexShrink: 1 },
+      // アイコンだけの丸い操作。読み上げ名は利用側が`aria-label`で渡す。
+      "[data-navigation-labels=icon] & > *": {
+        width: "2.5rem",
+        paddingInline: "0",
+        justifyContent: "center",
+      },
+      "[data-navigation-labels=icon] & [data-animic-button-label]": { display: "none" },
       _navigationCompact: { gap: "2" },
       "[data-navigation-overflow] &": { maxWidth: "100%", flexWrap: "wrap" },
     },
     actions: {
+      // 文書のルートに属性がある間（ログインの確認中など）は、場所を保ったまま隠す。
+      // 属性は利用側が描画前のスクリプトで付け、内容が決まったら外す。
+      ":root[data-animic-navigation-actions-pending] &": { visibility: "hidden" },
       display: "flex",
       alignItems: "center",
       gap: "3",
@@ -169,7 +184,10 @@ export const navigationBar = defineSlotRecipe({
       _motionReduce: { "--animic-indicator-duration": "0ms" },
       _navigationCompact: { display: "none" },
     },
-    label: { _navigationCompact: { display: "none" } },
+    label: {
+      _navigationCompact: { display: "none" },
+      "[data-navigation-labels=icon] &": { display: "none" },
+    },
   },
   variants: {
     brandHidden: {

@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
+import { initialAccountHint } from "../features/home/account-hint";
 import { initialSection } from "../features/home/initial-section";
 
 import { getHomeContent } from "../features/home/home-content.functions";
@@ -17,6 +18,7 @@ export const Route = createFileRoute("/")({
     return {
       scripts: [
         { children: initialSection },
+        { children: initialAccountHint },
         {
           type: "application/ld+json",
           children: JSON.stringify({

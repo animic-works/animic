@@ -33,10 +33,11 @@ export const actionGroup = definePattern({
         ),
         gap: map(layout, (value) => (value === "paired" ? "7" : "3")),
       },
-      _actionPortrait: { gap: map(layout, (v) => (v === "adaptive" ? "5" : undefined)) },
+      _actionPortrait: { gap: map(layout, (v) => (v === "adaptive" ? "3" : undefined)) },
       "& > *": {
         minWidth: map(layout, (value) => (value === "responsive" ? "min(100%, 12rem)" : 0)),
-        _actionPortrait: { flex: map(layout, (v) => (v === "adaptive" ? "1 1 0" : undefined)) },
+        // 縦長の画面では文言の長さに応じて幅を分け、長い文言の操作だけが折り返さないようにする。
+        _actionPortrait: { flex: map(layout, (v) => (v === "adaptive" ? "1 1 auto" : undefined)) },
         flex: map(layout, (value) =>
           value === "fill"
             ? "1 1 auto"
