@@ -9,6 +9,8 @@ export const user = sqliteTable("user", {
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
   isAnonymous: integer("is_anonymous", { mode: "boolean" }).default(false),
+  // マイページで選んだアイコン（src/features/account/account-icon.ts）。選んでいなければnull。
+  icon: text("icon"),
 });
 
 export const session = sqliteTable(

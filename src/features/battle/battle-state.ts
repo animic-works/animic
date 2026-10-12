@@ -1,11 +1,25 @@
 import * as v from "valibot";
 
-const difficultySchema = v.picklist(["easy", "normal", "hard"]);
+import {
+  computeFinalScores,
+  finalScoreSchema,
+  noScoreBonus,
+  scoreBonusSchema,
+} from "../scoring/final-score";
+import type { ScoreBonus } from "../scoring/final-score";
+import { imageSrcSchema, toImageSrc } from "./image-src";
+
+export const difficultySchema = v.picklist(["easy", "normal", "hard"]);
 export const battleSettingsSchema = v.object({
   difficulty: difficultySchema,
   durationSeconds: v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(3600)),
   selectionSeconds: v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(3600)),
 });
+/** お題のキャラクターの数。むずかしいだけ2人で、対戦画面のキャラの欄もこの数だけ出す。 */
+export function characterCount(difficulty: v.InferOutput<typeof difficultySchema>): 1 | 2 {
+  return difficulty === "hard" ? 2 : 1;
+}
+
 export const topicSchema = v.object({
   id: v.string(),
   difficulty: difficultySchema,
@@ -36,7 +50,7 @@ const generationSchema = v.variant("status", [
   }),
   v.object({ ...generationBase, status: v.literal("failed"), finishedAt: v.number() }),
 ]);
-const submissionSchema = v.variant("status", [
+export const submissionSchema = v.variant("status", [
   v.object({
     participantId: v.string(),
     status: v.literal("submitted"),
@@ -51,18 +65,29 @@ const submissionSchema = v.variant("status", [
     decidedAt: v.number(),
   }),
 ]);
-const battleResultSchema = v.variant("kind", [
+export const battleResultSchema = v.variant("kind", [
   v.object({
     kind: v.literal("win"),
-    reason: v.literal("opponent-not-submitted"),
+    reason: v.picklist(["opponent-not-submitted", "higher-score"]),
     winnerId: v.string(),
     decidedAt: v.number(),
   }),
   v.object({
-    kind: v.literal("no-contest"),
-    reason: v.literal("no-submissions"),
+    kind: v.literal("draw"),
+    reason: v.literal("same-score"),
     decidedAt: v.number(),
   }),
+  v.object({
+    kind: v.literal("no-contest"),
+    reason: v.picklist(["no-submissions", "scoring-failed", "room-closed"]),
+    decidedAt: v.number(),
+  }),
+]);
+const scoringEntryBase = { participantId: v.string(), jobId: v.string() };
+const scoringEntrySchema = v.variant("status", [
+  v.object({ ...scoringEntryBase, status: v.literal("pending") }),
+  v.object({ ...scoringEntryBase, status: v.literal("succeeded"), total: v.number() }),
+  v.object({ ...scoringEntryBase, status: v.literal("failed") }),
 ]);
 export const battleStateSchema = v.object({
   ...battleHeaderSchema.entries,
@@ -70,21 +95,50 @@ export const battleStateSchema = v.object({
   generations: v.optional(v.array(generationSchema), []),
   submissions: v.optional(v.array(submissionSchema), []),
   selectionEndsAt: v.optional(v.nullable(v.number()), null),
+  // 対戦を始めたときのボーナス。記録する前に始まった対戦は、ボーナスなしとして扱う。
+  scoreBonus: v.optional(scoreBonusSchema, () => ({ ...noScoreBonus })),
+  scoring: v.optional(
+    v.object({ endsAt: v.nullable(v.number()), entries: v.array(scoringEntrySchema) }),
+    () => ({ endsAt: null, entries: [] }),
+  ),
 });
 export type BattleState = v.InferOutput<typeof battleStateSchema>;
+type Generation = BattleState["generations"][number];
 export type GenerationOutcome = { status: "succeeded"; imageUrl: string } | { status: "failed" };
+export type ScoringJobOutcome = {
+  id: string;
+  state: "queued" | "running" | "succeeded" | "failed";
+  totals: { participantId: string; total: number }[];
+};
+// 画面へ配信する状態では、このアプリが配信する画像のURLを同じオリジンのパスにする（`toImageSrc`）。
+const generationSnapshotOptions = generationSchema.options.map((option) =>
+  v.omit(option, ["inputHash", "participantId"]),
+);
 export const battleSnapshotSchema = v.object({
   serverTime: v.number(),
   ...battleHeaderSchema.entries,
+  topic: v.object({ ...topicSchema.entries, imageUrl: imageSrcSchema }),
   selectionEndsAt: v.nullable(v.number()),
   result: v.nullable(battleResultSchema),
   submissionsClosed: v.boolean(),
   generationClosed: v.boolean(),
+  scoringEndsAt: v.nullable(v.number()),
+  // 採点された全員の最終スコアと内訳・提出。結果画面で全員の内訳を比べられるようにする。
+  scores: v.nullable(
+    v.array(
+      v.object({
+        participantId: v.string(),
+        ...finalScoreSchema.entries,
+        imageUrl: imageSrcSchema,
+        submission: submissionSchema,
+      }),
+    ),
+  ),
   myGenerations: v.array(
     v.variant("status", [
-      v.omit(generationSchema.options[0], ["inputHash", "participantId"]),
-      v.omit(generationSchema.options[1], ["inputHash", "participantId"]),
-      v.omit(generationSchema.options[2], ["inputHash", "participantId"]),
+      generationSnapshotOptions[0],
+      v.object({ ...generationSnapshotOptions[1].entries, imageUrl: imageSrcSchema }),
+      generationSnapshotOptions[2],
     ]),
   ),
   mySubmission: v.nullable(submissionSchema),
@@ -94,8 +148,13 @@ export type BattleSnapshot = v.InferOutput<typeof battleSnapshotSchema>;
 export type BattleSettings = v.InferOutput<typeof battleSettingsSchema>;
 export type Topic = v.InferOutput<typeof topicSchema>;
 
+/** 全員の提出状態が確定してから、採点を待つ時間。過ぎたら採点できなかったものとして扱う。 */
+export const scoringTimeoutMs = 5 * 60_000;
+/** 受け付けた生成は、この時間（順番待ちを含む）のうちに終わらなければ失敗にする。 */
+export const generationTimeoutMs = 60_000;
+
 export function canStartBattle(count: number) {
-  return count === 2;
+  return count >= 2;
 }
 
 export function createBattle(
@@ -104,12 +163,13 @@ export function createBattle(
   participantIds: string[],
   now: number,
   previousBattleId: string | null = null,
+  scoreBonus: ScoreBonus = noScoreBonus,
 ): BattleState {
   if (
     !canStartBattle(participantIds.length) ||
     new Set(participantIds).size !== participantIds.length
   ) {
-    throw new Error("対戦を開始するには参加者が2人必要です。");
+    throw new Error("対戦を開始するには参加者が2人以上必要です。");
   }
   if (settings.difficulty !== topic.difficulty) throw new Error("お題の難易度が一致しません。");
   return {
@@ -119,6 +179,8 @@ export function createBattle(
     generations: [],
     submissions: [],
     selectionEndsAt: null,
+    scoreBonus: structuredClone(scoreBonus),
+    scoring: { endsAt: null, entries: [] },
     topic: structuredClone(topic),
     settings: structuredClone(settings),
     participantIds: [...participantIds],
@@ -127,57 +189,192 @@ export function createBattle(
   };
 }
 
+// 結果の確定後も適用し、生成中のまま別の画像を提出した場合に生成中の処理を残さない。
+function expireGenerations(generations: Generation[], now: number) {
+  return generations.map((item): Generation => {
+    const expiresAt = item.acceptedAt + generationTimeoutMs;
+    return item.status === "pending" && now >= expiresAt
+      ? { ...item, status: "failed", finishedAt: expiresAt }
+      : item;
+  });
+}
+
 export function reconcileBattle(state: BattleState, now: number): BattleState {
   const next = structuredClone(state);
-  if (next.result || now < next.generationEndsAt) return next;
-  if (
-    next.selectionEndsAt === null &&
-    !next.generations.some((item) => item.status === "pending")
-  ) {
-    const lastFinishedAt = next.generations.reduce(
-      (latest, item) => (item.status === "pending" ? latest : Math.max(latest, item.finishedAt)),
-      next.generationEndsAt,
-    );
-    next.selectionEndsAt = lastFinishedAt + next.settings.selectionSeconds * 1000;
-  }
-  if (next.selectionEndsAt !== null && now >= next.selectionEndsAt) {
+  next.generations = expireGenerations(next.generations, now);
+  if (next.result) return next;
+  if (now >= next.generationEndsAt) {
+    if (
+      next.selectionEndsAt === null &&
+      !next.generations.some((item) => item.status === "pending")
+    ) {
+      const lastFinishedAt = next.generations.reduce(
+        (latest, item) => (item.status === "pending" ? latest : Math.max(latest, item.finishedAt)),
+        next.generationEndsAt,
+      );
+      next.selectionEndsAt = lastFinishedAt + next.settings.selectionSeconds * 1000;
+    }
     for (const participantId of next.participantIds) {
-      if (!next.submissions.some((item) => item.participantId === participantId)) {
-        next.submissions.push({
-          participantId,
-          status: "not-submitted",
-          decidedAt: next.selectionEndsAt,
-        });
+      if (next.submissions.some((item) => item.participantId === participantId)) continue;
+      // 提出できる画像がない人は、選択の猶予を待たずに未提出として確定する。
+      const decidedAt = getNoImageAt(next, participantId);
+      if (decidedAt !== null) {
+        next.submissions.push({ participantId, status: "not-submitted", decidedAt });
+        continue;
       }
+      // 猶予の期限までに提出しなかった人は、最後に完成した画像を期限の時刻に提出したものとして扱う。
+      // 猶予は生成がすべて終わってから数えるため、期限の時点で生成中の画像はない。
+      if (next.selectionEndsAt === null || now < next.selectionEndsAt) continue;
+      const latest = getLatestSucceeded(next, participantId);
+      if (latest) addSubmission(next, participantId, latest.id, next.selectionEndsAt);
     }
   }
-  // 未提出による勝敗は1対1のルール。複数人の順位や採点による勝敗はここでは決めない。
+  // 全員の提出状態が確定したら結果を決める。1人だけ提出した場合は採点を待たずにその人を1位にする。
   if (
-    next.participantIds.length === 2 &&
     next.participantIds.every((id) => next.submissions.some((item) => item.participantId === id))
   ) {
     const submitted = next.submissions.filter((item) => item.status === "submitted");
-    const decidedAt = next.selectionEndsAt;
-    if (decidedAt !== null && submitted.length === 0)
-      next.result = { kind: "no-contest", reason: "no-submissions", decidedAt };
-    else if (decidedAt !== null && submitted.length === 1 && submitted[0])
+    // 勝敗と採点期限は、全員の提出状態が確定した時刻から決める。
+    const settledAt = Math.max(
+      ...next.submissions.map((item) =>
+        item.status === "submitted" ? item.submittedAt : item.decidedAt,
+      ),
+    );
+    if (submitted.length === 0)
+      next.result = { kind: "no-contest", reason: "no-submissions", decidedAt: settledAt };
+    else if (submitted.length === 1 && submitted[0])
       next.result = {
         kind: "win",
         reason: "opponent-not-submitted",
         winnerId: submitted[0].participantId,
-        decidedAt,
+        decidedAt: settledAt,
       };
+    else {
+      next.scoring.endsAt ??= settledAt + scoringTimeoutMs;
+      next.result = decideByScores(next, next.scoring.endsAt, now);
+    }
   }
   return next;
 }
 
+/**
+ * 対戦の状態を次に進めるため、ルームのDOがAlarmを予約する時刻。過ぎた期限は`now`にして取り落とさない。
+ * 結果の確定後は生成中の処理のタイムアウトだけを待ち、生成終了時刻・選択期限・採点期限では予約しない。
+ */
+export function getBattleDeadline(state: BattleState, now: number): number | null {
+  const deadlines: number[] = [];
+  for (const item of state.generations)
+    if (item.status === "pending")
+      deadlines.push(Math.max(now, item.acceptedAt + generationTimeoutMs));
+  if (!state.result) {
+    if (now < state.generationEndsAt) deadlines.push(state.generationEndsAt);
+    else if (
+      state.selectionEndsAt === null &&
+      !state.generations.some((item) => item.status === "pending")
+    )
+      deadlines.push(now);
+    if (state.selectionEndsAt !== null && state.submissions.length < state.participantIds.length)
+      deadlines.push(Math.max(now, state.selectionEndsAt));
+    if (state.scoring.endsAt !== null) deadlines.push(Math.max(now, state.scoring.endsAt));
+  }
+  return deadlines.length ? Math.min(...deadlines) : null;
+}
+
+/**
+ * ルームが閉じて対戦を進められなくなったときの状態。閉じた時刻までの期限を反映し、
+ * それでも結果が決まっていなければ、閉じた時刻で勝負不成立にする。
+ */
+export function abandonBattle(state: BattleState, closedAt: number): BattleState {
+  const next = reconcileBattle(state, closedAt);
+  next.result ??= { kind: "no-contest", reason: "room-closed", decidedAt: closedAt };
+  return next;
+}
+
+/**
+ * 本人の生成がすべて失敗に終わった（または生成していない）参加者の、提出できる画像がないと決まった時刻
+ * （生成終了時刻と最後の失敗の遅い方）を返す。成功した画像か生成中の画像があれば`null`。
+ */
+function getNoImageAt(state: BattleState, participantId: string) {
+  let decidedAt = state.generationEndsAt;
+  for (const item of state.generations) {
+    if (item.participantId !== participantId) continue;
+    if (item.status !== "failed") return null;
+    decidedAt = Math.max(decidedAt, item.finishedAt);
+  }
+  return decidedAt;
+}
+
+/**
+ * 提出して採点できた人の最終スコアと内訳。再現度（採点エントリーの`total`）に、
+ * 対戦を始めたときのボーナスを加える（`computeFinalScores`）。
+ */
+function getFinalScores(state: BattleState) {
+  return computeFinalScores(
+    state.submissions.flatMap((item) => {
+      if (item.status !== "submitted") return [];
+      const entry = state.scoring.entries.find(
+        (candidate) => candidate.participantId === item.participantId,
+      );
+      return entry?.status === "succeeded"
+        ? [
+            {
+              participantId: item.participantId,
+              similarity: entry.total,
+              submittedAt: item.submittedAt,
+              withinTimeLimit: item.eligibleForSpeedBonus,
+              generationCount: item.successfulGenerationCount,
+            },
+          ]
+        : [];
+    }),
+    state.scoreBonus,
+  );
+}
+
+// 1対1では、採点期限までに両者の採点がそろわなければ勝負不成立にする。
+// 3人以上では、採点に失敗した人と期限までに採点がそろわなかった人を順位なしにし、残りの最高点で決める。
+// 勝敗は再現度にボーナスを加えた最終スコアで決める。
+function decideByScores(state: BattleState, endsAt: number, now: number): BattleState["result"] {
+  const entries = state.submissions
+    .filter((item) => item.status === "submitted")
+    .map((item) =>
+      state.scoring.entries.find((entry) => entry.participantId === item.participantId),
+    );
+  const totals = getFinalScores(state);
+  const settled = entries.every((entry) => entry && entry.status !== "pending");
+  if (state.participantIds.length === 2) {
+    if (totals.length !== entries.length) {
+      if (entries.some((entry) => entry?.status === "failed"))
+        return { kind: "no-contest", reason: "scoring-failed", decidedAt: now };
+      if (now >= endsAt) return { kind: "no-contest", reason: "scoring-failed", decidedAt: endsAt };
+      return null;
+    }
+  } else if (!settled && now < endsAt) return null;
+  const decidedAt = settled ? now : endsAt;
+  if (!totals.length) return { kind: "no-contest", reason: "scoring-failed", decidedAt };
+  const best = Math.max(...totals.map((item) => item.total));
+  const leaders = totals.filter((item) => item.total === best);
+  return leaders.length === 1 && leaders[0]
+    ? { kind: "win", reason: "higher-score", winnerId: leaders[0].participantId, decidedAt }
+    : { kind: "draw", reason: "same-score", decidedAt };
+}
+
 export function acceptGeneration(
   state: BattleState,
-  request: { id: string; participantId: string; inputHash: string },
+  request: {
+    id: string;
+    participantId: string;
+    inputHash: string;
+    /** 送ったキャラのプロンプトの数。お題のキャラクターの数まで */
+    characters?: number;
+  },
   now: number,
 ) {
+  const { characters = 0, ...generation } = request;
   if (!state.participantIds.includes(request.participantId))
     throw new Error("この対戦の参加者ではありません。");
+  if (characters > characterCount(state.settings.difficulty))
+    throw new Error("お題のキャラクターより多くのキャラのプロンプトは送れません。");
   const existing = state.generations.find((item) => item.id === request.id);
   if (existing) {
     if (
@@ -185,7 +382,11 @@ export function acceptGeneration(
       existing.inputHash !== request.inputHash
     )
       throw new Error("同じ処理IDで別の生成を要求できません。");
-    return { battle: reconcileBattle(state, now), accepted: false };
+    return {
+      battle: reconcileBattle(state, now),
+      accepted: false,
+      acceptedAt: existing.acceptedAt,
+    };
   }
   const next = reconcileBattle(state, now);
   if (
@@ -194,8 +395,14 @@ export function acceptGeneration(
     next.submissions.some((item) => item.participantId === request.participantId)
   )
     throw new Error("画像生成の受付は終了しています。");
-  next.generations.push({ ...request, acceptedAt: now, status: "pending" });
-  return { battle: next, accepted: true };
+  if (
+    next.generations.some(
+      (item) => item.participantId === request.participantId && item.status === "pending",
+    )
+  )
+    throw new Error("生成が終わるまでお待ちください。");
+  next.generations.push({ ...generation, acceptedAt: now, status: "pending" });
+  return { battle: next, accepted: true, acceptedAt: now };
 }
 
 export function finishGeneration(
@@ -204,11 +411,12 @@ export function finishGeneration(
   outcome: GenerationOutcome,
   now: number,
 ): BattleState {
-  const next = structuredClone(state);
+  // タイムアウトを先に反映し、タイムアウトの後に届いた完了を無視する。
+  const next = reconcileBattle(state, now);
   const index = next.generations.findIndex((item) => item.id === id);
   const existing = next.generations[index];
   if (!existing) throw new Error("受け付けていない生成です。");
-  if (existing.status !== "pending") return reconcileBattle(next, now);
+  if (existing.status !== "pending") return next;
   if (now < existing.acceptedAt) throw new Error("受付時刻より前には完了できません。");
   next.generations[index] = v.parse(generationSchema, { ...existing, ...outcome, finishedAt: now });
   return reconcileBattle(next, now);
@@ -236,17 +444,107 @@ export function submitImage(
   )
     throw new Error("自分が生成した画像を選んでください。");
   if (now < generation.finishedAt) throw new Error("完成前の画像は提出できません。");
-  next.submissions.push({
+  addSubmission(next, participantId, generationId, now);
+  return reconcileBattle(next, now);
+}
+
+/** 提出を記録し、採点を待つ。`submittedAt`が生成終了時刻より前のときだけ最速提出ボーナスの対象にする。 */
+function addSubmission(
+  state: BattleState,
+  participantId: string,
+  generationId: string,
+  submittedAt: number,
+) {
+  state.submissions.push({
     participantId,
     status: "submitted",
     generationId,
-    submittedAt: now,
-    successfulGenerationCount: next.generations.filter(
+    submittedAt,
+    successfulGenerationCount: state.generations.filter(
       (item) => item.participantId === participantId && item.status === "succeeded",
     ).length,
-    eligibleForSpeedBonus: now < next.generationEndsAt,
+    eligibleForSpeedBonus: submittedAt < state.generationEndsAt,
   });
-  return next;
+  state.scoring.entries.push({ participantId, jobId: crypto.randomUUID(), status: "pending" });
+}
+
+/** 本人の成功した画像のうち、最後に完成したもの。完成時刻が同じなら後に受け付けたもの。 */
+function getLatestSucceeded(state: BattleState, participantId: string) {
+  let latest: Extract<Generation, { status: "succeeded" }> | null = null;
+  for (const item of state.generations) {
+    if (item.participantId !== participantId || item.status !== "succeeded") continue;
+    if (
+      !latest ||
+      item.finishedAt > latest.finishedAt ||
+      (item.finishedAt === latest.finishedAt && item.acceptedAt >= latest.acceptedAt)
+    )
+      latest = item;
+  }
+  return latest;
+}
+
+function getSubmittedImageUrl(state: BattleState, participantId: string) {
+  const submission = state.submissions.find((item) => item.participantId === participantId);
+  if (submission?.status !== "submitted") return null;
+  const generation = state.generations.find((item) => item.id === submission.generationId);
+  return generation?.status === "succeeded" ? generation.imageUrl : null;
+}
+
+export function getScoringRequests(state: BattleState) {
+  if (state.result) return [];
+  return state.scoring.entries.flatMap((entry) => {
+    const submissionImageUrl = getSubmittedImageUrl(state, entry.participantId);
+    return entry.status === "pending" && submissionImageUrl
+      ? [
+          {
+            jobId: entry.jobId,
+            participantId: entry.participantId,
+            topicImageUrl: state.topic.imageUrl,
+            submissionImageUrl,
+          },
+        ]
+      : [];
+  });
+}
+
+export function applyScoringJobs(
+  state: BattleState,
+  jobs: ScoringJobOutcome[],
+  now: number,
+): BattleState {
+  const next = structuredClone(state);
+  if (next.result) return next;
+  next.scoring.entries = next.scoring.entries.map((entry) => {
+    const job = jobs.find((item) => item.id === entry.jobId);
+    if (entry.status !== "pending" || !job) return entry;
+    const { participantId, jobId } = entry;
+    if (job.state === "failed") return { participantId, jobId, status: "failed" };
+    if (job.state !== "succeeded") return entry;
+    const total = job.totals.find((item) => item.participantId === participantId)?.total;
+    return total === undefined
+      ? { participantId, jobId, status: "failed" }
+      : { participantId, jobId, status: "succeeded", total };
+  });
+  return reconcileBattle(next, now);
+}
+
+// 採点による勝敗が確定するまで、相手の提出画像と採点結果を公開しない。
+// 結果の確定後は採点エントリーを変えないため、勝敗を決めたときと同じ最終スコアになる。
+function getScores(state: BattleState) {
+  const scored =
+    state.result?.kind === "draw" ||
+    (state.result?.kind === "win" && state.result.reason === "higher-score");
+  if (!scored) return null;
+  return getFinalScores(state).flatMap((score) => {
+    const imageUrl = getSubmittedImageUrl(state, score.participantId);
+    const submission = state.submissions.find((item) => item.participantId === score.participantId);
+    return imageUrl && submission ? [{ ...score, imageUrl, submission }] : [];
+  });
+}
+
+/** 最終スコアと内訳を配信している参加者。採点で結果が決まるまでは空。 */
+export function getScoredParticipantIds(state: BattleState) {
+  return getScores(state)?.map((score) => score.participantId) ?? [];
 }
 
 export function getBattleSnapshot(
@@ -254,28 +552,53 @@ export function getBattleSnapshot(
   participantId: string | null,
   now: number,
 ): BattleSnapshot {
+  const scores = getScores(state);
   return v.parse(battleSnapshotSchema, {
     ...state,
     serverTime: now,
     generationClosed: now >= state.generationEndsAt,
-    myGenerations: state.generations.filter((item) => item.participantId === participantId),
+    topic: { ...state.topic, imageUrl: toImageSrc(state.topic.imageUrl) },
+    myGenerations: state.generations
+      .filter((item) => item.participantId === participantId)
+      .map((item) =>
+        item.status === "succeeded" ? { ...item, imageUrl: toImageSrc(item.imageUrl) } : item,
+      ),
     mySubmission: state.submissions.find((item) => item.participantId === participantId) ?? null,
     submissionsClosed: state.participantIds.every((id) =>
       state.submissions.some((item) => item.participantId === id),
     ),
+    scoringEndsAt: state.scoring.endsAt,
+    scores: scores?.map((score) => ({ ...score, imageUrl: toImageSrc(score.imageUrl) })) ?? null,
   });
 }
 
-export function serializeBattleResult(battle: BattleState, roomCode: string): string {
+/** 確定した結果を、D1の`battle_result`へ保存するJSONにする。`names`は参加者IDごとの表示名。 */
+export function serializeBattleResult(
+  battle: BattleState,
+  roomCode: string,
+  names: ReadonlyMap<string, string>,
+): string {
   if (!battle.result) throw new Error("対戦結果が確定していません。");
   return JSON.stringify({
     battleId: battle.id,
     roomCode,
+    // 確定までにルームを退出した人の名前は残っていないため含めない。
+    names: Object.fromEntries(
+      battle.participantIds.flatMap((id) => {
+        const name = names.get(id);
+        return name === undefined ? [] : [[id, name]];
+      }),
+    ),
     topic: battle.topic,
     settings: battle.settings,
     participantIds: battle.participantIds,
     submissions: battle.submissions,
     result: battle.result,
+    // 提出は`submissions`に保存するため、スコアには含めない。
+    scores:
+      getScores(battle)?.map(
+        ({ imageUrl: _imageUrl, submission: _submission, ...score }) => score,
+      ) ?? null,
     startedAt: battle.startedAt,
     submittedImages: battle.generations
       .filter(
@@ -306,9 +629,10 @@ export function startNextBattle(
   topic: Topic,
   participantIds: string[],
   now: number,
+  scoreBonus: ScoreBonus,
 ): BattleState {
   if (current && current.previousBattleId === previousBattleId) return current;
   if (!canStartAfter(current, previousBattleId))
     throw new Error("対戦の状態が変わっています。最新の状態を確認してください。");
-  return createBattle(settings, topic, participantIds, now, previousBattleId);
+  return createBattle(settings, topic, participantIds, now, previousBattleId, scoreBonus);
 }

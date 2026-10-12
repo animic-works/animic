@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
-import { reconcileRoom, getRoomDeadline } from "./room-state";
+import { createBattle } from "../battle/battle-state";
+import { canJoinRoom, reconcileRoom, getRoomDeadline, roomCapacity } from "./room-state";
 import type { RoomState } from "./room-state";
 
 function room(): RoomState {
@@ -11,9 +12,9 @@ function room(): RoomState {
     version: 1,
     hostId: "host",
     members: [
-      { id: "host", name: "ホスト", ready: false },
-      { id: "first", name: "先に参加", ready: true },
-      { id: "second", name: "後に参加", ready: false },
+      { id: "host", name: "ホスト", ready: false, icon: null },
+      { id: "first", name: "先に参加", ready: true, icon: null },
+      { id: "second", name: "後に参加", ready: false, icon: null },
     ],
     hostDisconnectedUntil: null,
     closesAt: null,
@@ -43,28 +44,46 @@ describe("ルームの接続と期限", () => {
     expect(empty.hostId).toBe("host");
     expect(reconcileRoom(empty, new Set(["second"]), 32_000).hostId).toBe("second");
   });
-  it("全接続がなくなってから30分で閉じ、遅れた再接続でも復活しない", () => {
+  it("全接続がなくなってから3分で閉じ、遅れた再接続でも復活しない", () => {
     const empty = reconcileRoom(room(), new Set(), 1000);
-    expect(empty.closesAt).toBe(1_801_000);
-    expect(reconcileRoom(empty, new Set(["host"]), 1_801_000).closed).toBe(true);
-    const closed = reconcileRoom(empty, new Set(), 1_801_000);
-    expect(reconcileRoom(closed, new Set(["host"]), 1_802_000).closed).toBe(true);
+    expect(empty.closesAt).toBe(181_000);
+    expect(reconcileRoom(empty, new Set(["host"]), 181_000).closed).toBe(true);
+    const closed = reconcileRoom(empty, new Set(), 181_000);
+    expect(reconcileRoom(closed, new Set(["host"]), 182_000).closed).toBe(true);
   });
-  it("誰かが戻った後に全員切断した場合は新しい30分を数える", () => {
+  it("誰かが戻った後に全員切断した場合は新しい3分を数える", () => {
     const empty = reconcileRoom(room(), new Set(), 1000);
     const returned = reconcileRoom(empty, new Set(["host"]), 10_000);
     expect(returned.closesAt).toBeNull();
-    expect(reconcileRoom(returned, new Set(), 20_000).closesAt).toBe(1_820_000);
+    expect(reconcileRoom(returned, new Set(), 20_000).closesAt).toBe(200_000);
     expect(returned.members[1]?.ready).toBe(true);
+  });
+  it("閉じた時点で結果の出ていない対戦は、閉じた時刻で勝負不成立にする", () => {
+    const battle = createBattle(
+      { difficulty: "easy", durationSeconds: 600, selectionSeconds: 60 },
+      { id: "topic", difficulty: "easy", imageUrl: "https://example.invalid/topic.png" },
+      ["host", "first"],
+      0,
+    );
+    const empty = reconcileRoom({ ...room(), battle }, new Set(), 1000);
+    expect(empty.battle?.result).toBeNull();
+    const closed = reconcileRoom(empty, new Set(), 181_000);
+    expect(closed.closed).toBe(true);
+    expect(closed.battle?.result).toEqual({
+      kind: "no-contest",
+      reason: "room-closed",
+      decidedAt: 181_000,
+    });
+    expect(reconcileRoom(closed, new Set(), 200_000).battle).toEqual(closed.battle);
   });
 });
 
 describe("ルームの次の期限", () => {
   it("状態確認直後に閉鎖期限を跨いでも、即時実行を予約する", () => {
     const state = reconcileRoom(room(), new Set(), 1000);
-    expect(getRoomDeadline(state, new Set(), 1_801_000)).toBe(1_801_000);
-    expect(getRoomDeadline(state, new Set(), 1_801_001)).toBe(1_801_001);
-    expect(reconcileRoom(state, new Set(), 1_801_001).closed).toBe(true);
+    expect(getRoomDeadline(state, new Set(), 181_000)).toBe(181_000);
+    expect(getRoomDeadline(state, new Set(), 181_001)).toBe(181_001);
+    expect(reconcileRoom(state, new Set(), 181_001).closed).toBe(true);
   });
   it("引き継ぎ先がいるときは、跨いだホスト期限も処理する", () => {
     const connected = new Set(["first"]);
@@ -74,14 +93,33 @@ describe("ルームの次の期限", () => {
   });
   it("引き継ぎ先がない期限で即時予約を繰り返さず、閉鎖期限を残す", () => {
     const state = reconcileRoom(room(), new Set(), 1000);
-    expect(getRoomDeadline(state, new Set(), 31_001)).toBe(1_801_000);
+    expect(getRoomDeadline(state, new Set(), 31_001)).toBe(181_000);
   });
   it("復帰や閉鎖で不要になった期限を予約しない", () => {
     const state = reconcileRoom(room(), new Set(), 1000);
     const returned = reconcileRoom(state, new Set(["host"]), 10_000);
     expect(getRoomDeadline(returned, new Set(["host"]), 31_001)).toBeNull();
     expect(
-      getRoomDeadline(reconcileRoom(state, new Set(), 1_801_000), new Set(), 1_801_001),
+      getRoomDeadline(reconcileRoom(state, new Set(), 181_000), new Set(), 181_001),
     ).toBeNull();
+  });
+});
+
+function members(count: number) {
+  return Array.from({ length: count }, (_, index) => ({
+    id: `m${index}`,
+    name: `参加者${index}`,
+    ready: false,
+    icon: null,
+  }));
+}
+
+describe("ルームの定員", () => {
+  it("定員までは新しい人を受け付け、定員に達したら受け付けない", () => {
+    expect(canJoinRoom({ members: members(roomCapacity - 1) }, "new")).toBe(true);
+    expect(canJoinRoom({ members: members(roomCapacity) }, "new")).toBe(false);
+  });
+  it("参加済みの人の再参加は定員に達していても受け付ける", () => {
+    expect(canJoinRoom({ members: members(roomCapacity) }, "m0")).toBe(true);
   });
 });

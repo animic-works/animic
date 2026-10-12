@@ -1,0 +1,127 @@
+import { defineSlotRecipe } from "@pandacss/dev";
+export const readout = defineSlotRecipe({
+  className: "readout",
+  slots: ["root", "label", "value", "digit", "separator", "accessibleValue"],
+  base: {
+    root: {
+      display: "grid",
+      justifyItems: "center",
+      minWidth: "8rem",
+      padding: "0.2rem 0.9rem 0.35rem",
+      border: "2px solid var(--animic-readout-border, token(colors.border.default))",
+      borderRadius: "1.25rem",
+      background: "var(--animic-readout-background, token(colors.bg.surface))",
+      boxShadow: "soft.1",
+      _readoutNarrow: { minWidth: "8rem", padding: "0.35rem 0.4rem 0.4rem" },
+      _readoutCompact: {
+        // 狭い画面でも、枠と文字・ラベルと数字の間に余白を残す。
+        minWidth: "6.3rem",
+        rowGap: "0.15rem",
+        padding: "0.45rem 0.85rem 0.5rem",
+        borderRadius: "1rem",
+      },
+    },
+    label: {
+      textStyle: "eyebrow.strong",
+      color: "var(--animic-readout-ink, token(colors.fg.supporting))",
+    },
+    value: {
+      textStyle: "numeric.timer",
+      color: "var(--animic-readout-ink, token(colors.fg.default))",
+    },
+    digit: { flex: "none", width: "0.92em", textAlign: "center" },
+    separator: { flex: "none", width: "0.36em", textAlign: "center" },
+    accessibleValue: { srOnly: true },
+  },
+  variants: {
+    format: {
+      text: {},
+      clock: { value: { display: "flex", justifyContent: "center" } },
+    },
+    emphasis: {
+      normal: {},
+      urgent: {
+        value: {
+          animation: "readoutPulse 1s cubic-bezier(0.3, 1.6, 0.5, 1) infinite",
+          _motionReduce: { animation: "none" },
+        },
+      },
+    },
+    presentation: {
+      panel: {},
+      stamp: {
+        root: {
+          minWidth: "0",
+          width: "fit-content",
+          padding: "0.35rem 0.8rem 0.4rem",
+          borderWidth: "3",
+          borderColor: "currentColor",
+          borderRadius: "0.6rem",
+          background: "transparent",
+          color: "var(--animic-readout-ink, token(colors.fg.default))",
+          boxShadow: "none",
+          _readoutNarrow: { minWidth: "0", padding: "0.35rem 0.8rem 0.4rem" },
+          _readoutCompact: {
+            minWidth: "0",
+            padding: "0.35rem 0.8rem 0.4rem",
+            borderRadius: "0.6rem",
+          },
+        },
+        label: { color: "inherit" },
+        value: { textStyle: "label.stamp", color: "inherit" },
+      },
+    },
+    // 外側で決めた大きさいっぱいに広げ、文字を中央に置く。文言の長さによらず同じ大きさで並べるときに使う。
+    fill: { true: {}, false: {} },
+    tone: {
+      neutral: {},
+      // 期限が迫った別の段階（画像を選ぶ時間など）。黄色の面にする。
+      highlight: {
+        root: {
+          "--animic-readout-background": "token(colors.accent.highlight)",
+          "--animic-readout-border":
+            "color-mix(in srgb, token(colors.accent.highlight) 88%, token(colors.fg.accent.highlight))",
+          "--animic-readout-ink": "token(colors.fg.default)",
+        },
+      },
+      primary: {
+        root: {
+          "--animic-readout-background": "token(colors.bg.accent.primary)",
+          "--animic-readout-border": "token(colors.accent.primary)",
+          "--animic-readout-ink": "token(colors.accent.primary)",
+        },
+      },
+      // 同じ場所に並ぶ別の種類の値（ボーナスなど）を、文字と枠の色で見分ける。白い面の上で読める濃さの色にする。
+      violet: {
+        root: {
+          "--animic-readout-border": "token(colors.violet.0)",
+          "--animic-readout-ink": "token(colors.violet.0)",
+        },
+      },
+      indigo: {
+        root: {
+          "--animic-readout-border": "token(colors.indigo.0)",
+          "--animic-readout-ink": "token(colors.indigo.0)",
+        },
+      },
+    },
+  },
+  compoundVariants: [
+    {
+      fill: true,
+      css: {
+        root: {
+          width: "100%",
+          height: "100%",
+          minWidth: "0",
+          alignContent: "center",
+          _readoutNarrow: { minWidth: "0" },
+          _readoutCompact: { minWidth: "0" },
+        },
+        // 大きさを固定するため、文字は折り返さない。
+        label: { whiteSpace: "nowrap" },
+        value: { whiteSpace: "nowrap" },
+      },
+    },
+  ],
+});

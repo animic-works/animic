@@ -1,0 +1,131 @@
+import { Avatar } from "@animic/react/avatar";
+import { AvatarGroup } from "@animic/react/avatar-group";
+import { Badge } from "@animic/react/badge";
+import { Text } from "@animic/react/text";
+import { Progress } from "@animic/react/progress";
+import { Readout } from "@animic/react/readout";
+import { WorkspaceHeaderDetail } from "@animic/react/workspace";
+import { AppBrand } from "../shared/app-brand";
+import { accountIconAvatar, type AccountIcon } from "../account/account-icon";
+import { levels, playerPalettes } from "../room/room-presentation";
+import type { getBattleClock } from "./battle-clock";
+import type { BattleSnapshot } from "./battle-state";
+import type { BattleStage } from "./battle-screen";
+
+type BattleClock = ReturnType<typeof getBattleClock>;
+
+export function BattleRoomLabel({
+  code,
+  settings,
+}: {
+  code: string;
+  settings: BattleSnapshot["settings"];
+}) {
+  return (
+    <>
+      <AppBrand linked={false} />
+      <BattleRoomBadge code={code} settings={settings} />
+    </>
+  );
+}
+
+/**
+ * ルームコードと対戦条件の札。対戦画面と結果画面のヘッダーで使う。
+ * ルームコードと対戦条件は1つの札にまとめ、高さと並びをそろえる。
+ * 対戦画面の狭い画面では、ロゴとルームコードを1行に収めるため対戦条件を省略する。
+ */
+export function BattleRoomBadge({
+  code,
+  settings,
+}: {
+  code: string;
+  settings: BattleSnapshot["settings"];
+}) {
+  return (
+    <Badge tone="surface">
+      ルーム <Text variant="code.compact">{code}</Text>
+      <WorkspaceHeaderDetail>
+        {"｜"}
+        {levels[settings.difficulty].label}・{settings.durationSeconds}秒
+      </WorkspaceHeaderDetail>
+    </Badge>
+  );
+}
+
+export function BattleTimer({ stage, clock }: { stage: BattleStage; clock: BattleClock }) {
+  return (
+    <Readout
+      role="timer"
+      label={stage === "generating" ? "TIME LEFT" : "SELECT"}
+      value={clock.label}
+      format="clock"
+      tone={clock.tone}
+      emphasis={clock.urgent ? "urgent" : "normal"}
+    />
+  );
+}
+
+export function BattleProgress({ clock }: { clock: BattleClock }) {
+  return (
+    <Progress
+      label="残り時間"
+      value={clock.percent}
+      tone={clock.tone === "neutral" ? "gradient" : clock.tone}
+      emphasis={clock.urgent ? "urgent" : "normal"}
+      striped
+      presentation="track"
+    />
+  );
+}
+
+/** 参加者の一覧。本人だけ、提出・生成の状態と生成回数を出す。 */
+export function BattlePlayers({
+  participantIds,
+  participantId,
+  names,
+  icons,
+  submitted,
+  generating,
+  successCount,
+}: {
+  participantIds: readonly string[];
+  participantId: string;
+  names: Map<string, string>;
+  icons: Map<string, AccountIcon | null>;
+  submitted: boolean;
+  generating: boolean;
+  successCount: number;
+}) {
+  const status = submitted ? "complete" : generating ? "busy" : "idle";
+  return (
+    <AvatarGroup
+      label="プレイヤーの様子"
+      members={participantIds.map((id, index) => {
+        const current = id === participantId;
+        const name = names.get(id) ?? (current ? "あなた" : "相手");
+        return {
+          id,
+          // 本人は項目の色で示し、表示名は縮めずに出す。読み上げでは「（あなた）」を付ける。
+          name: current ? `${name}（あなた）` : name,
+          displayName: name,
+          current,
+          detail: current
+            ? `${status === "complete" ? "提出済み" : status === "busy" ? "生成中" : "考え中"}・生成 ${successCount}回`
+            : "",
+          avatar: (
+            <Avatar
+              size="small"
+              name={name}
+              fallback={Array.from(name)[0]}
+              {...accountIconAvatar(
+                icons.get(id) ?? null,
+                playerPalettes[index % playerPalettes.length],
+              )}
+              status={current ? status : undefined}
+            />
+          ),
+        };
+      })}
+    />
+  );
+}

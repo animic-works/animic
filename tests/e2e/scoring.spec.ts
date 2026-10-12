@@ -1,0 +1,640 @@
+import { setTimeout } from "node:timers/promises";
+
+import * as v from "valibot";
+import { expect, test } from "@playwright/test";
+import type { APIRequestContext, Browser, Locator, Page } from "@playwright/test";
+
+import { create, join, snapshot } from "./api";
+import { executeLocalD1 } from "./d1";
+
+const origin = "http://127.0.0.1:4173";
+// desktop-comfyui-serverの通信仕様で決まっているパスとキー名で、採点ワーカーとして振る舞う。
+const workerApi = "/api/internal/hosts";
+const linkedSchema = v.object({ hostId: v.string(), hostSecret: v.string(), hostName: v.string() });
+const claimedSchema = v.object({
+  jobId: v.string(),
+  sourceImages: v.array(
+    v.object({ base64: v.pipe(v.string(), v.minLength(1)), contentType: v.string() }),
+  ),
+  workflow: v.object({ presetId: v.string(), workflowJson: v.string(), triggerWords: v.null() }),
+});
+const jobSchema = v.object({
+  state: v.string(),
+  attempts: v.number(),
+  worker_id: v.nullable(v.string()),
+  raw_result: v.nullable(v.string()),
+  error: v.nullable(v.string()),
+});
+type Worker = { id: string; secret: string };
+
+async function issueCode(code: string, expiresAt = Date.now() + 10 * 60_000) {
+  await executeLocalD1(
+    `INSERT OR REPLACE INTO scoring_link_code (code, name, expires_at) VALUES ('${code}', 'e2e-${code}', ${expiresAt})`,
+  );
+}
+
+async function link(request: APIRequestContext, code: string): Promise<Worker> {
+  await issueCode(code);
+  const response = await request.post(`${workerApi}/link`, { data: { code } });
+  expect(response.status()).toBe(200);
+  const linked = v.parse(linkedSchema, await response.json());
+  return { id: linked.hostId, secret: linked.hostSecret };
+}
+
+function post(request: APIRequestContext, worker: Worker, path: string, data: unknown = {}) {
+  return request.post(`${workerApi}/${worker.id}/${path}`, {
+    headers: { Authorization: `Bearer ${worker.secret}` },
+    data,
+  });
+}
+
+async function addJob(id: string, submissionImageUrl = `${origin}/og-image.png`) {
+  const inputs = JSON.stringify([
+    { role: "topic", imageUrl: `${origin}/og-image.png` },
+    { role: "submission", participantId: `participant-${id}`, imageUrl: submissionImageUrl },
+  ]);
+  await executeLocalD1(
+    `INSERT INTO scoring_job (id, battle_id, room_code, workflow_version, inputs, state, created_at) VALUES ('${id}', 'battle-${id}', 'E2EROOM2', 'illust-similarity-v2', '${inputs}', 'queued', ${Date.now()})`,
+  );
+}
+
+async function job(id: string) {
+  return v.parse(
+    jobSchema,
+    (
+      await executeLocalD1(
+        `SELECT state, attempts, worker_id, raw_result, error FROM scoring_job WHERE id = '${id}'`,
+      )
+    )[0],
+  );
+}
+
+function similarity(text: string) {
+  return { data: [{ nodeId: "3", label: "similarity", values: { text: [text] } }] };
+}
+
+/** ルームのDOが採点ジョブを登録するまで、採点ワーカーとして要求を繰り返す。 */
+async function claimJob(request: APIRequestContext, worker: Worker) {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const response = await post(request, worker, "jobs/claim");
+    if (response.status() === 200) return v.parse(claimedSchema, await response.json());
+    await setTimeout(1000);
+  }
+  throw new Error("採点ジョブを受け取れませんでした。");
+}
+
+async function participantId(page: Page) {
+  const id = await page.evaluate(async () => (await window.animicTest.getCurrentParticipant())?.id);
+  if (!id) throw new Error("参加者IDを取得できませんでした。");
+  return id;
+}
+
+test.describe.configure({ mode: "serial", timeout: 60_000 });
+test.beforeEach(async () => {
+  await executeLocalD1("DELETE FROM scoring_job");
+});
+
+test("リンクコードは登録済み・未使用・期限内のときだけ1回使え、秘密情報はハッシュだけ保存する", async ({
+  request,
+}) => {
+  await issueCode("E2EA-0001");
+  await issueCode("E2EA-0002", Date.now() - 1000);
+  const response = await request.post(`${workerApi}/link`, { data: { code: " e2ea-0001 " } });
+  expect(response.status()).toBe(200);
+  const linked = v.parse(linkedSchema, await response.json());
+  expect(linked.hostName).toBe("e2e-E2EA-0001");
+  expect(linked.hostSecret).toMatch(/^[0-9a-f]{64}$/);
+  const stored = await executeLocalD1(
+    `SELECT secret_hash FROM scoring_worker WHERE id = '${linked.hostId}'`,
+  );
+  expect(stored).toHaveLength(1);
+  expect(stored[0]?.secret_hash).not.toBe(linked.hostSecret);
+  for (const data of [{ code: "E2EA-0001" }, { code: "E2EA-0002" }, { code: "E2EA-9999" }, {}]) {
+    const refused = await request.post(`${workerApi}/link`, { data });
+    expect(refused.status()).toBe(400);
+    expect(await refused.json()).toEqual({
+      error: "リンクコードが正しくないか、期限切れか、使用済みです。",
+    });
+  }
+});
+
+test("秘密情報を確かめてheartbeatを記録し、失効した採点ワーカーを拒否する", async ({ request }) => {
+  const worker = await link(request, "E2EB-0001");
+  const status = { comfyStatus: "available", queueRunning: 0, queuePending: 0, gpu: null };
+  expect((await post(request, { ...worker, secret: "wrong" }, "heartbeat", status)).status()).toBe(
+    401,
+  );
+  expect(
+    (await request.post(`${workerApi}/${worker.id}/heartbeat`, { data: status })).status(),
+  ).toBe(401);
+  const beat = await post(request, worker, "heartbeat", status);
+  expect(beat.status()).toBe(200);
+  expect(await beat.json()).toEqual({});
+  const recorded = await executeLocalD1(
+    `SELECT last_seen_at, status FROM scoring_worker WHERE id = '${worker.id}'`,
+  );
+  expect(recorded[0]?.last_seen_at).not.toBeNull();
+  expect(String(recorded[0]?.status)).toContain('"comfyStatus":"available"');
+  expect((await post(request, worker, "heartbeat", { comfyStatus: "unknown" })).status()).toBe(400);
+  const headers = { Authorization: `Bearer ${worker.secret}` };
+  expect((await request.get(`${workerApi}/${worker.id}/manifest`, { headers })).status()).toBe(404);
+  expect(
+    (await request.put(`${workerApi}/${worker.id}/object-info`, { headers, data: {} })).status(),
+  ).toBe(404);
+  await executeLocalD1(
+    `UPDATE scoring_worker SET revoked_at = ${Date.now()} WHERE id = '${worker.id}'`,
+  );
+  expect((await post(request, worker, "heartbeat", status)).status()).toBe(401);
+});
+
+test("Originのない要求も受け付け、待機中のジョブを1台だけに割り当てて完了を保存する", async ({
+  request,
+}) => {
+  const first = await link(request, "E2EC-0001");
+  const second = await link(request, "E2EC-0002");
+  expect((await post(request, first, "jobs/claim")).status()).toBe(204);
+  await addJob("job-complete");
+  const response = await post(request, first, "jobs/claim");
+  expect(response.status()).toBe(200);
+  const claimed = v.parse(claimedSchema, await response.json());
+  expect(claimed.jobId).toBe("job-complete");
+  expect(claimed.sourceImages.map((image) => image.contentType)).toEqual([
+    "image/png",
+    "image/png",
+  ]);
+  expect(claimed.workflow.presetId).toBe("illust-similarity-v2");
+  expect(JSON.parse(claimed.workflow.workflowJson)).toMatchObject({
+    "1": { inputs: { image: "__INPUT_IMAGE__" } },
+    "2": { inputs: { image: "__INPUT_IMAGE_2__" } },
+  });
+  expect((await post(request, second, "jobs/claim")).status()).toBe(204);
+  const reported = similarity(JSON.stringify({ depth: { raw: 0.78, score: 67 }, total: 71.4 }));
+  expect((await post(request, second, "jobs/job-complete/complete", reported)).status()).toBe(409);
+  expect((await post(request, first, "jobs/job-complete/complete", reported)).status()).toBe(200);
+  expect(await job("job-complete")).toMatchObject({ state: "succeeded", attempts: 1, error: null });
+  expect((await job("job-complete")).raw_result).toContain("71.4");
+  expect(
+    await executeLocalD1(
+      "SELECT participant_id, total FROM scoring_result WHERE job_id = 'job-complete'",
+    ),
+  ).toEqual([{ participant_id: "participant-job-complete", total: 71.4 }]);
+  expect((await post(request, first, "jobs/job-complete/complete", reported)).status()).toBe(409);
+  expect((await post(request, first, "jobs/job-complete/fail")).status()).toBe(409);
+});
+
+test("失敗・読めない出力・期限切れ・画像の取得失敗は1回だけ差し戻し、2回目で失敗にする", async ({
+  request,
+}) => {
+  const first = await link(request, "E2ED-0001");
+  const second = await link(request, "E2ED-0002");
+
+  await addJob("job-retry");
+  expect((await post(request, first, "jobs/claim")).status()).toBe(200);
+  expect(
+    (await post(request, first, "jobs/job-retry/fail", { reason: "ComfyUIが停止" })).status(),
+  ).toBe(200);
+  expect(await job("job-retry")).toMatchObject({
+    state: "queued",
+    attempts: 1,
+    worker_id: null,
+    error: "ComfyUIが停止",
+  });
+  expect((await post(request, second, "jobs/claim")).status()).toBe(200);
+  const unreadable = similarity('{"depth": {"raw": NaN}, "total": NaN}');
+  expect((await post(request, second, "jobs/job-retry/complete", unreadable)).status()).toBe(200);
+  const failed = await job("job-retry");
+  expect(failed).toMatchObject({ state: "failed", attempts: 2, worker_id: second.id });
+  expect(failed.raw_result).toContain("NaN");
+  expect(failed.error).toContain("total");
+
+  await addJob("job-lease");
+  expect((await post(request, first, "jobs/claim")).status()).toBe(200);
+  await executeLocalD1(
+    `UPDATE scoring_job SET lease_until = ${Date.now() - 1000} WHERE id = 'job-lease'`,
+  );
+  const reclaimed = await post(request, second, "jobs/claim");
+  expect(v.parse(claimedSchema, await reclaimed.json()).jobId).toBe("job-lease");
+  expect(await job("job-lease")).toMatchObject({
+    state: "running",
+    attempts: 2,
+    worker_id: second.id,
+  });
+  expect((await post(request, first, "jobs/job-lease/fail")).status()).toBe(409);
+
+  await addJob("job-image", "https://example.invalid/missing.png");
+  expect((await post(request, first, "jobs/claim")).status()).toBe(204);
+  const unavailable = await job("job-image");
+  expect(unavailable).toMatchObject({ state: "queued", attempts: 1, worker_id: null });
+  expect(unavailable.error).toContain("画像");
+});
+
+/** 2人で対戦を始め、それぞれ生成した画像を提出する。提出画像の絶対URLを参加者IDごとに返す。 */
+async function submitBoth(
+  host: Page,
+  guest: Page,
+  code: string,
+  { afterStart }: { afterStart?: () => Promise<unknown> } = {},
+) {
+  const started = await host.evaluate(
+    async (data) => {
+      await window.animicTest.setRoomSettings({ data });
+      return window.animicTest.startBattle({ data });
+    },
+    {
+      code,
+      settings: { difficulty: "hard" as const, durationSeconds: 600, selectionSeconds: 10 },
+      previousBattleId: null,
+    },
+  );
+  expect(started.error).toBeNull();
+  await afterStart?.();
+  const battleId = (await snapshot(host)).battle?.id ?? "";
+  const imageUrls = new Map<string, string>();
+  for (const participant of [host, guest]) {
+    await expect.poll(async () => (await snapshot(participant)).battle?.id).toBe(battleId);
+    const generationId = crypto.randomUUID();
+    await participant.evaluate((data) => window.animicTest.generateImage({ data }), {
+      code,
+      battleId,
+      generationId,
+      prompt: "e2e scoring, 1girl",
+    });
+    await expect
+      .poll(async () => (await snapshot(participant)).battle?.myGenerations[0]?.status)
+      .toBe("succeeded");
+    await participant.evaluate((data) => window.animicTest.submitBattleImage({ data }), {
+      code,
+      battleId,
+      generationId,
+    });
+    imageUrls.set(
+      await participantId(participant),
+      `${origin}/generated-images/${battleId}/${generationId}`,
+    );
+  }
+  return { battleId, imageUrls };
+}
+
+/** 2人のルームを作り、対戦の操作を`play`に任せる。お題は採点ワーカーが自分のURLから取得できる画像にする。 */
+async function withScoringRoom(
+  browser: Browser,
+  ips: [string, string],
+  play: (host: Page, guest: Page, code: string) => Promise<void>,
+) {
+  // ほかのテストのお題と重ならない難易度で出題する。
+  await executeLocalD1(
+    `INSERT OR REPLACE INTO topic (id, difficulty, image_url) VALUES ('e2e-scoring-topic', 'hard', '${origin}/og-image.png')`,
+  );
+  // 匿名参加の回数制限を、ほかのファイルのテストと分ける。
+  const hostContext = await browser.newContext({
+    extraHTTPHeaders: { "CF-Connecting-IP": ips[0] },
+  });
+  const guestContext = await browser.newContext({
+    extraHTTPHeaders: { "CF-Connecting-IP": ips[1] },
+  });
+  try {
+    const host = await hostContext.newPage();
+    const guest = await guestContext.newPage();
+    const code = await create(host, "採点ホスト");
+    await join(guest, code, "採点ゲスト");
+    await expect
+      .poll(async () => (await snapshot(host)).members.filter((member) => member.connected).length)
+      .toBe(2);
+    await play(host, guest, code);
+  } finally {
+    await hostContext.close();
+    await guestContext.close();
+    await executeLocalD1(
+      "DELETE FROM topic WHERE id = 'e2e-scoring-topic'; DELETE FROM scoring_weight",
+    );
+  }
+}
+
+/** 結果画面の画像が、同じオリジンのパスから読み込めたことを確かめる。 */
+async function expectLoaded(image: Locator) {
+  await expect(image).toHaveAttribute("src", /^\/generated-images\//);
+  await expect
+    .poll(() => image.evaluate((node: HTMLImageElement) => node.complete && node.naturalWidth))
+    .toBeGreaterThan(0);
+}
+
+test("生成した画像を提出すると、採点ワーカーへR2の生成画像を渡し、対戦を始めたときの重みで計算した再現度にボーナスを加えた最終スコアで勝敗が決まる", async ({
+  browser,
+  request,
+}) => {
+  test.setTimeout(90_000);
+  await withScoringRoom(browser, ["203.0.113.37", "203.0.113.38"], async (host, guest, code) => {
+    // この対戦は、始める前に保存した重み（構図だけ）とボーナスで採点する。
+    // ボーナスの対象は再現度65点以上のため、ホストだけが両方のボーナスを取る。
+    await executeLocalD1(
+      `DELETE FROM scoring_weight; INSERT INTO scoring_weight (id, weights, speed_bonus, generation_bonus, bonus_min_similarity, created_at) VALUES ('e2e-before-start', '{"ccip":0,"pixai":0,"siglip2":0,"dinov2":0,"depth":100}', 5, 2, 65, ${Date.now() - 1000})`,
+    );
+    const { battleId, imageUrls } = await submitBoth(host, guest, code, {
+      // 対戦の後に変えた重みとボーナスは、この対戦に使わない。
+      afterStart: () =>
+        executeLocalD1(
+          `INSERT INTO scoring_weight (id, weights, speed_bonus, generation_bonus, bonus_min_similarity, created_at) VALUES ('e2e-after-start', '{"ccip":35,"pixai":25,"siglip2":20,"dinov2":10,"depth":10}', 20, 20, 0, ${Date.now() + 1000})`,
+        ),
+    });
+    const hostId = await participantId(host);
+    // 全員が提出したら採点中になる。採点の開始から30秒を過ぎたら、時間がかかっていることも伝える。
+    // ログインせずに参加したゲストの画面で、採点中の表示と結果の内訳を確かめる。
+    const guestView = await guest.context().newPage();
+    await guestView.clock.install();
+    await guestView.goto(`/rooms/${code}`);
+    const waiting = guestView.getByRole("dialog", { name: "提出しました！" });
+    await expect(waiting.getByRole("status", { name: "採点しています" })).toBeVisible();
+    await expect(waiting.getByText("採点に時間がかかっています")).toHaveCount(0);
+    // 経過時間は配信を受け取ってから数えるため、時計を進めた直後に配信が届くと数え直しになる。
+    // 案内が出るまで、時計を進めて確かめる。
+    await expect
+      .poll(async () => {
+        await guestView.clock.fastForward(31_000);
+        return waiting.getByText("採点に時間がかかっています").isVisible();
+      })
+      .toBe(true);
+    // 採点の期限までの残り時間は出さない。
+    await expect(waiting.getByText(/\d+:\d{2}/)).toHaveCount(0);
+
+    const worker = await link(request, "E2EE-0001");
+    for (let count = 0; count < 2; count += 1) {
+      const claimed = await claimJob(request, worker);
+      const [inputs] = await executeLocalD1(
+        `SELECT battle_id, json_extract(inputs, '$[1].participantId') AS participant_id, json_extract(inputs, '$[1].imageUrl') AS image_url FROM scoring_job WHERE id = '${claimed.jobId}'`,
+      );
+      const submitter = String(inputs?.participant_id);
+      // 採点ジョブには、記録した絶対URLを渡す。
+      expect(inputs).toEqual({
+        battle_id: battleId,
+        participant_id: submitter,
+        image_url: imageUrls.get(submitter),
+      });
+      // お題は自分のURLから取得し、生成画像はR2から読んだWebPを渡す。
+      expect(claimed.sourceImages.map((image) => image.contentType)).toEqual([
+        "image/png",
+        "image/webp",
+      ]);
+      const submission = Buffer.from(claimed.sourceImages[1]?.base64 ?? "", "base64");
+      expect(submission.toString("latin1", 0, 4)).toBe("RIFF");
+      expect(submission.toString("latin1", 8, 12)).toBe("WEBP");
+      // 構図だけで計算するため、採点ノードのtotal（既定の重み）ではホストが負ける点にする。
+      const metrics =
+        submitter === hostId
+          ? { pixai: { raw: 0.7, score: 70 }, depth: { raw: 0.8, score: 71.4 } }
+          : {
+              ccip: { skipped: "no person in one of the images", raw: 0.17 },
+              pixai: { raw: 0.78, score: 74.8 },
+              siglip2: { raw: 0.91, score: 71 },
+              dinov2: { raw: 0.63, score: 88.5 },
+              depth: { raw: 0.78, score: 60 },
+            };
+      const reported = similarity(JSON.stringify({ total: 0, ...metrics }));
+      expect(
+        (await post(request, worker, `jobs/${claimed.jobId}/complete`, reported)).status(),
+      ).toBe(200);
+    }
+
+    for (const participant of [host, guest]) {
+      await expect
+        .poll(async () => (await snapshot(participant)).battle?.result, { timeout: 30_000 })
+        .toMatchObject({ kind: "win", reason: "higher-score", winnerId: hostId });
+      // 結果の確定後は、両方の提出画像と採点結果・内訳を公開する。画面には同じオリジンのパスで渡す。
+      expect(
+        (await snapshot(participant)).battle?.scores?.toSorted((a, b) => b.total - a.total),
+      ).toMatchObject(
+        [...imageUrls].map(([id, imageUrl]) => ({
+          participantId: id,
+          // 最終スコアは再現度に、取ったボーナス（5点と2点）を加えた値。
+          total: id === hostId ? 78.4 : 60,
+          imageUrl: new URL(imageUrl).pathname,
+        })),
+      );
+    }
+
+    // 戦績には最終スコアと再現度を分けて保存する。
+    await expect
+      .poll(() =>
+        executeLocalD1(
+          `SELECT participant_id, total, similarity FROM battle_record WHERE battle_id = '${battleId}' ORDER BY total DESC`,
+        ),
+      )
+      .toEqual([
+        { participant_id: hostId, total: 78.4, similarity: 71.4 },
+        { participant_id: await participantId(guest), total: 60, similarity: 60 },
+      ]);
+
+    // 結果が確定すると、提出した人を1人ずつ発表し、全員の発表が終わったら最終の結果を出す。
+    // 発表の時間は時計を進めて縮める。
+    await guest.clock.install();
+    await guest.goto(`/rooms/${code}`);
+    await expect(guest.getByRole("status", { name: "JUDGING" })).toHaveText(/JUDGING[12] \/ 2/, {
+      timeout: 15_000,
+    });
+    await expect(guest.getByRole("list", { name: "発表の順番" }).getByRole("listitem")).toHaveCount(
+      2,
+    );
+    // 採点の様子の行に、採点ワーカーが返した指標の点を出す（ホストの髪・服・小物70、ゲストの74.8）。
+    await expect(guest.getByRole("group", { name: "採点の様子" })).toContainText(/70\.0|74\.8/, {
+      timeout: 16_000,
+    });
+    // 2人分の発表の時間（1人12.5秒）を進める。
+    await guest.clock.fastForward(26_000);
+    await expect(guest.getByRole("heading", { name: "YOU LOSE…" })).toBeVisible();
+    // 結果の共有には、本人の結果とトップページのURLだけを載せる。
+    const share = new URL(
+      (await guest.getByRole("link", { name: "あなたの結果をシェア" }).getAttribute("href")) ?? "",
+    );
+    expect(Object.fromEntries(share.searchParams)).toEqual({
+      text: "Animicのイラスト再現バトルで対戦しました（60.0pt） #Animic",
+      url: "https://animic.party/",
+    });
+    await expectLoaded(guest.getByRole("img", { name: "採点ホストさんの提出画像" }));
+    await expectLoaded(guest.getByRole("img", { name: "採点ゲストさんの提出画像" }));
+
+    // 結果画面で、自分と相手の内訳と指標ごとの点を、操作なしで見られる。
+    // 待機の画面から見ていたページも発表中になる。2人分の発表の時間（25秒）を進めると最終の結果になる。
+    await guestView.clock.fastForward(26_000);
+    const breakdown = guestView
+      .getByRole("heading", { name: "あなたのスコアの内訳" })
+      .locator("..");
+    await expect(breakdown.getByText("60.0").first()).toBeVisible();
+    await expect(breakdown.getByText("1回")).toBeVisible();
+    // 再現度が下限より低いため、どちらのボーナスも取れない。
+    await expect(breakdown.getByText("ボーナス +0")).toHaveCount(2);
+    // 指標はモデル名ではなく、トップページと同じ名前と、この対戦を始めたときの重みで出す。
+    await expect(breakdown.getByRole("meter", { name: /絵の印象.*重み 0%/ })).toHaveAttribute(
+      "aria-valuenow",
+      "88.5",
+    );
+    await expect(breakdown.getByText("採点の対象外")).toBeVisible();
+    await expect(breakdown.getByText("PixAI")).toHaveCount(0);
+    const hostBreakdown = guestView
+      .getByRole("heading", { name: "採点ホストさんのスコアの内訳" })
+      .locator("..");
+    await expect(hostBreakdown.getByText("78.4")).toBeVisible();
+    await expect(hostBreakdown.getByText("ボーナス +5")).toBeVisible();
+    await expect(hostBreakdown.getByRole("meter", { name: /髪・服・小物/ })).toHaveAttribute(
+      "aria-valuenow",
+      "70",
+    );
+    // 指標は、採点で結果が決まった今の対戦について、ルームの参加者に返す。
+    const metrics = (page: Page, target: string, id = battleId) =>
+      page.evaluate((data) => window.animicTest.getResultScoringMetrics({ data }), {
+        code,
+        battleId: id,
+        participantId: target,
+      });
+    const guestId = await participantId(guest);
+    const startWeights = { ccip: 0, pixai: 0, siglip2: 0, dinov2: 0, depth: 100 };
+    expect(await metrics(guest, hostId)).toMatchObject({
+      scores: { pixai: 70, dinov2: null },
+      weights: startWeights,
+    });
+    expect(await metrics(host, guestId)).toMatchObject({
+      scores: { ccip: null, dinov2: 88.5 },
+      weights: startWeights,
+    });
+    expect(await metrics(host, guestId, crypto.randomUUID())).toBeNull();
+  });
+});
+
+test("採点に失敗した勝負不成立では、自分の画像を表示し、相手の画像を公開しない理由を表示する", async ({
+  browser,
+  request,
+}) => {
+  test.setTimeout(90_000);
+  await withScoringRoom(browser, ["203.0.113.39", "203.0.113.40"], async (host, guest, code) => {
+    await submitBoth(host, guest, code);
+    const worker = await link(request, "E2EE-0002");
+    // 採点ワーカーが失敗を返し続け、同じジョブが2回失敗すると採点の失敗になる。
+    await expect
+      .poll(
+        async () => {
+          const claimed = await post(request, worker, "jobs/claim");
+          if (claimed.status() === 200) {
+            const { jobId } = v.parse(claimedSchema, await claimed.json());
+            await post(request, worker, `jobs/${jobId}/fail`);
+          }
+          return (await snapshot(guest)).battle?.result;
+        },
+        { timeout: 30_000 },
+      )
+      .toMatchObject({ kind: "no-contest", reason: "scoring-failed" });
+
+    await guest.goto(`/rooms/${code}`);
+    await expect(guest.getByText("採点できなかったため、勝負不成立です")).toBeVisible({
+      timeout: 15_000,
+    });
+    await expectLoaded(guest.getByRole("img", { name: "採点ゲストさんの提出画像" }));
+    await expect(guest.getByRole("img", { name: "採点ホストさんの提出画像" })).toHaveCount(0);
+    const hidden = guest.getByRole("img", { name: "提出済み" });
+    await expect(hidden).toContainText("採点できなかったため、画像は公開されません");
+  });
+});
+
+test("画像選択の猶予までに提出しなければ、最後に完成した画像の採点ジョブを登録して勝敗を決める", async ({
+  browser,
+  request,
+}) => {
+  test.setTimeout(90_000);
+  await executeLocalD1(
+    `INSERT OR REPLACE INTO topic (id, difficulty, image_url) VALUES ('e2e-scoring-topic', 'hard', '${origin}/og-image.png')`,
+  );
+  const hostContext = await browser.newContext({
+    extraHTTPHeaders: { "CF-Connecting-IP": "203.0.113.39" },
+  });
+  const guestContext = await browser.newContext({
+    extraHTTPHeaders: { "CF-Connecting-IP": "203.0.113.40" },
+  });
+  try {
+    const host = await hostContext.newPage();
+    const guest = await guestContext.newPage();
+    const code = await create(host, "自動提出ホスト");
+    await join(guest, code, "自動提出ゲスト");
+    await expect
+      .poll(async () => (await snapshot(host)).members.filter((member) => member.connected).length)
+      .toBe(2);
+    const started = await host.evaluate(
+      async (data) => {
+        await window.animicTest.setRoomSettings({ data });
+        return window.animicTest.startBattle({ data });
+      },
+      {
+        code,
+        settings: { difficulty: "hard" as const, durationSeconds: 10, selectionSeconds: 2 },
+        previousBattleId: null,
+      },
+    );
+    expect(started.error).toBeNull();
+    const battleId = (await snapshot(host)).battle?.id ?? "";
+    const imageUrls = new Map<string, string>();
+    const lastIds = new Map<Page, string>();
+    for (const [participant, count] of [
+      [host, 2],
+      [guest, 1],
+    ] as const) {
+      await expect.poll(async () => (await snapshot(participant)).battle?.id).toBe(battleId);
+      let last = "";
+      for (let index = 0; index < count; index += 1) {
+        last = crypto.randomUUID();
+        await participant.evaluate((data) => window.animicTest.generateImage({ data }), {
+          code,
+          battleId,
+          generationId: last,
+          prompt: `e2e auto submit ${index}`,
+        });
+        await expect
+          .poll(async () => (await snapshot(participant)).battle?.myGenerations[index]?.status)
+          .toBe("succeeded");
+      }
+      lastIds.set(participant, last);
+      imageUrls.set(
+        await participantId(participant),
+        `${origin}/generated-images/${battleId}/${last}`,
+      );
+    }
+
+    // どちらも提出しないまま猶予の期限を過ぎると、最後に完成した画像を速度の加点なしで提出する。
+    for (const participant of [host, guest]) {
+      await expect
+        .poll(async () => (await snapshot(participant)).battle?.mySubmission?.status, {
+          timeout: 20_000,
+        })
+        .toBe("submitted");
+      const current = (await snapshot(participant)).battle;
+      expect(current?.mySubmission).toMatchObject({
+        generationId: lastIds.get(participant),
+        submittedAt: current?.selectionEndsAt,
+        eligibleForSpeedBonus: false,
+      });
+    }
+
+    const hostId = await participantId(host);
+    const worker = await link(request, "E2EE-0003");
+    for (let count = 0; count < 2; count += 1) {
+      const claimed = await claimJob(request, worker);
+      const [inputs] = await executeLocalD1(
+        `SELECT json_extract(inputs, '$[1].participantId') AS participant_id, json_extract(inputs, '$[1].imageUrl') AS image_url FROM scoring_job WHERE id = '${claimed.jobId}'`,
+      );
+      const submitter = String(inputs?.participant_id);
+      expect(inputs?.image_url).toBe(imageUrls.get(submitter));
+      // 指標の点から再現度を計算する。点のない指標は除いて割り直す。
+      const depth = { score: submitter === hostId ? 80 : 50 };
+      const reported = similarity(JSON.stringify({ total: 0, depth }));
+      expect(
+        (await post(request, worker, `jobs/${claimed.jobId}/complete`, reported)).status(),
+      ).toBe(200);
+    }
+    for (const participant of [host, guest]) {
+      await expect
+        .poll(async () => (await snapshot(participant)).battle?.result, { timeout: 30_000 })
+        .toMatchObject({ kind: "win", reason: "higher-score", winnerId: hostId });
+    }
+  } finally {
+    await hostContext.close();
+    await guestContext.close();
+    await executeLocalD1(
+      "DELETE FROM topic WHERE id = 'e2e-scoring-topic'; DELETE FROM scoring_weight",
+    );
+  }
+});

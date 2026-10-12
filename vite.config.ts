@@ -8,12 +8,19 @@ import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { defineConfig } from "vite-plus";
 
 export default defineConfig({
+  // E2E専用のログイン（src/lib/auth-e2e.server.ts）は、このフラグがtrueのビルドにだけ含める。
+  define: { ANIMIC_E2E_BUILD: JSON.stringify(process.env.ANIMIC_E2E === "true") },
   plugins: [
     cloudflare({
       viteEnvironment: { name: "ssr" },
       persistState: process.env.ANIMIC_E2E === "true" ? { path: ".wrangler/e2e" } : true,
+      // E2Eでは偽のNovelAIへ送る。`vars`はビルドした後に環境変数で上書きできないため、ビルドの設定に入れる。
+      ...(process.env.ANIMIC_E2E === "true" && process.env.NOVELAI_API_URL
+        ? { config: { vars: { NOVELAI_API_URL: process.env.NOVELAI_API_URL } } }
+        : {}),
     }),
-    tanstackStart(),
+    // 共通CSSはrootのheadから配信するため、開発用のCSS収集・差し替えは不要。
+    tanstackStart({ dev: { ssrStyles: { enabled: false } } }),
     react(),
     babel({ presets: [reactCompilerPreset()] }),
     process.env.ANIMIC_E2E === "true" && {
@@ -29,7 +36,11 @@ export default defineConfig({
       },
     },
   ],
-  server: { port: 3000, strictPort: true },
+  server: {
+    port: 3000,
+    strictPort: true,
+    watch: { ignored: ["**/storybook-static/**", "**/test-results/**"] },
+  },
   lint: {
     plugins: ["typescript", "unicorn", "oxc", "react", "promise", "import"],
     categories: { correctness: "error", suspicious: "error" },
@@ -68,13 +79,21 @@ export default defineConfig({
       "import/no-cycle": "error",
       "import/no-unassigned-import": "off",
     },
-    ignorePatterns: ["**/routeTree.gen.ts", "worker-configuration.d.ts"],
+    ignorePatterns: [
+      "**/routeTree.gen.ts",
+      "worker-configuration.d.ts",
+      "packages/styled-system/generated/**",
+    ],
   },
   fmt: {
     singleQuote: false,
     semi: true,
     sortPackageJson: true,
-    ignorePatterns: ["src/routeTree.gen.ts", "worker-configuration.d.ts"],
+    ignorePatterns: [
+      "src/routeTree.gen.ts",
+      "worker-configuration.d.ts",
+      "packages/styled-system/generated/**",
+    ],
   },
   staged: {
     "*.{js,ts,jsx,tsx,json,jsonc,css,md,yml,yaml}": "vp check --fix",

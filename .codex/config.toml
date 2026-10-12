@@ -1,0 +1,7 @@
+[mcp_servers.panda]
+command = "pnpm"
+args = ["--silent", "run", "mcp:panda"]
+
+[mcp_servers.ark-ui]
+command = "pnpm"
+args = ["--silent", "run", "mcp:ark-ui"]

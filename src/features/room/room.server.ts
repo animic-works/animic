@@ -9,34 +9,76 @@ import {
   canStartBattle,
   reconcileBattle,
   acceptGeneration,
+  characterCount,
   finishGeneration,
   submitImage,
   getBattleSnapshot,
+  getScoredParticipantIds,
   serializeBattleResult,
+  getScoringRequests,
+  applyScoringJobs,
+  getBattleDeadline,
 } from "../battle/battle-state";
 import type { BattleSettings, Topic, GenerationOutcome } from "../battle/battle-state";
 import { persistBattleResult } from "../battle/battle-results.server";
+import {
+  cancelScoringJobs,
+  getScoringJobs,
+  registerScoringJobs,
+} from "../scoring/scoring-jobs.server";
+import { loadScoringWeights } from "../scoring/scoring-weights.server";
+import type { AccountIcon } from "../account/account-icon";
 import { isRoomCreationRetry } from "./room-creation";
 import type { RoomCreation } from "./room-creation";
 import { session } from "../../lib/auth-schema";
-import { reconcileRoom, getRoomDeadline, roomStateSchema } from "./room-state";
+import {
+  canJoinRoom,
+  reconcileRoom,
+  getRoomDeadline,
+  roomCapacity,
+  roomCloseDelayMs,
+  roomStateSchema,
+} from "./room-state";
 import type { RoomSnapshot, RoomState } from "./room-state";
 
 const attachmentSchema = v.object({
   participantId: v.string(),
   sessionId: v.string(),
   expiresAt: v.number(),
+  connectedAt: v.optional(v.number()),
 });
+const scoringCheckIntervalMs = 3000;
+// 画面は15秒ごとにpingを送る。隠れたタブではブラウザーがタイマーを1分ごとにまとめることがあるため、
+// 余裕を見て、これより長くpingのない接続を切れたものとして扱う。
+const staleSocketMs = 90_000;
+// 対戦結果のD1への保存を試す回数。間隔を30秒から倍に延ばし（1時間まで）、約3時間で再試行をやめる。
+const resultMaxAttempts = 10;
+
+function resultRetryDelayMs(attempts: number) {
+  return Math.min(30_000 * 2 ** (attempts - 1), 60 * 60_000);
+}
 
 export class Room extends DurableObject<Env> {
+  // 操作のたびに予約し直しても、採点の確認を先へ延ばし続けない。
+  #scoringCheckAt: number | null = null;
+
   constructor(ctx: DurableObjectState, bindings: Env) {
     super(ctx, bindings);
     ctx.storage.sql.exec(
       "CREATE TABLE IF NOT EXISTS room (id INTEGER PRIMARY KEY CHECK (id = 1), data TEXT NOT NULL)",
     );
     ctx.storage.sql.exec(
-      "CREATE TABLE IF NOT EXISTS result_delivery (battle_id TEXT PRIMARY KEY, data TEXT NOT NULL, retry_at INTEGER NOT NULL, saved INTEGER NOT NULL DEFAULT 0)",
+      "CREATE TABLE IF NOT EXISTS result_delivery (battle_id TEXT PRIMARY KEY, data TEXT NOT NULL, retry_at INTEGER NOT NULL, saved INTEGER NOT NULL DEFAULT 0, attempts INTEGER NOT NULL DEFAULT 0)",
     );
+    // 試した回数の列を加える前に作った表にも足す。
+    if (
+      !ctx.storage.sql
+        .exec("SELECT * FROM result_delivery LIMIT 0")
+        .columnNames.includes("attempts")
+    )
+      ctx.storage.sql.exec(
+        "ALTER TABLE result_delivery ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0",
+      );
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair("ping", "pong"));
   }
 
@@ -56,7 +98,11 @@ export class Room extends DurableObject<Env> {
       );
       const battle = state.battle;
       if (battle?.result) {
-        const data = serializeBattleResult(battle, state.code);
+        const data = serializeBattleResult(
+          battle,
+          state.code,
+          new Map(state.members.map((member) => [member.id, member.name])),
+        );
         this.ctx.storage.sql.exec(
           "INSERT OR IGNORE INTO result_delivery (battle_id, data, retry_at) VALUES (?, ?, ?)",
           battle.id,
@@ -105,7 +151,8 @@ export class Room extends DurableObject<Env> {
     const state = this.#read();
     const pending = this.ctx.storage.sql
       .exec<{ retry_at: number }>(
-        "SELECT retry_at FROM result_delivery WHERE saved = 0 ORDER BY retry_at LIMIT 1",
+        "SELECT retry_at FROM result_delivery WHERE saved = 0 AND attempts < ? ORDER BY retry_at LIMIT 1",
+        resultMaxAttempts,
       )
       .toArray()[0];
     if (!state || state.closed) {
@@ -119,17 +166,12 @@ export class Room extends DurableObject<Env> {
     if (pending) deadlines.push(Math.max(now, pending.retry_at));
     const battle = state.battle;
     if (battle) {
-      if (now < battle.generationEndsAt) deadlines.push(battle.generationEndsAt);
-      else if (
-        battle.selectionEndsAt === null &&
-        !battle.generations.some((item) => item.status === "pending")
-      )
-        deadlines.push(now);
-      if (
-        battle.selectionEndsAt !== null &&
-        battle.submissions.length < battle.participantIds.length
-      )
-        deadlines.push(Math.max(now, battle.selectionEndsAt));
+      const battleDeadline = getBattleDeadline(battle, now);
+      if (battleDeadline !== null) deadlines.push(battleDeadline);
+      if (getScoringRequests(battle).length) {
+        this.#scoringCheckAt ??= now + scoringCheckIntervalMs;
+        deadlines.push(Math.max(now, this.#scoringCheckAt));
+      }
     }
     if (this.#sockets().length) {
       deadlines.push(now + 30_000);
@@ -144,36 +186,84 @@ export class Room extends DurableObject<Env> {
 
   async #persistResults() {
     const pending = this.ctx.storage.sql
-      .exec<{ battle_id: string; data: string }>(
-        "SELECT battle_id, data FROM result_delivery WHERE saved = 0 AND retry_at <= ?",
+      .exec<{ battle_id: string; data: string; attempts: number }>(
+        "SELECT battle_id, data, attempts FROM result_delivery WHERE saved = 0 AND attempts < ? AND retry_at <= ?",
+        resultMaxAttempts,
         Date.now(),
       )
       .toArray();
     for (const item of pending) {
+      const attempts = item.attempts + 1;
       // D1への通信中に停止しても、保存済みの予定から再試行する。
       this.ctx.storage.sql.exec(
-        "UPDATE result_delivery SET retry_at = ? WHERE battle_id = ?",
-        Date.now() + 30_000,
+        "UPDATE result_delivery SET attempts = ?, retry_at = ? WHERE battle_id = ?",
+        attempts,
+        Date.now() + resultRetryDelayMs(attempts),
         item.battle_id,
       );
       await this.#schedule();
       try {
         const room = this.#read();
         if (!room) throw new Error("ルームがありません。");
+        // 結果が決まった対戦の採点ジョブは使わないため、保存より先に取り消す。
+        await cancelScoringJobs(this.env.DB, item.battle_id);
         await persistBattleResult(this.env.DB, item.battle_id, room.code, item.data);
         this.ctx.storage.sql.exec(
           "UPDATE result_delivery SET saved = 1 WHERE battle_id = ?",
           item.battle_id,
         );
-      } catch {
-        console.error("対戦結果を保存できませんでした。再試行します。", {
-          battleId: item.battle_id,
-        });
+      } catch (error) {
+        console.error(
+          attempts < resultMaxAttempts
+            ? "対戦結果を保存できませんでした。再試行します。"
+            : "対戦結果を保存できませんでした。再試行をやめます。",
+          { battleId: item.battle_id, attempts, error },
+        );
       }
     }
   }
 
+  // 採点ジョブの登録と結果の取得は冪等にし、失敗しても次のAlarmでやり直す。
+  async #syncScoring() {
+    this.#scoringCheckAt = null;
+    const state = this.#read();
+    const battle = state?.battle;
+    const requests = battle ? getScoringRequests(battle) : [];
+    if (!state || state.closed || !battle || !requests.length) return;
+    try {
+      await registerScoringJobs(this.env.DB, battle.id, state.code, battle.startedAt, requests);
+      const jobs = await getScoringJobs(
+        this.env.DB,
+        requests.map((request) => request.jobId),
+      );
+      // D1との通信中に対戦が進んだ場合も、現在の対戦の状態から反映する。
+      const current = this.#read();
+      // 結果の確定後に登録が届いた場合も、そのジョブを割り当てない。
+      if (!current?.battle || current.battle.id !== battle.id || current.battle.result) {
+        await cancelScoringJobs(this.env.DB, battle.id);
+        return;
+      }
+      current.battle = applyScoringJobs(current.battle, jobs, Date.now());
+      this.#save(current);
+    } catch {
+      console.error("採点ジョブを確認できませんでした。再試行します。", { battleId: battle.id });
+    }
+  }
+
+  // 通信が途絶えてCloseが届かない接続を残すと、ルームが閉じずAlarmが続く。
+  #closeStaleSockets() {
+    const now = Date.now();
+    for (const socket of this.#sockets()) {
+      const lastSeen =
+        this.ctx.getWebSocketAutoResponseTimestamp(socket)?.getTime() ??
+        v.parse(attachmentSchema, socket.deserializeAttachment()).connectedAt;
+      if (lastSeen !== undefined && now - lastSeen > staleSocketMs)
+        socket.close(4408, "接続を確認できませんでした");
+    }
+  }
+
   async #publish() {
+    this.#closeStaleSockets();
     this.#reconcile();
     await this.#schedule();
     await this.#persistResults();
@@ -186,18 +276,23 @@ export class Room extends DurableObject<Env> {
       ),
     ];
     if (sessionIds.length) {
-      const valid = await drizzle(this.env.DB)
-        .select({ id: session.id, userId: session.userId, expiresAt: session.expiresAt })
-        .from(session)
-        .where(and(inArray(session.id, sessionIds), gt(session.expiresAt, new Date())));
-      for (const socket of sockets) {
-        const identity = v.parse(attachmentSchema, socket.deserializeAttachment());
-        const current = valid.find(
-          (item) => item.id === identity.sessionId && item.userId === identity.participantId,
-        );
-        if (!current || current.expiresAt.getTime() <= Date.now())
-          socket.close(4401, "セッションが失効しました");
-        else socket.serializeAttachment({ ...identity, expiresAt: current.expiresAt.getTime() });
+      try {
+        const valid = await drizzle(this.env.DB)
+          .select({ id: session.id, userId: session.userId, expiresAt: session.expiresAt })
+          .from(session)
+          .where(and(inArray(session.id, sessionIds), gt(session.expiresAt, new Date())));
+        for (const socket of sockets) {
+          const identity = v.parse(attachmentSchema, socket.deserializeAttachment());
+          const current = valid.find(
+            (item) => item.id === identity.sessionId && item.userId === identity.participantId,
+          );
+          if (!current || current.expiresAt.getTime() <= Date.now())
+            socket.close(4401, "セッションが失効しました");
+          else socket.serializeAttachment({ ...identity, expiresAt: current.expiresAt.getTime() });
+        }
+      } catch (error) {
+        // 保存済みの操作を失敗として返さない。セッションは次の配信（30秒以内のAlarm）で確かめる。
+        console.error("接続のセッションを確認できませんでした。", { error });
       }
     }
     const state = this.#reconcile();
@@ -214,7 +309,7 @@ export class Room extends DurableObject<Env> {
     await this.#schedule();
   }
 
-  async create(code: string, creation: RoomCreation) {
+  async create(code: string, creation: RoomCreation, icon: AccountIcon | null) {
     const previous = this.#reconcile();
     if (previous) {
       if (!isRoomCreationRetry(previous.creation, creation)) return false;
@@ -230,9 +325,9 @@ export class Room extends DurableObject<Env> {
       battle: null,
       settings: null,
       hostId: participantId,
-      members: [{ id: participantId, name, ready: false }],
+      members: [{ id: participantId, name, ready: false, icon }],
       hostDisconnectedUntil: null,
-      closesAt: Date.now() + 30 * 60_000,
+      closesAt: Date.now() + roomCloseDelayMs,
       closed: false,
     });
     await this.#schedule();
@@ -251,11 +346,13 @@ export class Room extends DurableObject<Env> {
     };
   }
 
-  async join(participantId: string, name: string) {
+  async join(participantId: string, name: string, icon: AccountIcon | null) {
     const state = this.#reconcile();
     if (!state || state.closed) throw new Error("ルームが見つからないか、終了しています。");
+    if (!canJoinRoom(state, participantId))
+      throw new Error(`このルームは満員です（${roomCapacity}人まで）。`);
     if (!state.members.some((member) => member.id === participantId)) {
-      state.members.push({ id: participantId, name, ready: false });
+      state.members.push({ id: participantId, name, ready: false, icon });
       this.#save(state);
     }
     await this.#publish();
@@ -277,6 +374,7 @@ export class Room extends DurableObject<Env> {
     state.settings = settings;
     this.#save(state);
     await this.#publish();
+    return state.version;
   }
 
   canStart(participantId: string, previousBattleId: string | null) {
@@ -298,6 +396,10 @@ export class Room extends DurableObject<Env> {
     topic: Topic,
     previousBattleId: string | null,
   ) {
+    // 最終スコアのボーナスは、対戦を始めた時刻に使う値を記録する。再現度の重みも同じ時刻で引く。
+    // D1を待つ間にほかの操作が進むため、状態は読み込んだ後に確かめる。
+    const now = Date.now();
+    const { bonus } = await loadScoringWeights(this.env.DB, new Date(now));
     const state = this.#reconcile();
     if (!state || state.closed || state.hostId !== participantId)
       throw new Error("ホストのみ開始できます。");
@@ -312,7 +414,8 @@ export class Room extends DurableObject<Env> {
       settings,
       topic,
       state.members.filter((member) => connected.has(member.id)).map((member) => member.id),
-      Date.now(),
+      now,
+      bonus,
     );
     for (const member of state.members) member.ready = false;
     this.#save(state);
@@ -326,15 +429,30 @@ export class Room extends DurableObject<Env> {
     return { state, battle: state.battle };
   }
 
-  async acceptGeneration(battleId: string, participantId: string, id: string, inputHash: string) {
+  async acceptGeneration(
+    battleId: string,
+    participantId: string,
+    id: string,
+    inputHash: string,
+    characters = 0,
+  ) {
     const { state, battle } = this.#requireBattle(battleId);
     if (!state.members.some((member) => member.id === participantId))
       throw new Error("ルームへの参加が必要です。");
-    const result = acceptGeneration(battle, { participantId, id, inputHash }, Date.now());
+    const result = acceptGeneration(
+      battle,
+      { participantId, id, inputHash, characters },
+      Date.now(),
+    );
     state.battle = result.battle;
     this.#save(state);
     await this.#publish();
-    return result.accepted;
+    // 生成の期限は、呼び出し側の時計ではなくこのDOが記録した受付時刻から数える。
+    return {
+      accepted: result.accepted,
+      acceptedAt: result.acceptedAt,
+      characterCount: characterCount(battle.settings.difficulty),
+    };
   }
 
   async finishGeneration(battleId: string, id: string, outcome: GenerationOutcome) {
@@ -353,6 +471,21 @@ export class Room extends DurableObject<Env> {
     state.battle = submitImage(battle, participantId, generationId, Date.now());
     this.#save(state);
     await this.#publish();
+  }
+
+  /**
+   * 結果画面で、参加者のスコアの内訳と指標を見せてよいか。最終スコアと同じく、
+   * 採点で結果が決まった今の対戦について、ルームの参加者にだけ見せる。
+   */
+  canViewScore(battleId: string, viewerId: string, participantId: string) {
+    const state = this.#reconcile();
+    return Boolean(
+      state &&
+      !state.closed &&
+      state.battle?.id === battleId &&
+      state.members.some((member) => member.id === viewerId) &&
+      getScoredParticipantIds(state.battle).includes(participantId),
+    );
   }
 
   async setReady(participantId: string, ready: boolean) {
@@ -397,7 +530,7 @@ export class Room extends DurableObject<Env> {
       return new Response(null, { status: 403 });
     const pair = new WebSocketPair();
     this.ctx.acceptWebSocket(pair[1]);
-    pair[1].serializeAttachment(identity.output);
+    pair[1].serializeAttachment({ ...identity.output, connectedAt: Date.now() });
     this.#save(state);
     await this.#publish();
     return new Response(null, { status: 101, webSocket: pair[0] });
@@ -415,6 +548,7 @@ export class Room extends DurableObject<Env> {
     await this.#publish();
   }
   async alarm() {
+    await this.#syncScoring();
     await this.#publish();
   }
 }

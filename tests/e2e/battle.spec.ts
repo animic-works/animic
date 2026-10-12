@@ -1,11 +1,10 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import * as v from "valibot";
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
 import type { BattleSnapshot, BattleSettings } from "../../src/features/battle/battle-state";
 import { connect, create, join, loadApi, snapshot } from "./api";
+import { executeLocalD1 } from "./d1";
 
 async function battle(page: Page): Promise<BattleSnapshot> {
   const current = (await snapshot(page)).battle;
@@ -28,41 +27,13 @@ async function start(
   );
 }
 
-const execFileAsync = promisify(execFile);
-async function queryLocalResults(sql: string) {
-  const { stdout } = await execFileAsync("vp", [
-    "exec",
-    "wrangler",
-    "d1",
-    "execute",
-    "DB",
-    "--local",
-    "--persist-to",
-    ".wrangler/e2e",
-    "--json",
-    "--command",
-    sql,
-  ]);
-  const parsed: unknown = JSON.parse(stdout);
-  return parsed;
-}
-
 test.beforeAll(async () => {
-  await execFileAsync("vp", [
-    "exec",
-    "wrangler",
-    "d1",
-    "execute",
-    "DB",
-    "--local",
-    "--persist-to",
-    ".wrangler/e2e",
-    "--command",
+  await executeLocalD1(
     "INSERT OR REPLACE INTO topic (id, difficulty, image_url) VALUES ('e2e-topic', 'easy', 'https://example.invalid/animic-topic.svg')",
-  ]);
+  );
 });
 
-test("接続中の2人で開始し、開始時に切断していた人は復帰しても対戦に加えない", async ({
+test("接続中の全員で開始し、開始時に切断していた人は復帰しても対戦に加えない", async ({
   page,
   browser,
 }) => {
@@ -93,7 +64,6 @@ test("接続中の2人で開始し、開始時に切断していた人は復帰�
       async () => (await window.animicTest.getCurrentParticipant())?.id,
     );
     await expect.poll(async () => (await snapshot(page)).members.length).toBe(3);
-    expect((await start(page, code, settings)).error).not.toBeNull();
     await late.close();
     await expect
       .poll(async () => (await snapshot(page)).members.filter((member) => member.connected).length)
@@ -141,7 +111,7 @@ test("接続中の2人で開始し、開始時に切断していた人は復帰�
 test("勝負不成立後に再戦し、前の結果のD1保存も再試行する", async ({ page, browser }) => {
   test.setTimeout(90_000);
   const guestContext = await browser.newContext();
-  await queryLocalResults(
+  await executeLocalD1(
     "CREATE TRIGGER e2e_reject_result BEFORE INSERT ON battle_result BEGIN SELECT RAISE(FAIL, 'e2e storage failure'); END",
   );
   try {
@@ -187,19 +157,19 @@ test("勝負不成立後に再戦し、前の結果のD1保存も再試行する
       expect(current.myGenerations).toEqual([]);
       expect(current.mySubmission).toBeNull();
     }
-    await queryLocalResults("DROP TRIGGER e2e_reject_result");
-    const countSchema = v.array(v.object({ results: v.array(v.object({ count: v.number() })) }));
+    await executeLocalD1("DROP TRIGGER e2e_reject_result");
+    const countSchema = v.array(v.object({ count: v.number() }));
     await expect
       .poll(
         async () => {
           try {
-            const data = v.parse(
+            const rows = v.parse(
               countSchema,
-              await queryLocalResults(
+              await executeLocalD1(
                 `SELECT count(*) AS count FROM battle_result WHERE room_code = '${code}' AND json_extract(data, '$.result.kind') = 'no-contest'`,
               ),
             );
-            return data[0]?.results[0]?.count;
+            return rows[0]?.count;
           } catch (error) {
             // 別プロセスのWranglerとpreviewが同じローカルSQLiteを開く。
             if (error instanceof Error && error.message.includes("SQLITE_BUSY")) return undefined;
@@ -214,7 +184,44 @@ test("勝負不成立後に再戦し、前の結果のD1保存も再試行する
     expect((await battle(page)).settings.durationSeconds).toBe(120);
     expect((await battle(page)).result).toBeNull();
   } finally {
-    await queryLocalResults("DROP TRIGGER IF EXISTS e2e_reject_result");
+    await executeLocalD1("DROP TRIGGER IF EXISTS e2e_reject_result");
+    await guestContext.close();
+  }
+});
+
+test("提出できる画像がなければ、画像選択の猶予を待たずに未提出と勝負不成立を確定する", async ({
+  page,
+  browser,
+}) => {
+  // 匿名参加の回数制限を、ほかのテストと分けて数える。
+  const guestContext = await browser.newContext({
+    extraHTTPHeaders: { "CF-Connecting-IP": "203.0.113.36" },
+  });
+  try {
+    const code = await create(page, "時間切れ確認");
+    const guest = await guestContext.newPage();
+    await join(guest, code, "時間切れ参加者");
+    await expect
+      .poll(async () => (await snapshot(page)).members.filter((member) => member.connected).length)
+      .toBe(2);
+    // 猶予を長くし、猶予の終わりを待たずに確定することを確かめる。
+    expect(
+      (await start(page, code, { difficulty: "easy", durationSeconds: 2, selectionSeconds: 600 }))
+        .error,
+    ).toBeNull();
+    for (const participant of [page, guest]) {
+      await expect
+        .poll(async () => (await battle(participant)).result?.kind, { timeout: 8000 })
+        .toBe("no-contest");
+      const current = await battle(participant);
+      expect(current.selectionEndsAt).toBe(current.generationEndsAt + 600_000);
+      expect(current.mySubmission).toMatchObject({
+        status: "not-submitted",
+        decidedAt: current.generationEndsAt,
+      });
+      expect(current.result?.decidedAt).toBe(current.generationEndsAt);
+    }
+  } finally {
     await guestContext.close();
   }
 });

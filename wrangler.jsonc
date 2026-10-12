@@ -3,7 +3,7 @@
   "name": "animic",
   "main": "src/server.ts",
   "compatibility_date": "2026-09-21",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": ["nodejs_compat", "durable_object_io_tasks_prevent_eviction"],
   "observability": {
     "enabled": true,
   },
@@ -15,8 +15,39 @@
       "migrations_dir": "migrations",
     },
   ],
+  "r2_buckets": [
+    {
+      "binding": "TOPIC_IMAGES",
+      "bucket_name": "animic-topic-images",
+    },
+    {
+      "binding": "GENERATED_IMAGES",
+      "bucket_name": "animic-generated-images",
+    },
+    {
+      "binding": "PHRASE_IMAGES",
+      "bucket_name": "animic-phrase-images",
+    },
+    {
+      "binding": "SITE_IMAGES",
+      "bucket_name": "animic-site-images",
+    },
+  ],
+  "vars": {
+    "NOVELAI_API_URL": "https://image.novelai.net",
+  },
   "secrets": {
-    "required": ["BETTER_AUTH_SECRET", "BETTER_AUTH_URL"],
+    "required": [
+      "BETTER_AUTH_SECRET",
+      "BETTER_AUTH_URL",
+      "NOVELAI_API_TOKEN",
+      "NOVELAI_STYLE_PROMPT",
+      "ADMIN_PASSWORD",
+      "GOOGLE_CLIENT_ID",
+      "GOOGLE_CLIENT_SECRET",
+      "DISCORD_CLIENT_ID",
+      "DISCORD_CLIENT_SECRET",
+    ],
   },
   "durable_objects": {
     "bindings": [
@@ -24,12 +55,20 @@
         "name": "ROOMS",
         "class_name": "Room",
       },
+      {
+        "name": "NOVELAI_QUEUE",
+        "class_name": "NovelAiQueue",
+      },
     ],
   },
   "migrations": [
     {
       "tag": "v1",
       "new_sqlite_classes": ["Room"],
+    },
+    {
+      "tag": "v2",
+      "new_sqlite_classes": ["NovelAiQueue"],
     },
   ],
 }

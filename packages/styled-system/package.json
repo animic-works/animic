@@ -1,0 +1,30 @@
+{
+  "name": "@animic/styled-system",
+  "private": true,
+  "type": "module",
+  "sideEffects": [
+    "./styles.css"
+  ],
+  "exports": {
+    "./css": {
+      "types": "./generated/css/index.d.ts",
+      "import": "./generated/css/index.js"
+    },
+    "./styles.css": "./styles.css",
+    "./recipes": {
+      "types": "./generated/recipes/index.d.ts",
+      "import": "./generated/recipes/index.js"
+    },
+    "./patterns": {
+      "types": "./generated/patterns/index.d.ts",
+      "import": "./generated/patterns/index.js"
+    }
+  },
+  "dependencies": {
+    "@fontsource/dela-gothic-one": "5.3.0",
+    "@fontsource/jetbrains-mono": "5.3.0",
+    "@fontsource/montserrat": "5.3.0",
+    "@fontsource/zen-kaku-gothic-new": "5.3.0",
+    "@fontsource/zen-maru-gothic": "5.3.0"
+  }
+}

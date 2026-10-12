@@ -1,18 +1,39 @@
 import * as v from "valibot";
 
+import { accountIconSchema } from "../account/account-icon";
 import {
+  abandonBattle,
   battleStateSchema,
   battleSettingsSchema,
   battleSnapshotSchema,
 } from "../battle/battle-state";
 
+// 読み間違えやすい0・O・1・I・Lを除く。
+export const ROOM_CODE_CHARS = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
 export const roomCodeSchema = v.pipe(
   v.string(),
   v.toUpperCase(),
-  v.regex(/^[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{8}$/),
+  v.regex(new RegExp(`^[${ROOM_CODE_CHARS}]{8}$`)),
 );
+/** 全員の接続が切れてから、ルームを閉じるまでの時間。 */
+export const roomCloseDelayMs = 3 * 60_000;
+/** ルームに参加できる人数。退出していない参加者（切断中を含む）を数える。 */
+export const roomCapacity = 8;
+/** 参加済みの人の再参加は人数に関係なく受け付け、新しい人は定員に達していない場合だけ受け付ける。 */
+export function canJoinRoom(state: Pick<RoomState, "members">, participantId: string) {
+  return (
+    state.members.some((member) => member.id === participantId) ||
+    state.members.length < roomCapacity
+  );
+}
 export const participantNameSchema = v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(20));
-const memberSchema = v.object({ id: v.string(), name: participantNameSchema, ready: v.boolean() });
+const memberSchema = v.object({
+  id: v.string(),
+  name: participantNameSchema,
+  ready: v.boolean(),
+  // 作成・参加したときのアイコン。ログインしていない参加者や、選んでいない参加者はnull。
+  icon: v.optional(v.nullable(accountIconSchema), null),
+});
 export const roomStateSchema = v.object({
   creation: v.optional(
     v.nullable(
@@ -49,13 +70,14 @@ export type RoomSnapshot = v.InferOutput<typeof roomSnapshotSchema>;
 // 接続の増減とAlarmの両方で、保存された期限をサーバー時刻と照合する。
 export function reconcileRoom(state: RoomState, connected: Set<string>, now: number): RoomState {
   const next = structuredClone(state);
-  if (next.closed) return next;
-  if (next.closesAt !== null && next.closesAt <= now) {
-    next.closed = true;
+  if (!next.closed && next.closesAt !== null && next.closesAt <= now) next.closed = true;
+  if (next.closed) {
+    // 閉じたルームでは対戦を進めないため、結果の出ていない対戦は閉じた時刻で勝負不成立にする。
+    if (next.battle) next.battle = abandonBattle(next.battle, next.closesAt ?? now);
     return next;
   }
   if (connected.size > 0) next.closesAt = null;
-  else next.closesAt ??= now + 30 * 60_000;
+  else next.closesAt ??= now + roomCloseDelayMs;
 
   if (next.hostId && connected.has(next.hostId)) {
     next.hostDisconnectedUntil = null;

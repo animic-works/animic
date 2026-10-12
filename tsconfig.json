@@ -13,10 +13,17 @@
   "include": [
     "src",
     "tests",
+    "packages/design-system/src",
+    "panda.config.ts",
     "vite.config.ts",
     "vitest.config.ts",
+    "vitest.design-system.config.ts",
     "drizzle.config.ts",
     "playwright.config.ts",
-    "worker-configuration.d.ts"
+    "worker-configuration.d.ts",
+    "packages/react/src",
+    ".storybook",
+    "stories",
+    "playwright.design-system.config.ts"
   ]
 }

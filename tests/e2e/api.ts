@@ -1,5 +1,6 @@
 import { expect } from "@playwright/test";
-import type { Page } from "@playwright/test";
+import type { BrowserContext, Page } from "@playwright/test";
+import * as v from "valibot";
 
 import type { TestApi } from "../fixtures/api-client";
 
@@ -7,6 +8,25 @@ declare global {
   interface Window {
     animicTest: TestApi;
   }
+}
+
+const signInSchema = v.object({ user: v.object({ id: v.string() }) });
+
+/** E2E専用のログイン（src/lib/auth-e2e.server.ts）で、OAuthを通さずにログインした状態を作る。 */
+export async function signIn(
+  context: BrowserContext,
+  account: { provider: "google" | "discord"; email: string; name: string } = {
+    provider: "google",
+    email: `${crypto.randomUUID()}@example.test`,
+    name: "ホスト",
+  },
+) {
+  const response = await context.request.post("/api/auth/sign-in/e2e", {
+    headers: { Origin: "http://127.0.0.1:4173" },
+    data: account,
+  });
+  expect(response.status()).toBe(200);
+  return v.parse(signInSchema, await response.json()).user.id;
 }
 
 export async function loadApi(page: Page) {
@@ -20,11 +40,14 @@ export async function connect(page: Page, code: string) {
 }
 
 export async function create(page: Page, name = "ホスト") {
+  // ルームを作れるのはログインした参加者だけ。
+  await signIn(page.context());
   await loadApi(page);
-  const code = await page.evaluate(async (value) => {
-    await window.animicTest.ensureParticipant();
-    return window.animicTest.createRoom({ data: { name: value, requestId: crypto.randomUUID() } });
-  }, name);
+  const code = await page.evaluate(
+    (value) =>
+      window.animicTest.createRoom({ data: { name: value, requestId: crypto.randomUUID() } }),
+    name,
+  );
   expect(code).toMatch(/^[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{8}$/);
   await connect(page, code);
   return code;

@@ -8,8 +8,43 @@ import {
   setReady,
   setRoomSettings,
 } from "../../src/features/room/room.functions";
-import { startBattle, submitBattleImage } from "../../src/features/battle/battle.functions";
+import {
+  getResultScoringMetrics,
+  startBattle,
+  submitBattleImage,
+} from "../../src/features/battle/battle.functions";
+import {
+  getMyBattleDetail,
+  getMyBattleHistory,
+} from "../../src/features/battle/battle-history.functions";
 import { connectRoom } from "../../src/features/room/room-connection";
+import {
+  getScoringAdminData,
+  issueScoringLinkCode,
+  revokeScoringWorker,
+} from "../../src/features/scoring/scoring-admin.functions";
+import { createTopic, listAdminTopics } from "../../src/features/battle/topic-admin.functions";
+import {
+  getBattleOptions,
+  saveBattleOptions,
+} from "../../src/features/room/battle-options.functions";
+import {
+  listPromptGroups,
+  savePromptGroup,
+  savePromptPhrase,
+  savePromptPhraseImage,
+} from "../../src/features/image-generation/prompt-phrases.functions";
+import {
+  getImageModel,
+  saveImageModel,
+} from "../../src/features/image-generation/image-generation-admin.functions";
+import { generateImage } from "../../src/features/image-generation/image-generation.functions";
+import { updateScoringWeights } from "../../src/features/scoring/scoring-weights.functions";
+import {
+  applyBackupChunk,
+  getBackup,
+  putBackupImage,
+} from "../../src/features/admin/backup.functions";
 import type { RoomSnapshot } from "../../src/features/room/room-state";
 
 let disconnect: (() => void) | undefined;
@@ -26,7 +61,28 @@ const api = {
   setReady,
   setRoomSettings,
   startBattle,
+  generateImage,
   submitBattleImage,
+  getMyBattleHistory,
+  getMyBattleDetail,
+  getResultScoringMetrics,
+  issueScoringLinkCode,
+  getScoringAdminData,
+  revokeScoringWorker,
+  createTopic,
+  listAdminTopics,
+  getBattleOptions,
+  saveBattleOptions,
+  listPromptGroups,
+  savePromptGroup,
+  savePromptPhrase,
+  savePromptPhraseImage,
+  getImageModel,
+  saveImageModel,
+  updateScoringWeights,
+  getBackup,
+  putBackupImage,
+  applyBackupChunk,
   async connect(code: string) {
     disconnect?.();
     const entry = await getRoomEntry({ data: { code } });
