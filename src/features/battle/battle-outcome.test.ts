@@ -72,6 +72,9 @@ describe("結果の見出し", () => {
     expect(
       getResultHeadline({ kind: "no-contest", reason: "scoring-failed", decidedAt: 0 }, "a", "B"),
     ).toEqual({ title: "NO GAME", message: "採点できなかったため、勝負不成立です" });
+    expect(
+      getResultHeadline({ kind: "no-contest", reason: "room-closed", decidedAt: 0 }, "a", "B"),
+    ).toEqual({ title: "NO GAME", message: "全員がルームを離れたため、勝負不成立です" });
   });
 });
 

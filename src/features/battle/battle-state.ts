@@ -79,7 +79,7 @@ export const battleResultSchema = v.variant("kind", [
   }),
   v.object({
     kind: v.literal("no-contest"),
-    reason: v.picklist(["no-submissions", "scoring-failed"]),
+    reason: v.picklist(["no-submissions", "scoring-failed", "room-closed"]),
     decidedAt: v.number(),
   }),
 ]);
@@ -278,6 +278,16 @@ export function getBattleDeadline(state: BattleState, now: number): number | nul
     if (state.scoring.endsAt !== null) deadlines.push(Math.max(now, state.scoring.endsAt));
   }
   return deadlines.length ? Math.min(...deadlines) : null;
+}
+
+/**
+ * ルームが閉じて対戦を進められなくなったときの状態。閉じた時刻までの期限を反映し、
+ * それでも結果が決まっていなければ、閉じた時刻で勝負不成立にする。
+ */
+export function abandonBattle(state: BattleState, closedAt: number): BattleState {
+  const next = reconcileBattle(state, closedAt);
+  next.result ??= { kind: "no-contest", reason: "room-closed", decidedAt: closedAt };
+  return next;
 }
 
 /**
