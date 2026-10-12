@@ -134,7 +134,13 @@ export const media = defineSlotRecipe({
     presentation: {
       standard: {},
       captioned: {
-        root: { containerType: "inline-size", maxHeight: "24rem" },
+        // 高さではなく幅を抑え、広い配置領域でも比率を保って全体を見せる（中央に置く）。
+        root: {
+          containerType: "inline-size",
+          width: "100%",
+          maxWidth: "24rem",
+          marginInline: "auto",
+        },
         caption: {
           padding: "4rem 1rem 1rem",
           background:
