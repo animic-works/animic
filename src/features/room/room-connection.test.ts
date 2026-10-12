@@ -5,7 +5,6 @@ const room = {
   code: "ABCDEFGH",
   settings: null,
   battle: null,
-  battleCount: 0,
   version: 3,
   hostId: "host",
   members: [{ id: "host", name: "ホスト", ready: false, icon: null, connected: true }],
