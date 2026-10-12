@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { getBattleImages } from "./battle-images";
+import { getBattleImages, getImagesNotice } from "./battle-images";
 
 const image = (id: string, acceptedAt: number) => ({
   id,
@@ -28,5 +28,25 @@ describe("生成履歴と提出候補", () => {
   });
   it("提出した画像を返す", () => {
     expect(getBattleImages(generations, null, "a").submitted?.id).toBe("a");
+  });
+});
+
+describe("比較の見出しの案内", () => {
+  it("選べる画像がまだなければ、選ぶように促さない", () => {
+    expect(getImagesNotice(getBattleImages([], null, null), false)).toBeNull();
+    const pending = [{ id: "p", acceptedAt: 10, status: "pending" as const }];
+    expect(getImagesNotice(getBattleImages(pending, null, null), false)).toBeNull();
+  });
+  it("選んでいる画像は比較の枠で見えるため、案内を出さない", () => {
+    expect(getImagesNotice(getBattleImages([image("a", 10)], null, null), false)).toBeNull();
+  });
+  it("提出済み・時間切れのときはそのことを出す", () => {
+    expect(getImagesNotice(getBattleImages([image("a", 10)], null, "a"), false)).toBe(
+      "#1 を提出しました",
+    );
+    const failed = [{ id: "f", acceptedAt: 10, status: "failed" as const, finishedAt: 11 }];
+    expect(getImagesNotice(getBattleImages(failed, null, null), true)).toBe(
+      "時間切れのため提出できません",
+    );
   });
 });

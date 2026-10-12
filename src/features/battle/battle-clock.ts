@@ -13,6 +13,19 @@ export function getBattleDeadline(battle: BattleTiming, stage: BattleStage) {
   return null;
 }
 
+/**
+ * 手元の残り時間（`getBattleDeadline`の期限まで）が0になってから、サーバーの締切の配信が届くまで止める操作。
+ * 生成の期限を過ぎたら生成を、画像選択の猶予を過ぎたら提出を止める。生成の期限の後も猶予の間は提出できるため、
+ * 生成中の段階では提出を止めない。表示上止めるだけで、受け付けるかどうかはサーバーが決める。
+ */
+export function getExpiredActions(stage: BattleStage, remaining: number | null) {
+  const expired = remaining === 0;
+  return {
+    generation: expired && stage === "generating",
+    submission: expired && stage === "selecting",
+  };
+}
+
 /** 残り時間を、表示する秒・急ぎの状態・色・残りの割合にする。 */
 export function getBattleClock(battle: BattleTiming, stage: BattleStage, remaining: number | null) {
   const totalMs =

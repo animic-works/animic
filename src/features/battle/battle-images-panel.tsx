@@ -10,7 +10,7 @@ import { Switch } from "@animic/react/switch";
 import { Text } from "@animic/react/text";
 import { ThumbnailList } from "@animic/react/thumbnail-list";
 import { levels } from "../room/room-presentation";
-import type { getBattleImages } from "./battle-images";
+import { getImagesNotice, type getBattleImages } from "./battle-images";
 import type { BattleSnapshot } from "./battle-state";
 import type { useBattleEntrance } from "./use-battle-entrance";
 import { TopicReveal } from "./visuals/battle-entrance";
@@ -51,8 +51,9 @@ export function BattleImagesPanel({
   onSubmit: (generationId: string) => void;
 }) {
   const level = levels[battle.settings.difficulty];
-  const { ordered, pendings, selected, submitted, numberOf } = images;
+  const { ordered, pendings, selected, numberOf } = images;
   const newestPending = pendings.at(-1);
+  const notice = getImagesNotice(images, noImage);
   return (
     <Comparison
       header={
@@ -65,16 +66,7 @@ export function BattleImagesPanel({
               お題とあなたの画像
             </Heading>
           </Stack>
-          {/* 選んでいる画像は比較の枠で見えるため、案内は提出済み・選べないときだけ出す。 */}
-          {(submitted || !selected) && (
-            <Badge>
-              {submitted
-                ? `#${numberOf(submitted.id)} を提出しました`
-                : noImage
-                  ? "時間切れのため提出できません"
-                  : "画像を1枚選んでください"}
-            </Badge>
-          )}
+          {notice !== null && <Badge>{notice}</Badge>}
         </Cluster>
       }
       first={

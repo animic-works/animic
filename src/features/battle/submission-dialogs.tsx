@@ -35,13 +35,15 @@ export function TopicZoomDialog({
   const [zoom, setZoom] = useState(1);
   const [comparing, setComparing] = useState(false);
   const side = comparing && compareUrl;
+  // Escや外側の操作と「閉じる」ボタンを同じ処理で閉じ、次に開くときは全体の表示から始める。
+  function changeOpen(next: boolean) {
+    onOpenChange(next);
+    if (!next) setZoom(1);
+  }
   return (
     <Dialog
       open={open}
-      onOpenChange={(next) => {
-        onOpenChange(next);
-        if (!next) setZoom(1);
-      }}
+      onOpenChange={changeOpen}
       title="お題"
       closeButton={false}
       size={side ? "expanded" : "standard"}
@@ -74,7 +76,7 @@ export function TopicZoomDialog({
           {compareUrl && (
             <Switch checked={comparing} onCheckedChange={setComparing} label="自分の画像と並べる" />
           )}
-          <Button appearance="secondary" shape="pill" onClick={() => onOpenChange(false)}>
+          <Button appearance="secondary" shape="pill" onClick={() => changeOpen(false)}>
             閉じる
           </Button>
         </Cluster>
