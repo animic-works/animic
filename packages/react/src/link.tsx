@@ -48,6 +48,7 @@ export function ButtonLink({ ref, ...props }: ButtonLinkProps) {
         prominence: props.prominence,
         icons: Boolean(props.leadingIcon || props.trailingIcon),
         responsiveLabel: Boolean(props.compactLabel),
+        compactIconOnly: props.compactIconOnly,
       })}
     >
       <ActionContent {...props} />

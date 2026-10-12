@@ -32,6 +32,7 @@ export function Button({ ref, type = "button", ...props }: ButtonProps) {
         size: props.size,
         icons: Boolean(props.leadingIcon || props.trailingIcon),
         responsiveLabel: Boolean(props.compactLabel),
+        compactIconOnly: props.compactIconOnly,
       })}
       type={type === "submit" ? "submit" : type === "reset" ? "reset" : "button"}
       name={props.name}

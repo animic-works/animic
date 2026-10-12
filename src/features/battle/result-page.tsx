@@ -289,11 +289,24 @@ function ResultScreen({
           </ComparisonStage>
           {/* 操作は結果の札の下・内訳の上に置き、結果の種類によらず同じ位置にする。 */}
           <ActionGroup align="center">
-            <Button shape="pill" size="lg" onClick={onRematch}>
+            <Button
+              shape="pill"
+              size="lg"
+              compactLabel="再戦"
+              aria-label="同じメンバーで再戦"
+              onClick={onRematch}
+            >
               同じメンバーで再戦
             </Button>
             <ResultShareLink battle={battle} participantId={participantId} />
-            <Button shape="pill" size="lg" appearance="secondary" onClick={onTop}>
+            <Button
+              shape="pill"
+              size="lg"
+              appearance="secondary"
+              compactLabel="トップへ"
+              aria-label="トップへ戻る"
+              onClick={onTop}
+            >
               トップへ戻る
             </Button>
           </ActionGroup>

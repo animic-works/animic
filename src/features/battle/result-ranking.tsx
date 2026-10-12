@@ -1,7 +1,6 @@
 import { ActionGroup } from "@animic/react/action-group";
 import { Avatar } from "@animic/react/avatar";
 import { Button } from "@animic/react/button";
-import { Cluster } from "@animic/react/cluster";
 import { Container } from "@animic/react/container";
 import { Heading } from "@animic/react/heading";
 import { Layer, LayerItem } from "@animic/react/layer";
@@ -47,7 +46,7 @@ function scoreSummary(
     .toSorted((a, b) => b.point - a.point)[0];
   const bonus = (score.speedBonus ?? 0) + (score.generationBonus ?? 0);
   const bonusText =
-    bonus > 0 ? `（ボーナス +${bonus.toLocaleString("ja-JP", { maximumFractionDigits: 1 })}）` : "";
+    bonus > 0 ? `・ボーナス +${bonus.toLocaleString("ja-JP", { maximumFractionDigits: 1 })}` : "";
   return [
     `再現度 ${score.similarity.toFixed(1)}${bonusText}`,
     ...(best ? [`最高 ${best.label} ${best.point.toFixed(1)}`] : []),
@@ -128,7 +127,7 @@ export function RankingResult({
             avatar: avatar(entry),
             name: (
               <Text variant="inherit" title={name(entry)}>
-                {shortenName(name(entry), entry.participantId === participantId ? 5 : 7)}
+                {shortenName(name(entry), entry.participantId === participantId ? 4 : 5)}
                 {entry.participantId === participantId && (
                   <Text variant="inherit" tone="accent">
                     （あなた）
@@ -182,11 +181,24 @@ export function RankingResult({
           <Podium presentation="card" entering={animate} items={podiumItems} />
           {/* 操作は表彰台の下・順位の一覧の上に置き、結果の種類によらず同じ位置にする。 */}
           <ActionGroup align="center">
-            <Button shape="pill" size="lg" onClick={onRematch}>
+            <Button
+              shape="pill"
+              size="lg"
+              compactLabel="再戦"
+              aria-label="同じメンバーで再戦"
+              onClick={onRematch}
+            >
               同じメンバーで再戦
             </Button>
             <ResultShareLink battle={battle} participantId={participantId} />
-            <Button shape="pill" size="lg" appearance="secondary" onClick={onTop}>
+            <Button
+              shape="pill"
+              size="lg"
+              appearance="secondary"
+              compactLabel="トップへ"
+              aria-label="トップへ戻る"
+              onClick={onTop}
+            >
               トップへ戻る
             </Button>
           </ActionGroup>
@@ -206,10 +218,9 @@ export function RankingResult({
                         emphasis={mine}
                         leading={<Text variant="numeric.supporting">{entry.rank ?? "—"}</Text>}
                         image={entry.imageUrl}
-                        avatar={avatar(entry)}
-                        // 内訳を開く操作は点数の横に置き、どの行でも同じ位置にそろえる。
+                        // 内訳を開く操作は点数の下に置き、どの行でも同じ位置にそろえる（狭い画面でも詳細の文を1行に収める）。
                         value={
-                          <Cluster layout="nowrap" justify="end">
+                          <Stack space="tight" align="center">
                             <Text
                               variant="numeric.supporting"
                               tone={
@@ -227,12 +238,12 @@ export function RankingResult({
                                 mine={mine}
                               />
                             )}
-                          </Cluster>
+                          </Stack>
                         }
                       >
                         <Stack space="tight">
                           <Text variant="label" title={name(entry)}>
-                            {shortenName(name(entry), mine ? 5 : 7)}
+                            {shortenName(name(entry), mine ? 5 : 9)}
                             {mine && "（あなた）"}
                           </Text>
                           {score &&

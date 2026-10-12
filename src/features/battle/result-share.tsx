@@ -22,6 +22,9 @@ export function ResultShareLink({
       size="lg"
       appearance="inverse"
       leadingIcon={<XLogoIcon />}
+      // 狭い画面では、3つの操作を並べるためXのアイコンだけにする。
+      compactIconOnly
+      aria-label="あなたの結果をシェア"
     >
       あなたの結果をシェア
     </ButtonLink>

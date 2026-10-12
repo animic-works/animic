@@ -223,6 +223,18 @@ export const button = defineRecipe({
       },
       false: {},
     },
+    // 狭い画面では文字を隠し、アイコンだけの丸い操作にする。読み上げ名は利用側が`aria-label`で渡す。
+    compactIconOnly: {
+      true: {
+        _actionCompact: {
+          width: "var(--animic-button-min-height, 3.75rem)",
+          paddingInline: "0",
+          justifyContent: "center",
+          "& > [data-animic-button-label]": { display: "none" },
+        },
+      },
+      false: {},
+    },
     responsiveLabel: {
       true: {
         "& > [data-animic-button-label=full]": {
