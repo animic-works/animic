@@ -6,7 +6,12 @@ import type { GenerationOutcome } from "../battle/battle-state";
 import { toPlainWebp } from "./generated-image";
 import { putGeneratedImage } from "./generated-images.server";
 import type { GenerationInput } from "./generation-input";
-import { defaultImageModel, imageModelSchema } from "./image-models";
+import {
+  defaultImageModel,
+  defaultImageSteps,
+  imageModelSchema,
+  imageStepsSchema,
+} from "./image-models";
 import type { ImageModel } from "./image-models";
 import { minimumTimeMs, requestImage } from "./novelai";
 import { readApiTokens, TokenPool } from "./novelai-tokens";
@@ -16,6 +21,7 @@ const lockedRetryIntervalMs = 10_000;
 const maxAttempts = 3;
 const stylePromptSchema = v.optional(v.pipe(v.string(), v.trim()), "");
 const modelKey = "model";
+const stepsKey = "steps";
 
 /** 生成を受け付けたルームのコード・対戦ID・処理ID。 */
 type GenerationTarget = { code: string; battleId: string; generationId: string };
@@ -45,6 +51,16 @@ export class NovelAiQueue extends DurableObject<Env> {
 
   setModel(model: ImageModel) {
     this.ctx.storage.kv.put(modelKey, model);
+  }
+
+  /** 運営者が管理画面で決めたステップ数。決めていなければ既定の28。 */
+  getSteps(): number {
+    const stored = v.safeParse(imageStepsSchema, this.ctx.storage.kv.get(stepsKey));
+    return stored.success ? stored.output : defaultImageSteps;
+  }
+
+  setSteps(steps: number) {
+    this.ctx.storage.kv.put(stepsKey, v.parse(imageStepsSchema, steps));
   }
 
   /**
@@ -105,10 +121,12 @@ export class NovelAiQueue extends DurableObject<Env> {
 
   /** `token`は`#tokens`の添字。ログにはトークンそのものではなく1始まりの番号を残す。 */
   async #request(token: number, input: GenerationInput, deadline: number, queuedAt: number) {
-    // 順番が来た時点のモデルを使う。管理画面で切り替えると、順番待ちの生成も新しいモデルになる。
+    // 順番が来た時点のモデルとステップ数を使う。管理画面で変えると、順番待ちの生成にも反映する。
     const model = this.getModel();
+    const steps = this.getSteps();
     console.info("NovelAIへ画像生成を送ります。", {
       model,
+      steps,
       token: token + 1,
       waitedMs: Date.now() - queuedAt,
       waiting: this.#pool.waiting,
@@ -119,6 +137,7 @@ export class NovelAiQueue extends DurableObject<Env> {
       ...input,
       stylePrompt: v.parse(stylePromptSchema, this.env.NOVELAI_STYLE_PROMPT),
       model,
+      steps,
       deadline,
     };
     let result = await requestImage(request);
