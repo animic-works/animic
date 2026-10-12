@@ -253,7 +253,9 @@ Panda Native Specは、デザインシステムの定義から生成する機械
 
 ## 検索とSNS共有
 
-検索と共有の対象は[ゲーム仕様](product.md#検索とsns共有)に従います。トップ固有のtitle・description・canonical・OGPと、サイト名を伝えるWebSiteのJSON-LDは`src/routes/index.tsx`で初期HTMLへ出します。検索・共有の文言はトップページのキャッチコピーとゲーム内容の紹介文を使います。OGP画像のURLはloaderで読んだトップページの内容から作り、未登録なら`public/og-image.png`を使います。登録画像も既定画像もPNGの1200×630pxで、寸法は`home-content.ts`の`ogImageSize`と揃えます。ヒーロー画像はpreloadで先に取得します。
+検索と共有の対象は[ゲーム仕様](product.md#検索とsns共有)に従います。トップ固有のtitle・meta description・canonicalと、サイト名を伝えるWebSiteのJSON-LDは`src/routes/index.tsx`で初期HTMLへ出します。SNS共有のメタ情報は`src/features/home/share-meta.ts`で生成し、各ページのheadから初期HTMLへ出します。検索向けのdescription・タブのタイトルと、OGP・Xカードの文言は分けます。
+
+共通OGP画像は`home-content.server.ts`の`loadOgImage`で読みます。トップは`getHomeContent`の結果、招待・ルーム作成・規約・マイページ・戦績詳細は`getOgImage`の結果を使い、画像のために遊び方・ギャラリー・採点設定を読みません。未登録なら`public/og-image.png`を使います。登録画像も既定画像もPNGの1200×630pxで、寸法は`home-content.ts`の`ogImageSize`と揃えます。loaderが成功したページだけ共有カードを出し、ルームが存在しない場合などの404には出しません。ヒーロー画像はpreloadで先に取得します。
 
 robots.txtとsitemap.xmlは`public/`に置き、サイトマップには公開する正規URLだけを記載します。`src/server.ts`は`src/lib/search-indexing.ts`で検索対象を判定します。`animic.party`で200を返すトップのHTMLと、公開用の`/site-images/<画像ID>`のPNG・WebPだけを対象とし、それ以外のWorkerレスポンスには`X-Robots-Tag: noindex`を付けます。トップでもエラー応答は検索対象にしません。一般公開する説明ページを追加する際は、検索対象の判定とサイトマップを合わせて更新します。
 

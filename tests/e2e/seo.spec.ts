@@ -1,8 +1,11 @@
 import { expect, test } from "@playwright/test";
+import { create } from "./api";
 
 const title = "Animic | その一枚に、どこまで近づける？";
 const description =
   "お題のイラストをAI画像生成で再現し、どれだけ似せられたかを友だちと競うプロンプト対戦ゲーム";
+const shareDescription =
+  "お題のイラストを、プロンプトだけでAIに再現させよう。より近い1枚を作ったほうが勝ち！";
 const origin = "https://animic.party";
 
 test("検索・共有メタ情報とサイト名が初期HTMLに一度だけ出る", async ({ browser }) => {
@@ -17,8 +20,8 @@ test("検索・共有メタ情報とサイト名が初期HTMLに一度だけ出�
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", `${origin}/`);
     for (const [attribute, name, content] of [
       ["name", "description", description],
-      ["property", "og:title", title],
-      ["property", "og:description", description],
+      ["property", "og:title", "Animic"],
+      ["property", "og:description", shareDescription],
       ["property", "og:url", `${origin}/`],
       ["property", "og:site_name", "Animic"],
       ["property", "og:locale", "ja_JP"],
@@ -27,8 +30,8 @@ test("検索・共有メタ情報とサイト名が初期HTMLに一度だけ出�
       ["property", "og:image:width", "1200"],
       ["property", "og:image:height", "630"],
       ["name", "twitter:card", "summary_large_image"],
-      ["name", "twitter:title", title],
-      ["name", "twitter:description", description],
+      ["name", "twitter:title", "Animic"],
+      ["name", "twitter:description", shareDescription],
       ["name", "twitter:image", `${origin}/og-image.png`],
     ]) {
       const meta = page.locator(`meta[${attribute}="${name}"]`);
@@ -71,7 +74,14 @@ test("画面遷移でトップのメタ情報を残さず、戻ると復元す�
   await expect(page).toHaveURL("/terms");
   await expect(page).toHaveTitle("利用規約 | Animic");
   await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(0);
-  await expect(page.locator('meta[property="og:url"]')).toHaveCount(0);
+  await expect(page.locator('meta[property="og:url"]')).toHaveAttribute(
+    "content",
+    `${origin}/terms`,
+  );
+  await expect(page.locator('meta[property="og:title"]')).toHaveAttribute(
+    "content",
+    "利用規約 | Animic",
+  );
   await expect(page.locator('link[rel="canonical"]')).toHaveCount(0);
   await page.goBack();
   await expect(page).toHaveTitle(title);
@@ -145,4 +155,71 @@ test("ハッシュ付きアセットだけを長期キャッシュする", async
   expect(response.headers()["cache-control"]).toBe("public, max-age=31536000, immutable");
   for (const path of ["/robots.txt", "/sitemap.xml", "/og-image.png"])
     expect((await request.get(path)).headers()["cache-control"]).not.toContain("immutable");
+});
+
+test("招待と各ページが共通画像の共有カードを初期HTMLへ出し、個人情報を含めない", async ({
+  browser,
+  page,
+}) => {
+  const privateName = "OGPに出さない参加者";
+  const code = await create(page, privateName);
+  const context = await browser.newContext({ javaScriptEnabled: false });
+  const guest = await context.newPage();
+  try {
+    for (const [path, cardTitle, cardDescription, target] of [
+      [`/rooms/${code}`, "対戦への招待 | Animic", shareDescription, `/rooms/${code}`],
+      ["/start", "ルームを作る | Animic", shareDescription, "/start"],
+      ["/terms", "利用規約 | Animic", "Animicの利用規約です。", "/terms"],
+      [
+        "/privacy",
+        "プライバシーポリシー | Animic",
+        "Animicの個人情報の取り扱いについて。",
+        "/privacy",
+      ],
+      ["/mypage", "Animic", shareDescription, "/"],
+      [`/mypage/matches/${crypto.randomUUID()}`, "Animic", shareDescription, "/"],
+    ]) {
+      const response = await guest.goto(`${path}?utm_source=share-test#ignored`);
+      expect(response?.status()).toBe(200);
+      expect(response?.headers()["x-robots-tag"]).toBe("noindex");
+      for (const [attribute, name, content] of [
+        ["property", "og:title", cardTitle],
+        ["property", "og:description", cardDescription],
+        ["property", "og:url", `${origin}${target}`],
+        ["property", "og:image", `${origin}/og-image.png`],
+        ["name", "twitter:title", cardTitle],
+        ["name", "twitter:description", cardDescription],
+        ["name", "twitter:image", `${origin}/og-image.png`],
+        ["name", "twitter:card", "summary_large_image"],
+      ]) {
+        const meta = guest.locator(`head meta[${attribute}="${name}"]`);
+        await expect(meta).toHaveCount(1);
+        await expect(meta).toHaveAttribute("content", content);
+      }
+      expect(await guest.locator("head").innerHTML()).not.toContain(privateName);
+      await expect(guest.locator('meta[name="description"]')).toHaveCount(0);
+    }
+    await page.goto(`/rooms/${code}`);
+    await expect(page.locator('meta[property="og:title"]')).toHaveAttribute(
+      "content",
+      "対戦への招待 | Animic",
+    );
+    expect(await page.locator("head").innerHTML()).not.toContain(privateName);
+  } finally {
+    await context.close();
+  }
+});
+
+test("管理画面と存在しないルーム・ページには共有カードを出さない", async ({ browser }) => {
+  const context = await browser.newContext({ javaScriptEnabled: false });
+  const page = await context.newPage();
+  try {
+    for (const path of ["/admin", "/not-a-route", "/rooms/ABCDEFGH", "/rooms/invalid"]) {
+      const response = await page.goto(path);
+      expect(response?.status()).toBe(path === "/admin" ? 200 : 404);
+      await expect(page.locator('meta[property^="og:"], meta[name^="twitter:"]')).toHaveCount(0);
+    }
+  } finally {
+    await context.close();
+  }
 });

@@ -715,6 +715,45 @@ test("トップページの遊び方・ギャラリー・OGP画像を管理画�
     expect(previewImage.status()).toBe(200);
     expect(previewImage.headers()["x-robots-tag"]).toBe("noindex");
     expect(bytes.includes(secret)).toBe(false);
+    const code = await create(page);
+    const guestContext = await page.context().browser()!.newContext({ javaScriptEnabled: false });
+    const guest = await guestContext.newPage();
+    try {
+      for (const path of [
+        "/",
+        `/rooms/${code}`,
+        "/start",
+        "/terms",
+        "/privacy",
+        "/mypage",
+        `/mypage/matches/${crypto.randomUUID()}`,
+      ]) {
+        await guest.goto(`${origin}${path}`);
+        await expect(guest.locator('meta[property="og:image"]')).toHaveAttribute(
+          "content",
+          ogImage ?? "",
+        );
+        await expect(guest.locator('meta[name="twitter:image"]')).toHaveAttribute(
+          "content",
+          ogImage ?? "",
+        );
+      }
+      // 取り外した後は、トップと招待のどちらも既定画像へ戻る。
+      await page.goto("/admin/home");
+      await page.getByRole("button", { name: "既定の画像に戻す" }).click();
+      await expect(
+        page.getByRole("status").filter({ hasText: "既定のOGP画像に戻しました" }),
+      ).toBeVisible();
+      for (const path of ["/", `/rooms/${code}`]) {
+        await guest.goto(`${origin}${path}`);
+        await expect(guest.locator('meta[property="og:image"]')).toHaveAttribute(
+          "content",
+          "https://animic.party/og-image.png",
+        );
+      }
+    } finally {
+      await guestContext.close();
+    }
   } finally {
     await executeLocalD1(
       "DELETE FROM home_item; DELETE FROM site_setting; DELETE FROM gallery_item WHERE id NOT LIKE 'initial-%'",

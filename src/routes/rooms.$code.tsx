@@ -1,5 +1,7 @@
 import { createFileRoute, notFound, redirect } from "@tanstack/react-router";
 import * as v from "valibot";
+import { shareMeta } from "../features/home/share-meta";
+import { getOgImage } from "../features/home/home-content.functions";
 import { roomCodeSchema } from "../features/room/room-state";
 import { getRoomEntry } from "../features/room/room.functions";
 import { getCurrentParticipant } from "../lib/auth.functions";
@@ -15,17 +17,29 @@ export const Route = createFileRoute("/rooms/$code")({
     if (!code.success) throw notFound();
     if (code.output !== params.code)
       throw redirect({ to: "/rooms/$code", params: { code: code.output }, replace: true });
-    const [entry, participant, battleOptions, promptGroups] = await Promise.all([
+    const [entry, participant, battleOptions, promptGroups, sharing] = await Promise.all([
       getRoomEntry({ data: { code: code.output } }),
       getCurrentParticipant(),
       getBattleOptions(),
       listPromptGroups(),
+      getOgImage(),
     ]);
     if (!entry.exists) throw notFound();
-    return { ...entry, participant, battleOptions, promptGroups };
+    return { ...entry, participant, battleOptions, promptGroups, ...sharing };
   },
   headers: () => ({ "Cache-Control": "private, no-store" }),
-  head: ({ params }) => ({ meta: [{ title: `ルーム ${params.code} | Animic` }] }),
+  head: ({ params, loaderData }) => ({
+    meta: [
+      { title: `ルーム ${params.code} | Animic` },
+      ...(loaderData
+        ? shareMeta({
+            title: "対戦への招待 | Animic",
+            path: `/rooms/${params.code}`,
+            image: loaderData.ogImage,
+          })
+        : []),
+    ],
+  }),
   component: function RoomRoute() {
     const { code } = Route.useParams();
     const { room, participant, inviteUrl, battleOptions, promptGroups } = Route.useLoaderData();
