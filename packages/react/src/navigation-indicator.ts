@@ -59,7 +59,12 @@ export function observeNavigationIndicator(header: HTMLElement) {
         },
         { transform, width: `${width}px` },
       ],
-      { duration, easing: style.getPropertyValue("--animic-indicator-easing").trim() },
+      {
+        duration,
+        easing: style.getPropertyValue("--animic-indicator-easing").trim(),
+        // 開始待ちのフレームでも始点を保ち、下地の移動先へ一瞬飛ぶことを防ぐ。
+        fill: "backwards",
+      },
     );
   }
   const selection = new MutationObserver(update);

@@ -9,6 +9,7 @@ import {
   handleScoringWorkerRequest,
   isScoringWorkerRequest,
 } from "./features/scoring/scoring-workers.server";
+import { rejectConnection } from "./features/room/room.server";
 export { Room } from "./features/room/room.server";
 export { NovelAiQueue } from "./features/image-generation/novelai.server";
 
@@ -36,11 +37,13 @@ export default {
       return new Response(null, { status: 403 });
     const code = v.safeParse(roomCodeSchema, match[1]);
     if (!code.success) return new Response(null, { status: 404 });
+    if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket")
+      return new Response(null, { status: 426 });
     const current = await createAuth().api.getSession({
       headers: request.headers,
       query: { disableRefresh: true },
     });
-    if (!current) return new Response(null, { status: 401 });
+    if (!current) return rejectConnection(4401, "セッションが失効しました");
     const headers = new Headers(request.headers);
     headers.set("X-Animic-Participant", current.user.id);
     headers.set("X-Animic-Session", current.session.id);

@@ -11,6 +11,7 @@ import { Text } from "@animic/react/text";
 import type { BattleSettings } from "../battle/battle-state";
 import { choicesWith, type BattleOptions } from "./battle-options";
 import type { getLobbyPlayers } from "./lobby-players";
+import { roomBattleLimit } from "./room-state";
 import { levels } from "./room-presentation";
 
 /** ホストは選択肢から選び、ほかの参加者は決まった値だけを見る。 */
@@ -65,6 +66,7 @@ export function LobbyRulesPanel({
   pending,
   error,
   waitingForNext,
+  battlesLeft,
   onRulesChange,
   onStart,
   onReadyChange,
@@ -76,12 +78,14 @@ export function LobbyRulesPanel({
   pending: boolean;
   error: string | undefined;
   waitingForNext: boolean;
+  /** このルームでまだ対戦を始められるか。 */
+  battlesLeft: boolean;
   onRulesChange: (rules: BattleSettings) => void;
   onStart: () => void;
   onReadyChange: (ready: boolean) => void;
 }) {
   const level = levels[rules.difficulty];
-  const disabled = pending || waitingForNext;
+  const disabled = pending || waitingForNext || !battlesLeft;
   const ready = lobby.me?.ready ?? false;
   return (
     <Surface appearance="card" padding="content">
@@ -141,10 +145,19 @@ export function LobbyRulesPanel({
             <Text tone="danger">{error}</Text>
           </div>
         )}
-        {waitingForNext && (
+        {!battlesLeft ? (
           <div role="status">
-            <Text>対戦中です。次の対戦から参加できます。</Text>
+            <Text>
+              このルームで遊べる対戦は{roomBattleLimit}
+              回までです。続けて遊ぶときは、新しいルームを作ってください。
+            </Text>
           </div>
+        ) : (
+          waitingForNext && (
+            <div role="status">
+              <Text>対戦中です。次の対戦から参加できます。</Text>
+            </div>
+          )
         )}
         <ActionBar
           tone={lobby.allReady ? "success" : "neutral"}
@@ -164,7 +177,7 @@ export function LobbyRulesPanel({
               shape="pill"
               size="lg"
               prominence="raised"
-              disabled={lobby.connectedCount < 2 || waitingForNext}
+              disabled={lobby.connectedCount < 2 || waitingForNext || !battlesLeft}
               loading={pending}
               onClick={onStart}
             >
@@ -175,7 +188,7 @@ export function LobbyRulesPanel({
               shape="pill"
               size="lg"
               appearance={ready ? "secondary" : "primary"}
-              disabled={!lobby.me || waitingForNext}
+              disabled={!lobby.me || waitingForNext || !battlesLeft}
               loading={pending}
               onClick={() => onReadyChange(!ready)}
             >

@@ -3,7 +3,6 @@ import { useRef, useState } from "react";
 import { AppFrame, AppFrameWideContent } from "@animic/react/app-frame";
 import { Button } from "@animic/react/button";
 import { Cluster } from "@animic/react/cluster";
-import { CodeDisplay } from "@animic/react/code-display";
 import { IconButton } from "@animic/react/icon-button";
 import { Page } from "@animic/react/page";
 import { Split } from "@animic/react/split";
@@ -19,6 +18,7 @@ import { InviteDialog, LeaveDialog, StartAnywayDialog } from "./lobby-dialogs";
 import { getLobbyPlayers } from "./lobby-players";
 import { LobbyPlayersPanel } from "./lobby-players-panel";
 import { LobbyRulesPanel } from "./lobby-rules-panel";
+import { hasBattlesLeft } from "./room-state";
 import type { RoomSnapshot } from "./room-state";
 import { useLobbyActions } from "./use-lobby-actions";
 
@@ -94,14 +94,7 @@ export function LobbyPage({
             </Heading>
           </Stack>
         }
-        compactContext={
-          <Button appearance="soft" shape="pill" size="xs" onClick={copyCode}>
-            <Text variant="caption" tone="supporting">
-              ルーム
-            </Text>
-            <CodeDisplay value={code} presentation="inline" size="sm" />
-          </Button>
-        }
+        // 狭い画面では、ルームコードはすぐ下のプレイヤーの欄に出すため、ヘッダーには置かない。
         compactActions={
           <IconButton appearance="quiet" label="退出" onClick={() => setDialog("leave")}>
             <ExitIcon />
@@ -138,6 +131,7 @@ export function LobbyPage({
             pending={actions.pending}
             error={actions.error}
             waitingForNext={waitingForNext}
+            battlesLeft={hasBattlesLeft(room.battleCount)}
             onRulesChange={actions.changeRules}
             onStart={() => (lobby.waiting.length ? setDialog("start") : actions.start())}
             onReadyChange={actions.setReady}

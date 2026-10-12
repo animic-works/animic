@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
 
 import { connect, create, join, loadApi, signIn, snapshot } from "./api";
 
@@ -116,28 +117,38 @@ test("切断したホストを30秒待って引き継ぎ、元ホストが戻っ
   }
 });
 
-test("WebSocketはOrigin・セッション・ルームへの参加を確認する", async ({ page, browser }) => {
+/** ブラウザーからルームへ接続し、サーバーが接続を閉じたときのclose codeを返す。 */
+function closeCode(page: Page, code: string) {
+  return page.evaluate(
+    (value) =>
+      new Promise<number>((resolve) => {
+        const socket = new WebSocket(`ws://${location.host}/rooms/${value}/connection`);
+        socket.addEventListener("close", (event) => resolve(event.code));
+      }),
+    code,
+  );
+}
+
+test("WebSocketはOrigin・セッション・ルームへの参加を確認し、断る理由をclose codeで返す", async ({
+  page,
+  browser,
+}) => {
   const code = await create(page);
   const outsider = await browser.newContext({ baseURL: origin });
-  const connection = `${origin}/rooms/${code}/connection`;
   try {
-    const wrongOrigin = await outsider.request.get(connection, {
+    const wrongOrigin = await outsider.request.get(`${origin}/rooms/${code}/connection`, {
       headers: { Origin: "https://untrusted.example" },
     });
     expect(wrongOrigin.status()).toBe(403);
-    const anonymous = await outsider.request.get(connection, {
-      headers: { Origin: origin },
-    });
-    expect(anonymous.status()).toBe(401);
+    const outsiderPage = await outsider.newPage();
+    await outsiderPage.goto("/");
+    expect(await closeCode(outsiderPage, code)).toBe(4401);
     const signedIn = await outsider.request.post("/api/auth/sign-in/anonymous", {
       headers: { Origin: origin },
       data: {},
     });
     expect(signedIn.status()).toBe(200);
-    const notMember = await outsider.request.get(connection, {
-      headers: { Origin: origin, Upgrade: "websocket", "X-Animic-Participant": "forged" },
-    });
-    expect(notMember.status()).toBe(403);
+    expect(await closeCode(outsiderPage, code)).toBe(4403);
   } finally {
     await outsider.close();
   }

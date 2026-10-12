@@ -13,13 +13,18 @@ import {
   siteImagePath,
 } from "./home-content";
 import { galleryItem, homeItem, siteSetting } from "./home-content.schema";
-import { loadHomeContent, ogImageKey } from "./home-content.server";
+import { loadHomeContent, loadOgImage, ogImageKey } from "./home-content.server";
 import { deleteUnusedSiteImages, putSiteImage } from "./site-images.server";
 
 /** トップページに出す内容。誰にでも見せる情報のため認証しない。 */
 export const getHomeContent = createServerFn({ method: "GET" }).handler(() =>
   loadHomeContent(env.DB),
 );
+
+/** SNSが認証なしで取得できる共通のOGP画像。 */
+export const getOgImage = createServerFn({ method: "GET" }).handler(async () => ({
+  ogImage: await loadOgImage(env.DB),
+}));
 
 /** 値（JSON）と画像のファイルを1つのフォームで受け取る。 */
 function readContentForm(form: unknown) {
