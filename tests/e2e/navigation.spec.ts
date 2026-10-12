@@ -190,6 +190,53 @@ test("ブランド表示でナビ幅が変わっても、移動中の下線を�
     .toBeLessThan(1);
 });
 
+test("上下にスクロールしても下線が移動先から逆戻りしない", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/", { waitUntil: "networkidle" });
+  await expect(page.locator("header")).toHaveAttribute("data-indicator-ready");
+  await page.evaluate(() => document.fonts.ready);
+  await page.mouse.move(1000, 500);
+  const [samples] = await Promise.all([
+    page.evaluate(async () => {
+      const nav = document.querySelector('nav[aria-label="メインメニュー"]')!;
+      const indicator = nav.querySelector("[data-animic-navigation-indicator]")!;
+      const frames: { selected: string | null; distance: number }[] = [];
+      const until = performance.now() + 6000;
+      while (performance.now() < until) {
+        await new Promise(requestAnimationFrame);
+        const selected = nav.querySelector<HTMLAnchorElement>('[aria-current="location"]')!;
+        frames.push({
+          selected: selected.getAttribute("href"),
+          distance: Math.abs(
+            indicator.getBoundingClientRect().x - selected.getBoundingClientRect().x,
+          ),
+        });
+      }
+      return frames;
+    }),
+    (async () => {
+      for (const delta of [
+        160, 160, 160, 160, 160, 160, 650, 650, -160, -160, -160, -160, -650, -650,
+      ]) {
+        await page.mouse.wheel(0, delta);
+        await page.waitForTimeout(250);
+      }
+    })(),
+  ]);
+  expect(new Set(samples.map(({ selected }) => selected))).toEqual(
+    new Set(["/", "#how", "#score"]),
+  );
+  // 同じ項目へ移動中に、移動先へ飛んでから元へ戻るフレームを検出する。
+  for (let index = 1; index < samples.length; index++) {
+    const previous = samples[index - 1];
+    const current = samples[index];
+    if (current.selected === previous.selected) {
+      expect(current.distance).toBeLessThanOrEqual(previous.distance + 1);
+    }
+  }
+  expect(samples.at(-1)!.distance).toBeLessThan(1);
+});
+
 test("ハッシュ直アクセスは起動前から目的地と下線を即時表示する", async ({ page }) => {
   let release!: () => void;
   const scripts = new Promise<void>((resolve) => {
