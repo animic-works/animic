@@ -51,6 +51,7 @@ export const meter = defineSlotRecipe({
       secondary: { fill: { background: "accent.secondary" } },
       highlight: { fill: { background: "accent.highlight" } },
       success: { fill: { background: "status.success.fg" } },
+      neutral: { fill: { background: "fg.subtle" } },
     },
     presentation: {
       row: {

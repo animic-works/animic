@@ -438,7 +438,7 @@ test("生成した画像を提出すると、採点ワーカーへR2の生成画
     await expect(breakdown.getByText("1回")).toBeVisible();
     // 再現度が下限より低いため、どちらのボーナスも取れない。
     await expect(breakdown.getByText("ボーナス +0")).toHaveCount(2);
-    await expect(breakdown.getByRole("meter", { name: /画像の特徴/ })).toHaveAttribute(
+    await expect(breakdown.getByRole("meter", { name: /絵の印象/ })).toHaveAttribute(
       "aria-valuenow",
       "88.5",
     );
@@ -448,7 +448,7 @@ test("生成した画像を提出すると、採点ワーカーへR2の生成画
       .locator("..");
     await expect(hostBreakdown.getByText("78.4")).toBeVisible();
     await expect(hostBreakdown.getByText("ボーナス +5")).toBeVisible();
-    await expect(hostBreakdown.getByRole("meter", { name: /タグ/ })).toHaveAttribute(
+    await expect(hostBreakdown.getByRole("meter", { name: /髪・服・小物/ })).toHaveAttribute(
       "aria-valuenow",
       "70",
     );

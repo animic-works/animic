@@ -210,7 +210,7 @@ test("採点の重みとボーナスを保存し、合計が100でない重み�
     await openAdminMenu(page, "採点の重み");
     await expect(page.getByText("既定値を使っています。")).toBeVisible();
     const field = (name: string) => page.getByLabel(name, { exact: true });
-    await expect(field("キャラクター（CCIP）")).toHaveValue("35");
+    await expect(field("キャラ（CCIP）")).toHaveValue("35");
     const speed = field("最速提出ボーナス（点）");
     const generation = field("最少生成ボーナス（点）");
     const minimum = field("ボーナスの対象になる再現度の下限（点）");
@@ -227,10 +227,10 @@ test("採点の重みとボーナスを保存し、合計が100でない重み�
     await expect(page.getByRole("alert")).toHaveText("重みの合計を100にしてください。");
 
     for (const [name, value] of [
-      ["キャラクター（CCIP）", "100"],
-      ["タグ（PixAI Tagger）", "0"],
-      ["内容（SigLIP 2）", "0"],
-      ["画像の特徴（DINOv2）", "0"],
+      ["キャラ（CCIP）", "100"],
+      ["髪・服・小物（PixAI Tagger）", "0"],
+      ["雰囲気（SigLIP 2）", "0"],
+      ["絵の印象（DINOv2）", "0"],
       ["構図（Depth Anything V2）", "0"],
     ])
       await field(name).fill(value);
@@ -239,7 +239,7 @@ test("採点の重みとボーナスを保存し、合計が100でない重み�
       "CCIP以外の指標にも重みを付けてください。人物のいない画像はCCIPを除いて採点します。",
     );
 
-    await field("キャラクター（CCIP）").fill("40");
+    await field("キャラ（CCIP）").fill("40");
     await field("構図（Depth Anything V2）").fill("60");
     for (const [input, value, message] of [
       [speed, "21", "最速提出ボーナスは0〜20点にしてください。"],
@@ -257,7 +257,7 @@ test("採点の重みとボーナスを保存し、合計が100でない重み�
     await page.getByRole("button", { name: "保存する" }).click();
     await expect(page.getByRole("status").filter({ hasText: "保存しました" })).toBeVisible();
     await page.reload();
-    await expect(field("キャラクター（CCIP）")).toHaveValue("40");
+    await expect(field("キャラ（CCIP）")).toHaveValue("40");
     await expect(field("構図（Depth Anything V2）")).toHaveValue("60");
     await expect(speed).toHaveValue("0");
     await expect(generation).toHaveValue("5");
@@ -277,7 +277,7 @@ test("採点の重みとボーナスを保存し、合計が100でない重み�
 
     await page.goto("/admin/scoring/weights");
     await page.getByRole("button", { name: "既定値に戻す" }).click();
-    await expect(field("キャラクター（CCIP）")).toHaveValue("35");
+    await expect(field("キャラ（CCIP）")).toHaveValue("35");
     await expect(speed).toHaveValue("3");
     await expect(minimum).toHaveValue("0");
   } finally {

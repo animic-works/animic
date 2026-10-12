@@ -4,6 +4,7 @@
   "type": "module",
   "exports": {
     "./status-label": "./src/status-label.tsx",
+    "./grade": "./src/grade.tsx",
     "./progress-list": "./src/progress-list.tsx",
     "./button": "./src/button.tsx",
     "./icon-button": "./src/icon-button.tsx",

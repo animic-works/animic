@@ -1,12 +1,30 @@
 import * as v from "valibot";
 
-/** 再現度の指標。採点ノードが出力するJSONのキーと、画面に出す名前。 */
+/**
+ * 再現度の指標。採点ノードが出力するJSONのキー、モデル名（`name`）と、参加者に見せる名前と説明。
+ * モデル名は運営者向けの画面だけに出す。
+ */
 export const scoringMetrics = [
-  { key: "ccip", name: "CCIP", label: "キャラクター" },
-  { key: "pixai", name: "PixAI Tagger", label: "タグ" },
-  { key: "siglip2", name: "SigLIP 2", label: "内容" },
-  { key: "dinov2", name: "DINOv2", label: "画像の特徴" },
-  { key: "depth", name: "Depth Anything V2", label: "構図" },
+  { key: "ccip", name: "CCIP", label: "キャラ", description: "同じキャラに見えるか" },
+  {
+    key: "pixai",
+    name: "PixAI Tagger",
+    label: "髪・服・小物",
+    description: "見た目の特徴が合っているか",
+  },
+  {
+    key: "siglip2",
+    name: "SigLIP 2",
+    label: "雰囲気",
+    description: "描いている内容やシーンが近いか",
+  },
+  { key: "dinov2", name: "DINOv2", label: "絵の印象", description: "パッと見たときの近さ" },
+  {
+    key: "depth",
+    name: "Depth Anything V2",
+    label: "構図",
+    description: "ポーズや配置、奥行き",
+  },
 ] as const;
 
 /** 指標ごとの0〜100点。除外された指標や失敗した指標は`null`。 */

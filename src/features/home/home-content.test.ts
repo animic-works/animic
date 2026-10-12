@@ -35,7 +35,7 @@ describe("トップページの内容", () => {
     expect(v.parse(galleryItemTextSchema, gallery).topicAlt).toBe("お題の説明");
     expect(issue({ ...gallery, score: 100.1 })).toBe("再現度は0〜100で入力してください。");
     expect(issue({ ...gallery, metrics: { ...metrics, ccip: -1 } })).toBe(
-      "キャラクターは0〜100で入力してください。",
+      "キャラは0〜100で入力してください。",
     );
     expect(issue({ ...gallery, score: Number.NaN })).toBe("再現度を数字で入力してください。");
     expect(issue({ ...gallery, shotAlt: " " })).toBe("提出の説明を入力してください。");

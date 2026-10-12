@@ -17,6 +17,7 @@ import { Dialog } from "@animic/react/dialog";
 import { Field } from "@animic/react/field";
 import { CodeInput } from "@animic/react/code-input";
 import { Meter } from "@animic/react/meter";
+import { Grade } from "@animic/react/grade";
 import { OutputPanel, OutputTags } from "@animic/react/output-panel";
 import { Notice } from "@animic/react/notice";
 import { Podium } from "@animic/react/podium";
@@ -647,6 +648,47 @@ export const DataOutputs: Story = {
           </Stack>
         </OutputPanel>
       </Stack>
+    </Container>
+  ),
+};
+
+const gradeSamples = [
+  { value: "S", tone: "highlight", label: "一致度", point: 91.2 },
+  { value: "A", tone: "primary", label: "形状", point: 78.4 },
+  { value: "B", tone: "secondary", label: "配色", point: 61.0 },
+  { value: "C", tone: "success", label: "配置", point: 47.5 },
+  { value: "D", tone: "neutral", label: "質感", point: 22.3 },
+] as const;
+
+export const Grades: Story = {
+  render: () => (
+    <Container size="narrow">
+      <Surface appearance="card" padding="content">
+        <Stack space="compact">
+          <MediaObject media={<Grade value="A" label="ランクA" tone="primary" size="lg" />}>
+            <Text variant="code" emphasis="strong">
+              74.6
+            </Text>
+          </MediaObject>
+          {gradeSamples.map((sample) => (
+            <MediaObject
+              key={sample.value}
+              media={
+                <Grade value={sample.value} label={`ランク${sample.value}`} tone={sample.tone} />
+              }
+            >
+              <Meter
+                presentation="row"
+                tone={sample.tone}
+                label={sample.label}
+                description="段階ごとの色"
+                value={sample.point}
+                valueText={sample.point.toFixed(1)}
+              />
+            </MediaObject>
+          ))}
+        </Stack>
+      </Surface>
     </Container>
   ),
 };
