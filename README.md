@@ -22,6 +22,7 @@
 - [デザイン定義とUIの分離](docs/decisions/0009-design-system.md)
 - [Panda CSS v2の採用理由](docs/decisions/0010-panda-css-v2.md)
 - [生成画像の保存先と配信方法の決定](docs/decisions/0011-generated-image-storage.md)
+- [生成の完了を生成キューのDOから通知する決定](docs/decisions/0012-generation-completion-in-queue.md)
 - [デザインシステムの設計資料](docs/design-system/README.md): 設計で得た判断材料と、比較・検証・判断変更の事例
 
 文書の役割とテンプレートの使い方は[CONTRIBUTING.md](CONTRIBUTING.md#文書の管理)にまとめています。

@@ -2,7 +2,9 @@ import { DurableObject, env } from "cloudflare:workers";
 import webpEncoderWasm from "@jsquash/webp/codec/enc/webp_enc_simd.wasm";
 import * as v from "valibot";
 
+import type { GenerationOutcome } from "../battle/battle-state";
 import { toPlainWebp } from "./generated-image";
+import { putGeneratedImage } from "./generated-images.server";
 import type { GenerationInput } from "./generation-input";
 import { defaultImageModel, imageModelSchema } from "./image-models";
 import type { ImageModel } from "./image-models";
@@ -14,6 +16,9 @@ const lockedRetryIntervalMs = 10_000;
 const maxAttempts = 3;
 const stylePromptSchema = v.optional(v.pipe(v.string(), v.trim()), "");
 const modelKey = "model";
+
+/** 生成を受け付けたルームのコード・対戦ID・処理ID。 */
+type GenerationTarget = { code: string; battleId: string; generationId: string };
 
 /** 全ルームの生成を1つのキューに並べるため、生成キューのDOは1つのインスタンスだけを使う。 */
 export function getNovelAiQueue() {
@@ -42,11 +47,26 @@ export class NovelAiQueue extends DurableObject<Env> {
     this.ctx.storage.kv.put(modelKey, model);
   }
 
-  /** 成功すると、メタデータと透過のないWebPを返す。 */
-  async generate(input: GenerationInput, deadline: number) {
-    const result = await this.#run(input, deadline);
-    // 変換はトークンを返した後に行い、次の生成のNovelAIとの通信と重ねる。
-    return result.ok ? await this.#toWebp(result.image) : result;
+  /**
+   * 生成してメタデータと透過のないWebPをR2に保存し、ルームのDOの`finishGeneration`に結果を渡す。
+   * 呼び出し元の通信が切れても、`durable_object_io_tasks_prevent_eviction`によりこのDOは最後まで続ける。
+   */
+  async generate(target: GenerationTarget, input: GenerationInput, deadline: number) {
+    const { code, battleId, generationId } = target;
+    let outcome: GenerationOutcome = { status: "failed" };
+    try {
+      const result = await this.#run(input, deadline);
+      // 変換はトークンを返した後に行い、次の生成のNovelAIとの通信と重ねる。
+      const converted = result.ok ? await this.#toWebp(result.image) : result;
+      if (converted.ok)
+        outcome = {
+          status: "succeeded",
+          imageUrl: await putGeneratedImage({ battleId, generationId }, converted.image),
+        };
+    } catch (error) {
+      console.error("画像を生成・保存できませんでした。", { battleId, generationId, error });
+    }
+    await this.env.ROOMS.getByName(code).finishGeneration(battleId, generationId, outcome);
   }
 
   // fetchの応答を待つ間もDOは次の要求を受け付けるため、トークンの貸し借りで順番と同時に送る数を守る。
