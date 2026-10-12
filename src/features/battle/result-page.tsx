@@ -117,7 +117,8 @@ type ResultPageProps = {
   icons: Map<string, AccountIcon | null>;
   /** Snapshotを受信した時刻（`performance.now()`）。サーバーの描画では`null`。 */
   receivedAt: number | null;
-  onRematch: () => void;
+  /** 同じルームの待機画面へ戻る。このルームでもう対戦できなければ省略し、再戦の操作を出さない。 */
+  onRematch?: () => void;
   onTop: () => void;
   /**
    * 指標の読み方。省略すると、ルームの対戦について`getResultScoringMetrics`で読む。
@@ -289,15 +290,17 @@ function ResultScreen({
           </ComparisonStage>
           {/* 操作は結果の札の下・内訳の上に置き、結果の種類によらず同じ位置にする。 */}
           <ActionGroup align="center">
-            <Button
-              shape="pill"
-              size="lg"
-              compactLabel="再戦"
-              aria-label="同じメンバーで再戦"
-              onClick={onRematch}
-            >
-              同じメンバーで再戦
-            </Button>
+            {onRematch && (
+              <Button
+                shape="pill"
+                size="lg"
+                compactLabel="再戦"
+                aria-label="同じメンバーで再戦"
+                onClick={onRematch}
+              >
+                同じメンバーで再戦
+              </Button>
+            )}
             <ResultShareLink battle={battle} participantId={participantId} />
             <Button
               shape="pill"

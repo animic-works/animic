@@ -7,6 +7,7 @@ function room(members: RoomSnapshot["members"]): RoomSnapshot {
     code: "ABCDEFGH",
     settings: null,
     battle: null,
+    battleCount: 0,
     version: 1,
     hostId: "h",
     members,

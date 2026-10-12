@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vite-plus/test";
 import { createBattle } from "../battle/battle-state";
-import { canJoinRoom, reconcileRoom, getRoomDeadline, roomCapacity } from "./room-state";
+import {
+  canJoinRoom,
+  getIdleDeadline,
+  hasBattlesLeft,
+  reconcileRoom,
+  getRoomDeadline,
+  roomBattleLimit,
+  roomCapacity,
+} from "./room-state";
 import type { RoomState } from "./room-state";
 
 function room(): RoomState {
@@ -8,6 +16,7 @@ function room(): RoomState {
     creation: null,
     code: "ABCDEFGH",
     battle: null,
+    battleCount: 0,
     settings: null,
     version: 1,
     hostId: "host",
@@ -121,5 +130,33 @@ describe("ルームの定員", () => {
   });
   it("参加済みの人の再参加は定員に達していても受け付ける", () => {
     expect(canJoinRoom({ members: members(roomCapacity) }, "m0")).toBe(true);
+  });
+});
+
+describe("ルームの対戦の数", () => {
+  it("上限の数まで対戦を始められる", () => {
+    expect(hasBattlesLeft(roomBattleLimit - 1)).toBe(true);
+    expect(hasBattlesLeft(roomBattleLimit)).toBe(false);
+  });
+});
+
+describe("操作のない接続を切る時刻", () => {
+  const battle = createBattle(
+    { difficulty: "easy", durationSeconds: 60, selectionSeconds: 10 },
+    { id: "topic", difficulty: "easy", imageUrl: "https://example.invalid/topic.png" },
+    ["host", "first"],
+    0,
+  );
+  const finished = {
+    ...battle,
+    result: { kind: "no-contest" as const, reason: "no-submissions" as const, decidedAt: 70_000 },
+  };
+  it("対戦の前と対戦中は切らない", () => {
+    expect(getIdleDeadline(null, 1000)).toBeNull();
+    expect(getIdleDeadline(battle, 1000)).toBeNull();
+  });
+  it("結果が決まった時刻と最後の操作の遅い方から5分後に切る", () => {
+    expect(getIdleDeadline(finished, 1000)).toBe(370_000);
+    expect(getIdleDeadline(finished, 100_000)).toBe(400_000);
   });
 });

@@ -19,6 +19,7 @@ import { InviteDialog, LeaveDialog, StartAnywayDialog } from "./lobby-dialogs";
 import { getLobbyPlayers } from "./lobby-players";
 import { LobbyPlayersPanel } from "./lobby-players-panel";
 import { LobbyRulesPanel } from "./lobby-rules-panel";
+import { hasBattlesLeft } from "./room-state";
 import type { RoomSnapshot } from "./room-state";
 import { useLobbyActions } from "./use-lobby-actions";
 
@@ -138,6 +139,7 @@ export function LobbyPage({
             pending={actions.pending}
             error={actions.error}
             waitingForNext={waitingForNext}
+            battlesLeft={hasBattlesLeft(room.battleCount)}
             onRulesChange={actions.changeRules}
             onStart={() => (lobby.waiting.length ? setDialog("start") : actions.start())}
             onReadyChange={actions.setReady}

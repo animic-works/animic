@@ -34,7 +34,10 @@ import { session } from "../../lib/auth-schema";
 import {
   canJoinRoom,
   reconcileRoom,
+  getIdleDeadline,
   getRoomDeadline,
+  hasBattlesLeft,
+  roomBattleLimit,
   roomCapacity,
   roomCloseDelayMs,
   roomStateSchema,
@@ -46,8 +49,11 @@ const attachmentSchema = v.object({
   sessionId: v.string(),
   expiresAt: v.number(),
   connectedAt: v.optional(v.number()),
+  // この接続の参加者が最後にルームを操作した時刻。
+  activeAt: v.optional(v.number()),
 });
 const scoringCheckIntervalMs = 3000;
+const battleLimitError = `このルームで遊べる対戦は${roomBattleLimit}回までです。`;
 // 画面は15秒ごとにpingを送る。隠れたタブではブラウザーがタイマーを1分ごとにまとめることがあるため、
 // 余裕を見て、これより長くpingのない接続を切れたものとして扱う。
 const staleSocketMs = 90_000;
@@ -56,6 +62,23 @@ const resultMaxAttempts = 10;
 
 function resultRetryDelayMs(attempts: number) {
   return Math.min(30_000 * 2 ** (attempts - 1), 60 * 60_000);
+}
+
+/** 接続の最後の操作の時刻。操作していなければ接続した時刻。 */
+function lastActiveAt(socket: WebSocket) {
+  const { activeAt, connectedAt } = v.parse(attachmentSchema, socket.deserializeAttachment());
+  return activeAt ?? connectedAt ?? 0;
+}
+
+/**
+ * WebSocketの接続を受け入れてすぐ閉じる。HTTPのエラーで断るとブラウザーには理由のない切断（1006）しか
+ * 届かず、画面が再接続を繰り返すため、再接続しない理由をclose codeで伝える。
+ */
+export function rejectConnection(code: number, reason: string) {
+  const pair = new WebSocketPair();
+  pair[1].accept();
+  pair[1].close(code, reason);
+  return new Response(null, { status: 101, webSocket: pair[0] });
 }
 
 export class Room extends DurableObject<Env> {
@@ -139,6 +162,7 @@ export class Room extends DurableObject<Env> {
     return {
       code: state.code,
       battle: state.battle ? getBattleSnapshot(state.battle, participantId, Date.now()) : null,
+      battleCount: state.battleCount,
       settings: state.settings,
       version: state.version,
       hostId: state.hostId,
@@ -178,6 +202,8 @@ export class Room extends DurableObject<Env> {
       for (const socket of this.#sockets()) {
         const expiry = v.parse(attachmentSchema, socket.deserializeAttachment()).expiresAt;
         if (expiry > now) deadlines.push(expiry);
+        const idle = getIdleDeadline(battle, lastActiveAt(socket));
+        if (idle !== null && idle > now) deadlines.push(idle);
       }
     }
     if (deadlines.length) await this.ctx.storage.setAlarm(Math.min(...deadlines));
@@ -262,8 +288,29 @@ export class Room extends DurableObject<Env> {
     }
   }
 
+  // 結果画面やロビーを開いたままのタブがあると、ルームが閉じずAlarmが続く。閉じた人は再読み込みで戻れる。
+  #closeIdleSockets() {
+    const battle = this.#read()?.battle ?? null;
+    const now = Date.now();
+    for (const socket of this.#sockets()) {
+      const idle = getIdleDeadline(battle, lastActiveAt(socket));
+      if (idle !== null && idle <= now) socket.close(4410, "操作がなかったため接続を切りました");
+    }
+  }
+
+  /** 参加者の操作を、その参加者の接続に記録する。操作のない接続を切る判断に使う。 */
+  #touch(participantId: string) {
+    const now = Date.now();
+    for (const socket of this.#sockets()) {
+      const attachment = v.parse(attachmentSchema, socket.deserializeAttachment());
+      if (attachment.participantId === participantId)
+        socket.serializeAttachment({ ...attachment, activeAt: now });
+    }
+  }
+
   async #publish() {
     this.#closeStaleSockets();
+    this.#closeIdleSockets();
     this.#reconcile();
     await this.#schedule();
     await this.#persistResults();
@@ -323,6 +370,7 @@ export class Room extends DurableObject<Env> {
       code,
       version: 0,
       battle: null,
+      battleCount: 0,
       settings: null,
       hostId: participantId,
       members: [{ id: participantId, name, ready: false, icon }],
@@ -355,6 +403,7 @@ export class Room extends DurableObject<Env> {
       state.members.push({ id: participantId, name, ready: false, icon });
       this.#save(state);
     }
+    this.#touch(participantId);
     await this.#publish();
   }
 
@@ -373,21 +422,25 @@ export class Room extends DurableObject<Env> {
       throw new Error("ホストのみ条件を変更できます。");
     state.settings = settings;
     this.#save(state);
+    this.#touch(participantId);
     await this.#publish();
     return state.version;
   }
 
-  canStart(participantId: string, previousBattleId: string | null) {
+  /** ホストが対戦を始められない理由。始められれば`null`。 */
+  getStartError(participantId: string, previousBattleId: string | null) {
     const state = this.#reconcile();
     const connected = this.#connected();
-    return Boolean(
-      state &&
-      !state.closed &&
-      canStartAfter(state.battle, previousBattleId) &&
-      state.hostId === participantId &&
-      connected.has(participantId) &&
-      canStartBattle(state.members.filter((member) => connected.has(member.id)).length),
-    );
+    if (
+      !state ||
+      state.closed ||
+      !canStartAfter(state.battle, previousBattleId) ||
+      state.hostId !== participantId ||
+      !connected.has(participantId) ||
+      !canStartBattle(state.members.filter((member) => connected.has(member.id)).length)
+    )
+      return "接続中の参加者が2人以上の状態で、ホストが開始してください。";
+    return hasBattlesLeft(state.battleCount) ? null : battleLimitError;
   }
 
   async startBattle(
@@ -404,6 +457,8 @@ export class Room extends DurableObject<Env> {
     if (!state || state.closed || state.hostId !== participantId)
       throw new Error("ホストのみ開始できます。");
     if (state.battle && state.battle.previousBattleId === previousBattleId) return;
+    this.#touch(participantId);
+    if (!hasBattlesLeft(state.battleCount)) throw new Error(battleLimitError);
     if (JSON.stringify(state.settings) !== JSON.stringify(settings))
       throw new Error("対戦の条件が変更されています。");
     const connected = this.#connected();
@@ -417,6 +472,7 @@ export class Room extends DurableObject<Env> {
       now,
       bonus,
     );
+    state.battleCount += 1;
     for (const member of state.members) member.ready = false;
     this.#save(state);
     await this.#publish();
@@ -495,6 +551,7 @@ export class Room extends DurableObject<Env> {
     if (state.battle && !state.battle.result) throw new Error("対戦中は準備状態を変更できません。");
     member.ready = ready;
     this.#save(state);
+    this.#touch(participantId);
     await this.#publish();
   }
 
@@ -523,11 +580,11 @@ export class Room extends DurableObject<Env> {
       expiresAt: Number(request.headers.get("X-Animic-Expires")),
     });
     if (!identity.success || identity.output.expiresAt <= Date.now())
-      return new Response(null, { status: 401 });
+      return rejectConnection(4401, "セッションが失効しました");
     const state = this.#reconcile();
-    if (!state || state.closed) return new Response(null, { status: 404 });
+    if (!state || state.closed) return rejectConnection(4404, "ルームは終了しました");
     if (!state.members.some((member) => member.id === identity.output.participantId))
-      return new Response(null, { status: 403 });
+      return rejectConnection(4403, "ルームの参加者ではありません");
     const pair = new WebSocketPair();
     this.ctx.acceptWebSocket(pair[1]);
     pair[1].serializeAttachment({ ...identity.output, connectedAt: Date.now() });

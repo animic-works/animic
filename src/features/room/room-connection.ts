@@ -1,7 +1,18 @@
 import * as v from "valibot";
 
-import { roomSnapshotSchema } from "./room-state";
+import { idleConnectionMs, roomSnapshotSchema } from "./room-state";
 import type { RoomSnapshot } from "./room-state";
+
+/** サーバーが再接続できない理由で閉じたときのclose codeと、画面に出す案内。 */
+const closedMessages = new Map([
+  [4401, "セッションが失効しました。ページを再読み込みしてください。"],
+  [4403, "ルームから退出しました。"],
+  [4404, "ルームは終了しました。"],
+  [
+    4410,
+    `${idleConnectionMs / 60_000}分間操作がなかったため、接続を切りました。ページを再読み込みすると戻れます。`,
+  ],
+]);
 
 export function connectRoom(
   initial: RoomSnapshot,
@@ -46,14 +57,9 @@ export function connectRoom(
     socket.addEventListener("close", (event) => {
       clearInterval(heartbeat);
       if (disposed) return;
-      if ([4401, 4403, 4404].includes(event.code)) {
-        onConnection(
-          event.code === 4401
-            ? "セッションが失効しました。ページを再読み込みしてください。"
-            : event.code === 4403
-              ? "ルームから退出しました。"
-              : "ルームは終了しました。",
-        );
+      const closed = closedMessages.get(event.code);
+      if (closed) {
+        onConnection(closed);
         return;
       }
       onConnection("再接続中…");
