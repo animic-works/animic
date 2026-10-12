@@ -64,16 +64,11 @@ function ParticipantResult({
   /** `false`なら勝者の王冠を登場の動きなしで出す。 */
   animate: boolean;
 }) {
-  // 勝者のカードは、3人以上の表彰台の1位と同じく王冠ときらめきと光で飾り、上端を1位の色の帯にする。
+  // 勝者のカードは、3人以上の表彰台の1位と同じく王冠ときらめきと光で飾る。
   // 左右のカードは名前の長さや札の数によらず同じ大きさにそろえる。
   return (
     <ResultCardFrame winner={entry.winner} animate={animate}>
-      <Surface
-        appearance="card"
-        padding="content"
-        fill
-        accent={entry.winner ? "primary" : undefined}
-      >
+      <Surface appearance="card" padding="content" fill>
         <Stack>
           {/*
             名前の長さで左右のカードの画像の位置がずれないよう、アバターと札の行と、名前の行を分ける。
