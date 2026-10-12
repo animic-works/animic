@@ -70,3 +70,18 @@ export async function snapshot(page: Page) {
   if (!room) throw new Error("ルームの状態を取得していません。");
   return room;
 }
+
+/**
+ * ルームURLのログイン方法の選択で「ログインせずに進む」を押し、表示名の入力を開く。
+ * 読み込みの直後（ハイドレーションの前）のクリックは届かないため、入力が開くまで押し直す。
+ */
+export async function continueWithoutLogin(page: Page) {
+  await expect(async () => {
+    await page
+      .getByRole("button", { name: "ログインせずに進む", exact: true })
+      .click({ timeout: 2000 });
+    await expect(page.getByRole("heading", { name: "表示名を決めよう" })).toBeVisible({
+      timeout: 2000,
+    });
+  }).toPass({ timeout: 20_000 });
+}
