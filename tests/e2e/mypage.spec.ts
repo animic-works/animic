@@ -304,11 +304,14 @@ test("成績・1位だけの絞り込み・詳細の内訳と指標を表示し�
     await expect(page.getByText("77.0").first()).toBeVisible();
     await expect(page.getByText("ボーナス +3")).toBeVisible();
     await expect(page.getByText("ボーナス +0")).toBeVisible();
-    await expect(page.getByRole("meter", { name: "タグ" })).toHaveAttribute(
+    // 指標はモデル名ではなく参加者に分かる名前で出し、点数にランクを添える。
+    await expect(page.getByRole("meter", { name: /髪・服・小物/ })).toHaveAttribute(
       "aria-valuenow",
       "74.8",
     );
-    await expect(page.getByRole("meter", { name: "画像の特徴" })).toBeVisible();
+    await expect(page.getByRole("meter", { name: /絵の印象/ })).toBeVisible();
+    await expect(page.getByRole("img", { name: "ランクA" }).first()).toBeVisible();
+    await expect(page.getByText("PixAI Tagger")).toHaveCount(0);
     await expect(page.getByText("採点の対象外")).toBeVisible();
     const ranking = page.getByRole("list", { name: "この対戦の順位" });
     await expect(ranking.getByRole("listitem").first()).toContainText("ねこぜ（あなた）");

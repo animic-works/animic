@@ -1,5 +1,6 @@
 import { dataTable } from "./recipes/slots/data-table";
 import { statusLabel } from "./recipes/status-label";
+import { grade } from "./recipes/grade";
 import { scrollbar } from "./recipes/slots/scrollbar";
 import { layoutHeader } from "./recipes/slots/layout-header";
 import { qrCode } from "./recipes/slots/qr-code";
@@ -115,6 +116,7 @@ export const animicPreset = definePreset({
     keyframes,
     recipes: {
       statusLabel,
+      grade,
       text,
       footer,
       lead,

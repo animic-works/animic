@@ -3,7 +3,7 @@ import { meter } from "@animic/styled-system/recipes";
 
 export interface MeterProps {
   label: string;
-  tone?: "gradient" | "primary" | "secondary" | "highlight" | "success";
+  tone?: "gradient" | "primary" | "secondary" | "highlight" | "success" | "neutral";
   appearance?: "standard" | "inverse";
   description?: string;
   presentation?: "labeled" | "track" | "row";

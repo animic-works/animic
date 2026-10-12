@@ -25,8 +25,9 @@ function formatTotal(total: number | null) {
   return total === null ? "—" : total.toFixed(1);
 }
 
-/** 3人以上の対戦の結果。順位の見出し、上位3人の表彰台、全員の順位を表示する。 */
+/** 3人以上の対戦の結果。順位の見出し、上位3人の表彰台、全員の順位と、順位の付いた全員のスコアの内訳を表示する。 */
 export function RankingResult({
+  code,
   battle,
   participantId,
   names,
@@ -34,6 +35,7 @@ export function RankingResult({
   onRematch,
   onTop,
 }: {
+  code: string;
   battle: BattleSnapshot;
   participantId: string;
   names: Map<string, string>;
@@ -145,10 +147,26 @@ export function RankingResult({
                   ))}
                 </RecordList>
               </ResultRankingReveal>
-              {me?.rank != null && (
-                <ActionGroup align="center">
-                  <ResultBreakdown battle={battle} />
-                </ActionGroup>
+              {battle.scores && (
+                <Stack>
+                  {ranking.flatMap((entry) => {
+                    const score = battle.scores?.find(
+                      (item) => item.participantId === entry.participantId,
+                    );
+                    return score
+                      ? [
+                          <ResultBreakdown
+                            key={entry.participantId}
+                            code={code}
+                            battle={battle}
+                            score={score}
+                            name={name(entry)}
+                            mine={entry.participantId === participantId}
+                          />,
+                        ]
+                      : [];
+                  })}
+                </Stack>
               )}
               <ActionGroup align="center">
                 <Button shape="pill" size="lg" prominence="raised" onClick={onRematch}>

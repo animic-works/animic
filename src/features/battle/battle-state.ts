@@ -123,17 +123,17 @@ export const battleSnapshotSchema = v.object({
   submissionsClosed: v.boolean(),
   generationClosed: v.boolean(),
   scoringEndsAt: v.nullable(v.number()),
-  // 全員の最終スコア。内訳はほかの参加者に見せないため、本人の分だけを`myScore`で配信する。
+  // 採点された全員の最終スコアと内訳・提出。結果画面で全員の内訳を比べられるようにする。
   scores: v.nullable(
     v.array(
       v.object({
         participantId: v.string(),
-        total: v.number(),
+        ...finalScoreSchema.entries,
         imageUrl: imageSrcSchema,
+        submission: submissionSchema,
       }),
     ),
   ),
-  myScore: v.nullable(finalScoreSchema),
   myGenerations: v.array(
     v.variant("status", [
       generationSnapshotOptions[0],
@@ -527,8 +527,14 @@ function getScores(state: BattleState) {
   if (!scored) return null;
   return getFinalScores(state).flatMap((score) => {
     const imageUrl = getSubmittedImageUrl(state, score.participantId);
-    return imageUrl ? [{ ...score, imageUrl }] : [];
+    const submission = state.submissions.find((item) => item.participantId === score.participantId);
+    return imageUrl && submission ? [{ ...score, imageUrl, submission }] : [];
   });
+}
+
+/** 最終スコアと内訳を配信している参加者。採点で結果が決まるまでは空。 */
+export function getScoredParticipantIds(state: BattleState) {
+  return getScores(state)?.map((score) => score.participantId) ?? [];
 }
 
 export function getBattleSnapshot(
@@ -552,13 +558,7 @@ export function getBattleSnapshot(
       state.submissions.some((item) => item.participantId === id),
     ),
     scoringEndsAt: state.scoring.endsAt,
-    scores:
-      scores?.map(({ participantId: id, total, imageUrl }) => ({
-        participantId: id,
-        total,
-        imageUrl: toImageSrc(imageUrl),
-      })) ?? null,
-    myScore: scores?.find((item) => item.participantId === participantId) ?? null,
+    scores: scores?.map((score) => ({ ...score, imageUrl: toImageSrc(score.imageUrl) })) ?? null,
   });
 }
 
@@ -584,7 +584,11 @@ export function serializeBattleResult(
     participantIds: battle.participantIds,
     submissions: battle.submissions,
     result: battle.result,
-    scores: getScores(battle)?.map(({ imageUrl: _imageUrl, ...score }) => score) ?? null,
+    // 提出は`submissions`に保存するため、スコアには含めない。
+    scores:
+      getScores(battle)?.map(
+        ({ imageUrl: _imageUrl, submission: _submission, ...score }) => score,
+      ) ?? null,
     startedAt: battle.startedAt,
     submittedImages: battle.generations
       .filter(

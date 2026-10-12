@@ -644,7 +644,7 @@ test("トップページの遊び方・ギャラリー・OGP画像を管理画�
     const gallery = page.getByRole("dialog", { name: "ギャラリーの例を追加" });
     await gallery.getByRole("radiogroup", { name: "難易度" }).getByText("むずかしい").click();
     await gallery.getByLabel("再現度").fill("101");
-    for (const label of ["キャラクター", "タグ", "内容", "画像の特徴", "構図"])
+    for (const label of ["キャラ", "髪・服・小物", "雰囲気", "絵の印象", "構図"])
       await gallery.getByLabel(label, { exact: true }).fill("50");
     await gallery
       .locator('input[type="file"]')

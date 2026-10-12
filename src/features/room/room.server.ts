@@ -13,6 +13,7 @@ import {
   finishGeneration,
   submitImage,
   getBattleSnapshot,
+  getScoredParticipantIds,
   serializeBattleResult,
   getScoringRequests,
   applyScoringJobs,
@@ -424,6 +425,21 @@ export class Room extends DurableObject<Env> {
     state.battle = submitImage(battle, participantId, generationId, Date.now());
     this.#save(state);
     await this.#publish();
+  }
+
+  /**
+   * 結果画面で、参加者のスコアの内訳と指標を見せてよいか。最終スコアと同じく、
+   * 採点で結果が決まった今の対戦について、ルームの参加者にだけ見せる。
+   */
+  canViewScore(battleId: string, viewerId: string, participantId: string) {
+    const state = this.#reconcile();
+    return Boolean(
+      state &&
+      !state.closed &&
+      state.battle?.id === battleId &&
+      state.members.some((member) => member.id === viewerId) &&
+      getScoredParticipantIds(state.battle).includes(participantId),
+    );
   }
 
   async setReady(participantId: string, ready: boolean) {

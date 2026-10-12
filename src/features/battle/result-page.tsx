@@ -7,6 +7,7 @@ import { Button } from "@animic/react/button";
 import { Cluster } from "@animic/react/cluster";
 import { CodeDisplay } from "@animic/react/code-display";
 import { ComparisonStage } from "@animic/react/comparison-stage";
+import { Grid } from "@animic/react/grid";
 import { Heading } from "@animic/react/heading";
 import { Media, MediaPlaceholder } from "@animic/react/media";
 import { Page } from "@animic/react/page";
@@ -28,15 +29,12 @@ function ParticipantResult({
   icon,
   mine,
   seat,
-  breakdown,
 }: {
   entry: ResultEntry;
   name: string;
   icon: AccountIcon | null;
   mine: boolean;
   seat: number;
-  /** 自分のカードに出す、スコアの内訳を開く操作。 */
-  breakdown?: ReactNode;
 }) {
   return (
     <Surface appearance="card" padding="content">
@@ -73,7 +71,6 @@ function ParticipantResult({
               {entry.total.toLocaleString("ja-JP", { maximumFractionDigits: 2 })}
               <Text variant="caption">pt</Text>
             </Text>
-            {breakdown}
           </Stack>
         )}
         {!entry.submitted && (
@@ -121,6 +118,7 @@ export function ResultPage({
       <Page decoration={<GridBackdrop />}>
         {frame(
           <RankingResult
+            code={code}
             battle={battle}
             participantId={participantId}
             names={names}
@@ -138,17 +136,14 @@ export function ResultPage({
     names.get(opponentId ?? "") ?? "相手",
   );
   const [mine, theirs] = getResultEntries(battle, participantId);
+  const name = (id: string) => names.get(id) ?? (id === participantId ? "あなた" : "相手");
   const participant = (entry: ResultEntry) => (
     <ParticipantResult
       entry={entry}
-      name={
-        names.get(entry.participantId) ??
-        (entry.participantId === participantId ? "あなた" : "相手")
-      }
+      name={name(entry.participantId)}
       icon={icons.get(entry.participantId) ?? null}
       mine={entry.participantId === participantId}
       seat={battle.participantIds.indexOf(entry.participantId)}
-      breakdown={entry.participantId === participantId && <ResultBreakdown battle={battle} />}
     />
   );
   return (
@@ -188,6 +183,26 @@ export function ResultPage({
               />
             </Stack>
           </ComparisonStage>
+          {battle.scores && (
+            <Grid columns={2}>
+              {battle.scores
+                .toSorted(
+                  (a, b) =>
+                    Number(b.participantId === participantId) -
+                    Number(a.participantId === participantId),
+                )
+                .map((score) => (
+                  <ResultBreakdown
+                    key={score.participantId}
+                    code={code}
+                    battle={battle}
+                    score={score}
+                    name={name(score.participantId)}
+                    mine={score.participantId === participantId}
+                  />
+                ))}
+            </Grid>
+          )}
           <ActionGroup align="center">
             <Button shape="pill" size="lg" prominence="raised" onClick={onRematch}>
               同じメンバーで再戦

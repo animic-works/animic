@@ -398,10 +398,10 @@ test("生成した画像を提出すると、採点ワーカーへR2の生成画
       await expect
         .poll(async () => (await snapshot(participant)).battle?.result, { timeout: 30_000 })
         .toMatchObject({ kind: "win", reason: "higher-score", winnerId: hostId });
-      // 結果の確定後は、両方の提出画像と採点結果を公開する。画面には同じオリジンのパスで渡す。
+      // 結果の確定後は、両方の提出画像と採点結果・内訳を公開する。画面には同じオリジンのパスで渡す。
       expect(
         (await snapshot(participant)).battle?.scores?.toSorted((a, b) => b.total - a.total),
-      ).toEqual(
+      ).toMatchObject(
         [...imageUrls].map(([id, imageUrl]) => ({
           participantId: id,
           // 最終スコアは再現度に、取ったボーナス（5点と2点）を加えた値。
@@ -430,23 +430,39 @@ test("生成した画像を提出すると、採点ワーカーへR2の生成画
     await expectLoaded(guest.getByRole("img", { name: "採点ホストさんの提出画像" }));
     await expectLoaded(guest.getByRole("img", { name: "採点ゲストさんの提出画像" }));
 
-    // 結果画面で、自分の内訳と指標ごとの点だけを開いて見られる。
-    await guestView.getByRole("button", { name: "スコアの内訳を見る" }).click();
-    const breakdown = guestView.getByRole("dialog", { name: "あなたのスコアの内訳" });
+    // 結果画面で、自分と相手の内訳と指標ごとの点を、操作なしで見られる。
+    const breakdown = guestView
+      .getByRole("heading", { name: "あなたのスコアの内訳" })
+      .locator("..");
     await expect(breakdown.getByText("60.0").first()).toBeVisible();
     await expect(breakdown.getByText("1回")).toBeVisible();
     // 再現度が下限より低いため、どちらのボーナスも取れない。
     await expect(breakdown.getByText("ボーナス +0")).toHaveCount(2);
-    await expect(breakdown.getByRole("meter", { name: /画像の特徴/ })).toHaveAttribute(
+    await expect(breakdown.getByRole("meter", { name: /絵の印象/ })).toHaveAttribute(
       "aria-valuenow",
       "88.5",
     );
     await expect(breakdown.getByText("採点の対象外")).toBeVisible();
-    // 指標は本人の分だけを返す。
-    const myMetrics = (page: Page) =>
-      page.evaluate((data) => window.animicTest.getMyScoringMetrics({ data }), { battleId });
-    expect(await myMetrics(guest)).toMatchObject({ ccip: null, dinov2: 88.5 });
-    expect(await myMetrics(host)).toMatchObject({ pixai: 70, dinov2: null });
+    const hostBreakdown = guestView
+      .getByRole("heading", { name: "採点ホストさんのスコアの内訳" })
+      .locator("..");
+    await expect(hostBreakdown.getByText("78.4")).toBeVisible();
+    await expect(hostBreakdown.getByText("ボーナス +5")).toBeVisible();
+    await expect(hostBreakdown.getByRole("meter", { name: /髪・服・小物/ })).toHaveAttribute(
+      "aria-valuenow",
+      "70",
+    );
+    // 指標は、採点で結果が決まった今の対戦について、ルームの参加者に返す。
+    const metrics = (page: Page, target: string, id = battleId) =>
+      page.evaluate((data) => window.animicTest.getResultScoringMetrics({ data }), {
+        code,
+        battleId: id,
+        participantId: target,
+      });
+    const guestId = await participantId(guest);
+    expect(await metrics(guest, hostId)).toMatchObject({ pixai: 70, dinov2: null });
+    expect(await metrics(host, guestId)).toMatchObject({ ccip: null, dinov2: 88.5 });
+    expect(await metrics(host, guestId, crypto.randomUUID())).toBeNull();
   });
 });
 

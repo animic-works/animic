@@ -45,7 +45,7 @@ desktop-comfyui-serverの通信仕様で決まっているURLパスとキー名�
 | `scoring_result`    | 採点ジョブと参加者ごとの`total`                                                                                  |
 | `scoring_weight`    | 再現度の指標ごとの重み・ボーナスの点と対象の下限・保存した日時。変えるたびに行を足す                             |
 
-採点ジョブのIDは対戦の状態で発行し、登録は冪等にします。登録のときに、対戦を始めた時刻より前に保存した最新の重み（なければ既定値）を`scoring_job`の`weights`へ写します（`src/features/scoring/scoring-weights.server.ts`）。採点ワーカーから受け取った出力は加工せず`raw_result`に保存し、指標ごとの点とジョブの重みから計算した`total`を`scoring_result`に保存します。計算は採点ノードと同じく、点のある指標だけで重みを割り直した加重平均（小数3桁）です（`weightedTotal`）。重みを写す前に登録したジョブは、採点ノードの`total`を使います。戦績の詳細と結果画面のスコアの内訳では、対戦IDと本人の参加者IDで成功した採点ジョブを探し（`getScoringMetrics`、`scoring_job`の`battle_id`に索引あり）、`raw_result`から指標ごとの点を読みます。点のない指標（人物のいない画像のCCIP、失敗した指標）は対象外として表示します。指標の表示名は`src/features/scoring/scoring-metrics.ts`にあります。
+採点ジョブのIDは対戦の状態で発行し、登録は冪等にします。登録のときに、対戦を始めた時刻より前に保存した最新の重み（なければ既定値）を`scoring_job`の`weights`へ写します（`src/features/scoring/scoring-weights.server.ts`）。採点ワーカーから受け取った出力は加工せず`raw_result`に保存し、指標ごとの点とジョブの重みから計算した`total`を`scoring_result`に保存します。計算は採点ノードと同じく、点のある指標だけで重みを割り直した加重平均（小数3桁）です（`weightedTotal`）。重みを写す前に登録したジョブは、採点ノードの`total`を使います。戦績の詳細と結果画面のスコアの内訳では、対戦IDと参加者ID（戦績の詳細は本人、結果画面は採点された全員）で成功した採点ジョブを探し（`getScoringMetrics`、`scoring_job`の`battle_id`に索引あり）、`raw_result`から指標ごとの点を読みます。点のない指標（人物のいない画像のCCIP、失敗した指標）は対象外として表示します。指標の表示名は`src/features/scoring/scoring-metrics.ts`にあります。
 
 ボーナスの点と対象の下限は、重みと同じ`scoring_weight`の行に保存します（`speed_bonus`・`generation_bonus`・`bonus_min_similarity`）。ボーナスの列を加える前に保存した行は`null`で、既定値（3点・3点・0点）を使います。ボーナスは採点ジョブには写さず、ルームのDOが対戦を始めるときに、開始時刻より前に保存した最新の値を読んで対戦の状態に記録します。重みとボーナスは同じ開始時刻で引くため、同じ行の値になります。
 
@@ -70,7 +70,7 @@ desktop-comfyui-serverの通信仕様で決まっているURLパスとキー名�
 
 - 結果が確定した後は、採点ジョブの結果で対戦の状態を変更しません。
 - 対戦の状態にない採点ジョブの結果は反映しません。
-- 採点による結果が確定するまで、相手の最終スコアと提出画像を配信しません。確定後は全員の最終スコア（`scores[].total`）と提出画像を配信し、内訳は本人の分だけを`myScore`で配信します。
+- 採点による結果が確定するまで、相手の最終スコアと提出画像を配信しません。確定後は、採点された全員の最終スコアと内訳（`scores[]`の`total`・`similarity`・`speedBonus`・`generationBonus`）、提出の記録（`scores[].submission`）と提出画像を配信します。
 - `battle_result`へ保存するJSONの`scores`には、全員の最終スコア（`total`）と内訳（`similarity`・`speedBonus`・`generationBonus`）を含めます。内訳のない前の結果は、`total`を再現度としボーナスなしとして読みます。`battle_record`には最終スコア（`total`）と再現度（`similarity`）を分けて保存します。
 
 ## 処理の流れ
