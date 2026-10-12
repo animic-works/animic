@@ -451,12 +451,11 @@ test("生成した画像を提出すると、採点ワーカーへR2の生成画
     await expectLoaded(guest.getByRole("img", { name: "採点ホストさんの提出画像" }));
     await expectLoaded(guest.getByRole("img", { name: "採点ゲストさんの提出画像" }));
 
-    // 結果画面で、自分と相手の内訳と指標ごとの点を、操作なしで見られる。
+    // 結果画面で、3人以上の結果と同じ順位の一覧の行の「内訳」から、自分と相手の内訳と指標ごとの点を見られる。
     // 待機の画面から見ていたページも発表中になる。2人分の発表の時間（25秒）を進めると最終の結果になる。
     await guestView.clock.fastForward(26_000);
-    const breakdown = guestView
-      .getByRole("heading", { name: "あなたのスコアの内訳" })
-      .locator("..");
+    await guestView.getByRole("button", { name: "あなたのスコアの内訳" }).click();
+    const breakdown = guestView.getByRole("dialog", { name: "あなたのスコアの内訳" });
     await expect(breakdown.getByText("60.0").first()).toBeVisible();
     await expect(breakdown.getByText("1回")).toBeVisible();
     // 再現度が下限より低いため、どちらのボーナスも取れない。
@@ -468,9 +467,9 @@ test("生成した画像を提出すると、採点ワーカーへR2の生成画
     );
     await expect(breakdown.getByText("採点の対象外")).toBeVisible();
     await expect(breakdown.getByText("PixAI")).toHaveCount(0);
-    const hostBreakdown = guestView
-      .getByRole("heading", { name: "採点ホストさんのスコアの内訳" })
-      .locator("..");
+    await breakdown.getByRole("button", { name: "閉じる" }).click();
+    await guestView.getByRole("button", { name: "採点ホストさんのスコアの内訳" }).click();
+    const hostBreakdown = guestView.getByRole("dialog", { name: "採点ホストさんのスコアの内訳" });
     await expect(hostBreakdown.getByText("78.4")).toBeVisible();
     await expect(hostBreakdown.getByText("ボーナス +5")).toBeVisible();
     await expect(hostBreakdown.getByRole("meter", { name: /髪・服・小物/ })).toHaveAttribute(

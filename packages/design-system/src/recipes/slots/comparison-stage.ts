@@ -47,6 +47,13 @@ export const comparisonStage = defineSlotRecipe({
     body: { minWidth: 0, _comparisonStageCompact: { gridColumn: "1 / -1", gridRow: "2" } },
   },
   variants: {
+    // `fill`は2つの比較対象の欄を同じ高さに伸ばす。中の面を欄の高さに合わせると、内容の量によらず大きさがそろう。
+    fill: {
+      true: {
+        first: { alignSelf: "stretch" },
+        second: { alignSelf: "stretch" },
+      },
+    },
     // `compact`は、狭い画面で本文（パネル）と下の一覧まで1画面に収めるため、画像を小さくする。
     size: {
       standard: {},

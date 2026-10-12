@@ -5,14 +5,17 @@ export function ComparisonStage({
   second,
   children,
   size,
+  fill,
 }: {
   first: ReactNode;
   second: ReactNode;
   children: ReactNode;
   /** `compact`は狭い画面で画像を小さくし、パネルと下の一覧まで1画面に収める。 */
   size?: "standard" | "compact";
+  /** 2つの比較対象の欄を同じ高さに伸ばす。中の面は`Surface`の`fill`などで欄の高さに合わせる。 */
+  fill?: boolean;
 }) {
-  const c = comparisonStage({ size });
+  const c = comparisonStage({ size, fill });
   return (
     <div className={c.root}>
       <div className={c.layout}>

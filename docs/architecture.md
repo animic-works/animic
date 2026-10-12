@@ -84,11 +84,11 @@ ResultPageは`battle-outcome.ts`で勝敗・引き分け・勝負不成立と公
 
 ### 採点内訳の読み取りと演出
 
-発表の採点の様子と3人以上の順位の一覧の要点に出す指標ごとの点は、最初の描画の後に`getResultScoringMetrics`で全員の分を読みます（`result-breakdown.tsx`の`useResultMetrics`）。ルームのない開発用の確認画面だけは、`ResultPage`の`loadMetrics`で読み方を差し替えます。発表の点数の数え上げとボーナスのスタンプは`result-presentation.ts`の`getScoreCount`が点数の段階の経過から決め、1人あたりの時間は変えません。発表済みの人数は`getRevealedCount`が、発表している人を点数を数え終えた時点（`getScoreCount`の`settled`）から数え、発表の順番の列の「発表済み」・最終スコア・途中の順位と、採点パネルの下の順位の帯に同じ値を使います。点数の色は`scoring`の`score-rank.ts`のランクの`text`（Textの`tone`）を使います。ヘッダーの札は対戦画面と同じ`battle-header.tsx`の`BattleRoomBadge`を使います。最終の結果の背景の飾り（`visuals/result-artwork.tsx`の`ResultShards`）、表彰台の月桂冠・きらめき、採点パネルの下の順位の帯（`visuals/result-reveal.tsx`の`RankBanner`）は機能固有のVisualに置きます。
+発表の採点の様子と順位の一覧の要点に出す指標ごとの点は、最初の描画の後に`getResultScoringMetrics`で全員の分を読みます（`result-breakdown.tsx`の`useResultMetrics`）。ルームのない開発用の確認画面だけは、`ResultPage`の`loadMetrics`で読み方を差し替えます。発表の点数の数え上げとボーナスのスタンプは`result-presentation.ts`の`getScoreCount`が点数の段階の経過から決め、1人あたりの時間は変えません。発表済みの人数は`getRevealedCount`が、発表している人を点数を数え終えた時点（`getScoreCount`の`settled`）から数え、発表の順番の列の「発表済み」・最終スコア・途中の順位と、採点パネルの下の順位の帯に同じ値を使います。点数の色は`scoring`の`score-rank.ts`のランクの`text`（Textの`tone`）を使います。ヘッダーの札は対戦画面と同じ`battle-header.tsx`の`BattleRoomBadge`を使います。最終の結果の背景の飾り（`visuals/result-artwork.tsx`の`ResultShards`）、表彰台の月桂冠・きらめき、1対1の結果のカードの外枠と勝者の王冠・光（`ResultCardFrame`）、採点パネルの下の順位の帯（`visuals/result-reveal.tsx`の`RankBanner`）は機能固有のVisualに置きます。
 
 結果の共有は`result-share.tsx`がXの投稿画面へのリンクを作り、載せる文は`battle-outcome.ts`の`getShareText`が本人の結果だけから決めます。
 
-採点で結果が決まったら、配信された`scores`から採点された全員のスコアの内訳を表示します（`result-breakdown.tsx`）。指標ごとの点はルームの状態に含めず、内訳を表示したときに`battle`の`getResultScoringMetrics`で参加者ごとに読みます。
+採点で結果が決まったら、1対1でも3人以上でも、配信された`scores`から順位の一覧（`result-ranking.tsx`の`RankingList`）を表示し、各行の「内訳」から採点された人のスコアの内訳を開きます（`result-breakdown.tsx`）。指標ごとの点はルームの状態に含めず、内訳を開いたときに`battle`の`getResultScoringMetrics`で参加者ごとに読みます。
 
 このServer Functionは、ルームのDOの`canViewScore`で、採点で結果が決まった今の対戦であることと、見ている人（セッションの参加者ID）がルームの参加者であることを確かめてから、`scoring`の`getScoringMetrics`を呼びます。ログインせずに参加した人も使えるよう、戦績の詳細のServer Functionは使いません。
 
@@ -497,7 +497,7 @@ ThumbnailListは用途を固定せず、一覧とスクロール領域の読み�
 
 #### 画面の配置
 
-ComparisonStageの`size="compact"`は、狭い画面で画像を小さくし、本文と下の一覧まで1画面に収めます。
+ComparisonStageの`size="compact"`は、狭い画面で画像を小さくし、本文と下の一覧まで1画面に収めます。`fill`は2つの比較対象の欄を同じ高さに伸ばし、中の面を`Surface`の`fill`で合わせると内容の量によらず大きさがそろいます。
 
 AppFrameの`contentFit="viewport"`は、1画面に収める進行中の画面で本文の下の余白を詰めます。
 
