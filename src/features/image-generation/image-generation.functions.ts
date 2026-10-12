@@ -1,13 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders, setResponseHeader } from "@tanstack/react-start/server";
-import { env, waitUntil } from "cloudflare:workers";
+import { env } from "cloudflare:workers";
 import * as v from "valibot";
 
 import { createAuth } from "../../lib/auth.server";
 import { generationTimeoutMs } from "../battle/battle-state";
-import type { GenerationOutcome } from "../battle/battle-state";
 import { roomCodeSchema } from "../room/room-state";
-import { putGeneratedImage } from "./generated-images.server";
 import { checkGenerationInput, generationInputEntries, getInputHash } from "./generation-input";
 import { getNovelAiQueue } from "./novelai.server";
 
@@ -46,21 +44,10 @@ export const generateImage = createServerFn({ method: "POST" })
       prompt,
       characters: Array.from({ length: characterCount }, (_, index) => characters[index] ?? ""),
     };
-    const finished = (async () => {
-      let outcome: GenerationOutcome = { status: "failed" };
-      try {
-        const result = await getNovelAiQueue().generate(input, acceptedAt + generationTimeoutMs);
-        if (result.ok)
-          outcome = {
-            status: "succeeded",
-            imageUrl: await putGeneratedImage({ battleId, generationId }, result.image),
-          };
-      } catch (error) {
-        console.error("画像を生成・保存できませんでした。", { battleId, generationId, error });
-      }
-      await room.finishGeneration(battleId, generationId, outcome);
-    })();
-    // 参加者が通信を切っても、生成と完了の通知を続ける。
-    waitUntil(finished);
-    await finished;
+    // R2への保存とルームのDOへの完了の通知までは生成キューのDOが行い、参加者が通信を切っても続ける。
+    await getNovelAiQueue().generate(
+      { code: data.code, battleId, generationId },
+      input,
+      acceptedAt + generationTimeoutMs,
+    );
   });

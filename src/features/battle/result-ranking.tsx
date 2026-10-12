@@ -94,7 +94,9 @@ export function RankingResult({
   const message = !winner
     ? result?.kind === "no-contest" && result.reason === "scoring-failed"
       ? "採点できなかったため、勝負不成立です"
-      : `${ranking.length === 2 ? "どちらも" : "誰も"}提出しなかったため、勝負不成立です`
+      : result?.kind === "no-contest" && result.reason === "room-closed"
+        ? "全員がルームを離れたため、勝負不成立です"
+        : `${ranking.length === 2 ? "どちらも" : "誰も"}提出しなかったため、勝負不成立です`
     : me?.rank == null
       ? `${submitted ? "採点できなかったため、順位はありません" : "今回は提出できませんでした"}。1位は ${name(winner)} さん`
       : result?.kind === "win" && result.reason === "opponent-not-submitted"

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import * as v from "valibot";
 import {
+  abandonBattle,
   acceptGeneration,
   applyScoringJobs,
   battleStateSchema,
@@ -665,6 +666,26 @@ describe("Alarmの予約時刻", () => {
     const expiresAt = 3000 + generationTimeoutMs;
     expect(getBattleDeadline(scored, 5000)).toBe(expiresAt);
     expect(getBattleDeadline(reconcileBattle(scored, expiresAt), expiresAt)).toBeNull();
+  });
+});
+
+describe("ルームが閉じたときの対戦", () => {
+  it("結果が出ていなければ、閉じた時刻で勝負不成立にする", () => {
+    expect(abandonBattle(bothGenerated(), 5000).result).toEqual({
+      kind: "no-contest",
+      reason: "room-closed",
+      decidedAt: 5000,
+    });
+  });
+  it("閉じた時刻までの期限を反映し、そこで決まった結果は変えない", () => {
+    expect(abandonBattle(battle(), 20_000).result).toEqual({
+      kind: "no-contest",
+      reason: "no-submissions",
+      decidedAt: 10_000,
+    });
+    const state = bothSubmitted();
+    const scored = applyScoringJobs(state, jobs(state, { a: 71.4, b: 60 }), 6000);
+    expect(abandonBattle(scored, 7000).result).toEqual(scored.result);
   });
 });
 
