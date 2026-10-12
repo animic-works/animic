@@ -15,7 +15,10 @@ export const accountIconColors = [
   "ink",
 ] as const satisfies readonly AvatarPalette[];
 
-/** アイコンに選べるイラストの番号。画像は`public/images/account-icons/illustration-<番号>.svg`。 */
+/**
+ * アイコンに選べるイラストの番号。画像は`public/images/account-icons/illustration-<番号>.webp`で、
+ * トップページのキャラクターとお題のイラストから顔を切り抜いたもの。
+ */
 export const accountIconIllustrations = ["1", "2", "3", "4", "5", "6", "7", "8"] as const;
 
 /** 選んだアイコン。`color:<色>`か`illustration:<番号>`の文字列で保存する。 */
@@ -32,7 +35,7 @@ export function parseAccountIcon(value: unknown): AccountIcon | null {
 }
 
 export function illustrationSrc(id: (typeof accountIconIllustrations)[number]) {
-  return `/images/account-icons/illustration-${id}.svg`;
+  return `/images/account-icons/illustration-${id}.webp`;
 }
 
 /** Avatarに渡す画像と色。アイコンを選んでいない参加者は`fallback`の色で表示する。 */
