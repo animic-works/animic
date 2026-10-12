@@ -11,7 +11,9 @@ import { loginProviderSchema } from "./login-providers";
 
 export const getCurrentParticipant = createServerFn({ method: "GET" }).handler(async () => {
   setResponseHeader("Cache-Control", "private, no-store");
-  const result = await createAuth().api.getSession({ headers: getRequestHeaders() });
+  const result = await createAuth(getRequestHeaders()).api.getSession({
+    headers: getRequestHeaders(),
+  });
   if (!result) return null;
   const { user } = result;
   if (user.isAnonymous) return { id: user.id, isAnonymous: true, account: null };

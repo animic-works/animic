@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createAuth } from "../../../lib/auth.server";
 
 async function handleAuth({ request }: { request: Request }) {
-  const response = await createAuth().handler(request);
+  const response = await createAuth(request.headers).handler(request);
   response.headers.set("Cache-Control", "private, no-store");
   return response;
 }

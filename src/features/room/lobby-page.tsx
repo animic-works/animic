@@ -20,6 +20,7 @@ import { LobbyPlayersPanel } from "./lobby-players-panel";
 import { LobbyRulesPanel } from "./lobby-rules-panel";
 import type { RoomSnapshot } from "./room-state";
 import { useLobbyActions } from "./use-lobby-actions";
+import { activitySdk } from "../../lib/discord-sdk";
 
 export function LobbyPage({
   room,
@@ -142,6 +143,19 @@ export function LobbyPage({
         inviteUrl={inviteUrl}
         onClose={close}
         onCopyUrl={() => void copy(inviteUrl, "招待リンクをコピーしました")}
+        onDiscordInvite={
+          activitySdk()
+            ? () => {
+                void activitySdk()
+                  ?.commands.openInviteDialog()
+                  .catch(() =>
+                    toast.show({
+                      title: "Discordの招待を開けませんでした。ルームURLを共有してください。",
+                    }),
+                  );
+              }
+            : undefined
+        }
       />
       <LeaveDialog
         open={dialog === "leave" || blocker.status === "blocked"}

@@ -158,6 +158,7 @@ export class Room extends DurableObject<Env> {
     const connected = this.#connected();
     return {
       code: state.code,
+      discordInstanceId: state.discordInstanceId,
       battle: state.battle ? getBattleSnapshot(state.battle, participantId, Date.now()) : null,
       settings: state.settings,
       version: state.version,
@@ -352,11 +353,19 @@ export class Room extends DurableObject<Env> {
     await this.#schedule();
   }
 
-  async create(code: string, creation: RoomCreation, icon: AccountIcon | null) {
+  async create(
+    code: string,
+    creation: RoomCreation,
+    icon: AccountIcon | null,
+    discordInstanceId?: string,
+  ) {
     const previous = this.#reconcile();
     if (previous) {
       if (!isRoomCreationRetry(previous.creation, creation)) return false;
-      if (previous.closed) throw new Error("この作成要求のルームは終了しています。");
+      if (previous.closed) {
+        if (discordInstanceId && previous.discordInstanceId === discordInstanceId) return false;
+        throw new Error("この作成要求のルームは終了しています。");
+      }
       await this.#schedule();
       return true;
     }
@@ -364,6 +373,7 @@ export class Room extends DurableObject<Env> {
     this.#save({
       creation,
       code,
+      discordInstanceId,
       version: 0,
       battle: null,
       settings: null,
