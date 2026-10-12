@@ -11,7 +11,7 @@ import { participantNameSchema, roomCodeSchema, roomSnapshotSchema } from "./roo
 
 async function identity() {
   setResponseHeader("Cache-Control", "private, no-store");
-  return createAuth().api.getSession({ headers: getRequestHeaders() });
+  return createAuth(getRequestHeaders()).api.getSession({ headers: getRequestHeaders() });
 }
 
 async function requireParticipant() {

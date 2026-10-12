@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { create, signIn } from "./api";
+import { continueWithoutLogin, create, signIn } from "./api";
 import { executeLocalD1 } from "./d1";
 
 test.use({ reducedMotion: "reduce" });
@@ -14,7 +14,7 @@ test("ルームURLで参加し、名前と役割はサーバーの参加状態�
     const code = await create(host, "ホスト");
     await page.goto(`/rooms/${code.toLowerCase()}`);
     await expect(page).toHaveURL(new RegExp(`/rooms/${code}$`));
-    await page.getByRole("button", { name: "ログインせずに進む", exact: true }).click();
+    await continueWithoutLogin(page);
     await page.getByRole("textbox", { name: "表示名" }).fill("参加者");
     await page.getByRole("button", { name: "ルームに参加", exact: true }).click();
     await expect(page.getByRole("heading", { name: "ルームコード", exact: true })).toBeVisible();

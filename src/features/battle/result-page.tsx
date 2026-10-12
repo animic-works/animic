@@ -119,6 +119,7 @@ type ResultPageProps = {
   receivedAt: number | null;
   /** 同じルームの待機画面へ戻る。このルームでもう対戦できなければ省略し、再戦の操作を出さない。 */
   onRematch?: () => void;
+  topLabel?: string;
   onTop: () => void;
   /**
    * 指標の読み方。省略すると、ルームの対戦について`getResultScoringMetrics`で読む。
@@ -143,6 +144,7 @@ function ResultScreen({
   icons,
   receivedAt,
   onRematch,
+  topLabel = "トップへ戻る",
   onTop,
 }: Omit<ResultPageProps, "loadMetrics">) {
   const order = getRevealOrder(battle);
@@ -226,6 +228,7 @@ function ResultScreen({
             icons={icons}
             animate={animate}
             onRematch={onRematch}
+            topLabel={topLabel}
             onTop={onTop}
           />,
         )}
@@ -306,11 +309,11 @@ function ResultScreen({
               shape="pill"
               size="lg"
               appearance="secondary"
-              compactLabel="トップへ"
-              aria-label="トップへ戻る"
+              compactLabel={topLabel === "トップへ戻る" ? "トップへ" : "終了"}
+              aria-label={topLabel}
               onClick={onTop}
             >
-              トップへ戻る
+              {topLabel}
             </Button>
           </ActionGroup>
           {battle.scores && (

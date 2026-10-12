@@ -27,7 +27,9 @@ export const generateImage = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     setResponseHeader("Cache-Control", "private, no-store");
-    const current = await createAuth().api.getSession({ headers: getRequestHeaders() });
+    const current = await createAuth(getRequestHeaders()).api.getSession({
+      headers: getRequestHeaders(),
+    });
     if (!current) throw new Error("参加するにはセッションの再作成が必要です。");
     const room = env.ROOMS.getByName(data.code);
     const { battleId, generationId, prompt, characters } = data;

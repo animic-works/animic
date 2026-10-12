@@ -59,6 +59,7 @@ export const roomStateSchema = v.object({
     null,
   ),
   code: roomCodeSchema,
+  discordInstanceId: v.optional(v.string()),
   settings: v.optional(v.nullable(battleSettingsSchema), null),
   battle: v.optional(v.nullable(battleStateSchema), null),
   version: v.number(),
@@ -71,6 +72,7 @@ export const roomStateSchema = v.object({
 export type RoomState = v.InferOutput<typeof roomStateSchema>;
 export const roomSnapshotSchema = v.object({
   code: roomCodeSchema,
+  discordInstanceId: v.optional(v.string()),
   settings: v.optional(v.nullable(battleSettingsSchema), null),
   battle: v.optional(v.nullable(battleSnapshotSchema), null),
   version: v.number(),

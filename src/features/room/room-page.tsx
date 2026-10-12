@@ -19,6 +19,7 @@ export function RoomPage({
   inviteUrl,
   battleOptions,
   promptGroups,
+  onExit,
 }: {
   initial: RoomSnapshot;
   participantId: string;
@@ -26,6 +27,7 @@ export function RoomPage({
   battleOptions: BattleOptions;
   /** 対戦画面の入力候補と検索に使う表現の辞書 */
   promptGroups: PromptGroup[];
+  onExit?: () => void;
 }) {
   const received = useRoomConnection(initial);
   const { room, connection } = received;
@@ -33,6 +35,7 @@ export function RoomPage({
   const [leaving, setLeaving] = useState(false);
   const { transition, transitioning, navigate } = usePageTransition();
   const toast = useToast();
+  const exit = onExit ?? (() => navigate("/"));
   useEffect(() => {
     if (temporary.has(connection)) toast.show({ title: connection });
   }, [connection, toast]);
@@ -86,8 +89,8 @@ export function RoomPage({
         presentation="centered"
         size="compact"
       >
-        <Button shape="pill" onClick={() => navigate("/")}>
-          トップへ戻る
+        <Button shape="pill" onClick={exit}>
+          {onExit ? "Activityを終了" : "トップへ戻る"}
         </Button>
       </Dialog>
     );
@@ -117,7 +120,8 @@ export function RoomPage({
         icons={icons}
         participantId={participantId}
         onRematch={() => setDismissed(screen.battle.id)}
-        onTop={() => navigate("/")}
+        topLabel={onExit ? "Activityを終了" : undefined}
+        onTop={exit}
       />
     );
   return (
@@ -129,7 +133,7 @@ export function RoomPage({
       previousBattleId={screen.previousBattleId}
       waitingForNext={screen.waitingForNext}
       onLeaving={setLeaving}
-      onLeft={() => navigate("/")}
+      onLeft={exit}
     />
   );
 }

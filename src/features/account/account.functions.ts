@@ -12,7 +12,9 @@ import { accountIconSchema } from "./account-icon";
 
 async function requireAccount() {
   setResponseHeader("Cache-Control", "private, no-store");
-  const current = await createAuth().api.getSession({ headers: getRequestHeaders() });
+  const current = await createAuth(getRequestHeaders()).api.getSession({
+    headers: getRequestHeaders(),
+  });
   if (!current || current.user.isAnonymous) throw new Error("ログインしてください。");
   return current.user.id;
 }

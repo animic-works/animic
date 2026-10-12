@@ -9,6 +9,7 @@ const bodySchema = v.object({
   provider: loginProviderSchema,
   email: v.pipe(v.string(), v.email()),
   name: v.pipe(v.string(), v.minLength(1)),
+  accountId: v.optional(v.string()),
 });
 
 /**
@@ -39,13 +40,13 @@ export function e2eSignIn() {
             else
               await adapter.linkAccount({
                 providerId: provider,
-                accountId: email,
+                accountId: ctx.body.accountId ?? email,
                 userId: user.id,
               });
           } else {
             const created = await adapter.createOAuthUser(
               { email, name, emailVerified: true },
-              { providerId: provider, accountId: email },
+              { providerId: provider, accountId: ctx.body.accountId ?? email },
             );
             user = created.user;
           }

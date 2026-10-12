@@ -6,6 +6,7 @@ import {
   getRevealEndsAt,
   getRevealOrder,
   getRevealBonuses,
+  getRevealedCount,
   getRevealStage,
   getScoreCount,
   revealTiming,
@@ -153,5 +154,38 @@ describe("点数の数え上げ", () => {
     expect(getScoreCount(80, [3, 1.5], end)).toEqual({ value: 84.5, bonuses: 2, settled: true });
     expect(end).toBeLessThan(revealTiming.scoreMs);
     expect(getScoreCount(80, [], t.similarityMs)).toEqual({ value: 80, bonuses: 0, settled: true });
+  });
+});
+
+describe("発表済みの人数", () => {
+  const order = [
+    { similarity: 80, speedBonus: 3, generationBonus: 1.5 },
+    { similarity: 60, speedBonus: null, generationBonus: null },
+  ];
+  const t = scoreCountTiming;
+  const scoreAt = revealTiming.introMs + revealTiming.judgingMs;
+  const at = (elapsedMs: number) => {
+    const current = stage(elapsedMs, order.length);
+    if (current.kind !== "reveal") throw new Error("発表中ではない");
+    return getRevealedCount(order, current);
+  };
+
+  it("点数の段階に入っても、再現度とボーナスを数え終えるまでは発表済みに数えない", () => {
+    expect(at(0)).toBe(0);
+    expect(at(scoreAt - 1)).toBe(0);
+    expect(at(scoreAt)).toBe(0);
+    // 1つ目のボーナスのスタンプを押した後も、2つ目を数え終えるまでは数えない。
+    expect(at(scoreAt + t.bonusStartMs + t.bonusCountMs)).toBe(0);
+    const settled = scoreAt + t.bonusStartMs + t.bonusGapMs + t.bonusCountMs;
+    expect(at(settled - 1)).toBe(0);
+    expect(at(settled)).toBe(1);
+    // 余韻の間も発表済みのまま、次の人の呼び出しに移る。
+    expect(at(slot - 1)).toBe(1);
+    expect(at(slot)).toBe(1);
+  });
+
+  it("ボーナスのない人は、再現度を数え終えた時点で数える", () => {
+    expect(at(slot + scoreAt + t.similarityMs - 1)).toBe(1);
+    expect(at(slot + scoreAt + t.similarityMs)).toBe(2);
   });
 });
