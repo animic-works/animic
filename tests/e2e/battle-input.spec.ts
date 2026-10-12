@@ -21,23 +21,8 @@ test("日本語の変換中は区切りを含む入力を保持し、変換後�
     if (message.type() === "error" && /controlled|defaultValue/.test(message.text()))
       inputWarnings.push(message.text());
   });
-  await executeLocalD1(
-    "INSERT OR REPLACE INTO topic (id, difficulty, image_url) VALUES ('e2e-input-topic', 'easy', 'https://example.invalid/topic.svg'); DELETE FROM rate_limit",
-  );
-  const code = await create(page);
-  const guest = await browser.newContext();
+  const guest = await openBattle(page, browser);
   try {
-    await join(await guest.newPage(), code, "ゲスト");
-    await page.evaluate(async (roomCode) => {
-      const data = {
-        code: roomCode,
-        settings: { difficulty: "easy" as const, durationSeconds: 600, selectionSeconds: 10 },
-        previousBattleId: null,
-      };
-      await window.animicTest.setRoomSettings({ data });
-      await window.animicTest.startBattle({ data });
-    }, code);
-    await page.goto(`/rooms/${code}`);
     const input = page.getByRole("combobox", { name: "プロンプト（キャラ）" });
     await input.focus();
     await input.dispatchEvent("compositionstart", { data: "" });

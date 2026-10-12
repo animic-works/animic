@@ -10,7 +10,6 @@ import { LobbyPage } from "./lobby-page";
 import { useRoomConnection } from "./use-room-connection";
 import type { PromptGroup } from "../image-generation/prompt-phrases";
 import type { BattleOptions } from "./battle-options";
-import { hasBattlesLeft } from "./room-state";
 import type { RoomSnapshot } from "./room-state";
 const silent = new Set(["接続中…", "接続済み"]);
 const temporary = new Set(["再接続中…", "受信した情報を確認できませんでした。"]);
@@ -117,9 +116,7 @@ export function RoomPage({
         names={names}
         icons={icons}
         participantId={participantId}
-        onRematch={
-          hasBattlesLeft(room.battleCount) ? () => setDismissed(screen.battle.id) : undefined
-        }
+        onRematch={() => setDismissed(screen.battle.id)}
         onTop={() => navigate("/")}
       />
     );
