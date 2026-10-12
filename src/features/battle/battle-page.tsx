@@ -9,7 +9,7 @@ import type { AccountIcon } from "../account/account-icon";
 import { PromptComposer } from "../image-generation/prompt-composer";
 import type { PromptGroup } from "../image-generation/prompt-phrases";
 import { GridBackdrop } from "../shared/visuals/grid-backdrop";
-import { getBattleClock, getBattleDeadline, isScoringSlow } from "./battle-clock";
+import { getBattleClock, getBattleDeadline, getWaitingClock, isScoringSlow } from "./battle-clock";
 import { BattlePlayers, BattleProgress, BattleRoomLabel, BattleTimer } from "./battle-header";
 import { getBattleImages, type BattleImagePick } from "./battle-images";
 import { BattleImagesPanel } from "./battle-images-panel";
@@ -123,6 +123,18 @@ export function BattlePage({
   const noImage = hasNoImageToSubmit(stage, battle.myGenerations);
   const remaining = useRemainingMs(battle.serverTime, getBattleDeadline(battle, stage), receivedAt);
   const clock = getBattleClock(battle, stage, remaining);
+  // 提出した後も、ほかの人が使える残り時間（生成、終わっていれば画像選択の猶予）を待機の表示に出す。
+  const generationLeft = useRemainingMs(
+    battle.serverTime,
+    stage === "waiting" ? battle.generationEndsAt : null,
+    receivedAt,
+  );
+  const selectionLeft = useRemainingMs(
+    battle.serverTime,
+    stage === "waiting" ? battle.selectionEndsAt : null,
+    receivedAt,
+  );
+  const waitingClock = getWaitingClock(battle, generationLeft, selectionLeft);
   // 採点の期限までの残り時間は出さず、時間がかかっていることだけを伝える。
   const scoringRemaining = useRemainingMs(
     battle.serverTime,
@@ -217,6 +229,9 @@ export function BattlePage({
         battle={battle}
         scoring={stage === "scoring"}
         slow={isScoringSlow(scoringRemaining)}
+        timer={
+          waitingClock && <BattleTimer stage={waitingClock.stage} clock={waitingClock.clock} />
+        }
         submitted={images.submitted}
         submittedNumber={images.submitted ? images.numberOf(images.submitted.id) : 0}
         opponentName={opponentId === undefined ? null : (names.get(opponentId) ?? "相手")}
