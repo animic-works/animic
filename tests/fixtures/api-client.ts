@@ -9,7 +9,7 @@ import {
   setRoomSettings,
 } from "../../src/features/room/room.functions";
 import {
-  getMyScoringMetrics,
+  getResultScoringMetrics,
   startBattle,
   submitBattleImage,
 } from "../../src/features/battle/battle.functions";
@@ -65,7 +65,7 @@ const api = {
   submitBattleImage,
   getMyBattleHistory,
   getMyBattleDetail,
-  getMyScoringMetrics,
+  getResultScoringMetrics,
   issueScoringLinkCode,
   getScoringAdminData,
   revokeScoringWorker,

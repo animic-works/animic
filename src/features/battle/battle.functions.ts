@@ -62,14 +62,26 @@ export const submitBattleImage = createServerFn({ method: "POST" })
   });
 
 /**
- * 結果画面に出す、自分の指標ごとの点。戦績の詳細と同じく採点ジョブの出力から読み、
- * ログインしていない参加者も使えるようにセッションの参加者IDで探す。ほかの参加者の指標は返さない。
- * 採点されていなければ`null`。
+ * 結果画面に出す、参加者の指標ごとの点。戦績の詳細と同じく採点ジョブの出力から読む。
+ * 最終スコアと同じく、採点で結果が決まった後にルームの参加者にだけ返す（`canViewScore`）。
+ * ログインしていない参加者も使えるよう、セッションの参加者IDで確かめる。見せられない・採点されていなければ`null`。
  */
-export const getMyScoringMetrics = createServerFn({ method: "GET" })
-  .validator(v.object({ battleId: v.pipe(v.string(), v.uuid()) }))
+export const getResultScoringMetrics = createServerFn({ method: "GET" })
+  .validator(
+    v.object({
+      code: roomCodeSchema,
+      battleId: v.pipe(v.string(), v.uuid()),
+      participantId: v.pipe(v.string(), v.nonEmpty()),
+    }),
+  )
   .handler(async ({ data }) => {
     setResponseHeader("Cache-Control", "private, no-store");
     const current = await createAuth().api.getSession({ headers: getRequestHeaders() });
-    return current ? getScoringMetrics(env.DB, data.battleId, current.user.id) : null;
+    if (!current) return null;
+    const visible = await env.ROOMS.getByName(data.code).canViewScore(
+      data.battleId,
+      current.user.id,
+      data.participantId,
+    );
+    return visible ? getScoringMetrics(env.DB, data.battleId, data.participantId) : null;
   });

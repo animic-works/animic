@@ -15,7 +15,6 @@ const base: BattleSnapshot = {
   selectionEndsAt: 75_000,
   scoringEndsAt: null,
   scores: null,
-  myScore: null,
   result: null,
   submissionsClosed: true,
   generationClosed: true,
@@ -103,8 +102,8 @@ describe("参加者ごとの結果", () => {
       ...base,
       scoringEndsAt: 320_000,
       scores: [
-        { participantId: "a", total: 0.82, imageUrl: "https://example.invalid/a-2.png" },
-        { participantId: "b", total: 0.64, imageUrl: "https://example.invalid/b-1.png" },
+        score("a", 0.82, "https://example.invalid/a-2.png"),
+        score("b", 0.64, "https://example.invalid/b-1.png"),
       ],
       result: { kind: "win", reason: "higher-score", winnerId: "a", decidedAt: 90_000 },
     };
@@ -131,8 +130,8 @@ describe("参加者ごとの結果", () => {
       ...base,
       scoringEndsAt: 320_000,
       scores: [
-        { participantId: "a", total: 0.5, imageUrl: "https://example.invalid/a-2.png" },
-        { participantId: "b", total: 0.5, imageUrl: "https://example.invalid/b-1.png" },
+        score("a", 0.5, "https://example.invalid/a-2.png"),
+        score("b", 0.5, "https://example.invalid/b-1.png"),
       ],
       result: { kind: "draw", reason: "same-score", decidedAt: 90_000 },
     };
@@ -170,8 +169,27 @@ describe("参加者ごとの結果", () => {
   });
 });
 
-function score(participantId: string, total: number) {
-  return { participantId, total, imageUrl: `https://example.invalid/${participantId}.png` };
+function score(
+  participantId: string,
+  total: number,
+  imageUrl = `https://example.invalid/${participantId}.png`,
+) {
+  return {
+    participantId,
+    similarity: total,
+    speedBonus: null,
+    generationBonus: null,
+    total,
+    imageUrl,
+    submission: {
+      participantId,
+      status: "submitted" as const,
+      generationId: `${participantId}-1`,
+      submittedAt: 10_000,
+      successfulGenerationCount: 1,
+      eligibleForSpeedBonus: true,
+    },
+  };
 }
 
 describe("3人以上の順位", () => {
