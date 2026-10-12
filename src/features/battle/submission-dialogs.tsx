@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { Grid } from "@animic/react/grid";
 import { SegmentedControl } from "@animic/react/segmented-control";
 import { TopicViewer, topicZoomLevels } from "./visuals/topic-viewer";
@@ -171,9 +171,12 @@ export function SubmissionWaitDialog({
   submitted,
   submittedNumber,
   opponentName,
+  timer,
 }: {
   open: boolean;
   battle: BattleSnapshot;
+  /** ほかの人が使える残り時間。全員の提出がそろうまで出す。 */
+  timer?: ReactNode;
   scoring: boolean;
   /** 採点に時間がかかっているか。採点中だけ使う。 */
   slow: boolean;
@@ -234,6 +237,7 @@ export function SubmissionWaitDialog({
                   : `${opponentName} さんの提出を待っています`}
             </Text>
           )}
+          {timer}
           {scoring && (
             <div role="status">
               {slow && (

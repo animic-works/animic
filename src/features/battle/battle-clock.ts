@@ -29,6 +29,29 @@ export function getBattleClock(battle: BattleTiming, stage: BattleStage, remaini
   } as const;
 }
 
+/**
+ * 提出した後の待機中に、ほかの人が使える残り時間を返す。生成の残りを数え、生成が終わっていれば画像選択の猶予を数える。
+ * 全員の提出がそろったら、残り時間は出さない（`null`）。
+ */
+export function getWaitingClock(
+  battle: BattleTiming & Pick<BattleSnapshot, "submissionsClosed">,
+  generationRemaining: number | null,
+  selectionRemaining: number | null,
+) {
+  if (battle.submissionsClosed) return null;
+  if (generationRemaining !== null && generationRemaining > 0)
+    return {
+      stage: "generating",
+      clock: getBattleClock(battle, "generating", generationRemaining),
+    } as const;
+  if (selectionRemaining !== null && selectionRemaining > 0)
+    return {
+      stage: "selecting",
+      clock: getBattleClock(battle, "selecting", selectionRemaining),
+    } as const;
+  return null;
+}
+
 /** 採点期限（`scoringEndsAt`）までの残りから、採点の開始から時間がかかっているかを返す。 */
 export function isScoringSlow(remaining: number | null) {
   return remaining !== null && remaining <= scoringTimeoutMs - slowScoringMs;

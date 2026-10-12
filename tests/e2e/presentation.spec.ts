@@ -221,3 +221,43 @@ for (const viewport of [
     }
   });
 }
+
+test("先に提出した人も、待機の表示で残り時間を確かめられる", async ({ page, browser }) => {
+  test.setTimeout(60000);
+  const context = await browser.newContext({ reducedMotion: "reduce" });
+  try {
+    const guest = await context.newPage();
+    const code = await openBattle(page, guest, {
+      difficulty: "easy",
+      durationSeconds: 60,
+      selectionSeconds: 10,
+    });
+    await expect(page.getByRole("timer")).toBeVisible();
+    const battleId = (await roomBattle(page, code))?.id ?? "";
+    const generationId = crypto.randomUUID();
+    await page.evaluate((data) => window.animicTest.generateImage({ data }), {
+      code,
+      battleId,
+      generationId,
+      prompt: "e2e early submit",
+    });
+    await expect
+      .poll(async () => (await roomBattle(page, code))?.myGenerations[0]?.status)
+      .toBe("succeeded");
+    await page.evaluate((data) => window.animicTest.submitBattleImage({ data }), {
+      code,
+      battleId,
+      generationId,
+    });
+    const wait = page.getByRole("dialog", { name: "提出しました！" });
+    await expect(wait).toBeVisible();
+    const timer = wait.getByRole("timer");
+    await expect(timer).toBeVisible();
+    await expect(timer).toContainText("TIME LEFT");
+    // 相手がまだ生成できる間は、残り時間が進む。
+    const first = await timer.textContent();
+    await expect.poll(() => timer.textContent(), { timeout: 3000 }).not.toBe(first);
+  } finally {
+    await context.close();
+  }
+});
