@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import * as v from "valibot";
 
 import { requireAdmin } from "../../lib/admin.server";
-import { imageModelSchema } from "./image-models";
+import { imageModelSchema, imageStepsSchema } from "./image-models";
 import { getNovelAiQueue } from "./novelai.server";
 
 export const getImageModel = createServerFn({ method: "GET" }).handler(() => {
@@ -16,4 +16,17 @@ export const saveImageModel = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     requireAdmin();
     await getNovelAiQueue().setModel(data.model);
+  });
+
+export const getImageSteps = createServerFn({ method: "GET" }).handler(() => {
+  requireAdmin();
+  return getNovelAiQueue().getSteps();
+});
+
+/** 保存した後にNovelAIへ送る生成から、このステップ数を使う。 */
+export const saveImageSteps = createServerFn({ method: "POST" })
+  .validator(v.object({ steps: imageStepsSchema }))
+  .handler(async ({ data }) => {
+    requireAdmin();
+    await getNovelAiQueue().setSteps(data.steps);
   });

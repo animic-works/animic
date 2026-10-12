@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
+import * as v from "valibot";
+
+import { defaultImageSteps, imageStepsSchema } from "./image-models";
 import { buildGeneratePayload, readImageResponse, requestImage } from "./novelai";
 
 const v5UndesiredContent =
@@ -149,7 +152,7 @@ async function zip(data: Uint8Array<ArrayBuffer>, method: 0 | 8) {
 }
 
 describe("NovelAIへのペイロード", () => {
-  const input = { prompt: "1girl, solo", characters: [], stylePrompt: "", seed: 12345 };
+  const input = { prompt: "1girl, solo", characters: [], stylePrompt: "", steps: 28, seed: 12345 };
   it.each(models)("$labelの固定値と品質タグを参考実装と同じ形で送る", ({ model, reference }) => {
     expect(buildGeneratePayload({ ...input, model })).toStrictEqual(reference);
   });
@@ -211,6 +214,21 @@ describe("NovelAIへのペイロード", () => {
   );
 });
 
+describe("生成のステップ数", () => {
+  it.each(models)("$labelでは、管理画面で決めたステップ数をそのまま送る", ({ model }) => {
+    const base = { prompt: "1girl", characters: [], stylePrompt: "", seed: 1, model };
+    expect(buildGeneratePayload({ ...base, steps: 15 }).parameters.steps).toBe(15);
+    expect(buildGeneratePayload({ ...base, steps: 28 }).parameters.steps).toBe(28);
+  });
+  it("15〜28の整数だけを受け付け、既定は28", () => {
+    expect(defaultImageSteps).toBe(28);
+    for (const steps of [15, 20, 28])
+      expect(v.safeParse(imageStepsSchema, steps).success).toBe(true);
+    for (const steps of [14, 29, 20.5, Number.NaN, "20"])
+      expect(v.safeParse(imageStepsSchema, steps).success).toBe(false);
+  });
+});
+
 describe("NovelAIの応答の読み取り", () => {
   it("無圧縮とdeflateのZIPから最初の画像を取り出す", async () => {
     expect(await readImageResponse(await zip(png, 0), "application/x-zip-compressed")).toEqual(png);
@@ -236,6 +254,7 @@ describe("NovelAIへの生成の要求", () => {
     characters: [],
     stylePrompt: "artist:example",
     model: "nai-diffusion-4-5-curated",
+    steps: 20,
   } as const;
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -259,6 +278,7 @@ describe("NovelAIへの生成の要求", () => {
       input: "1girl",
       model: "nai-diffusion-4-5-curated",
       parameters: {
+        steps: 20,
         v4_prompt: { caption: { base_caption: `1girl, artist:example, ${v45QualityTags}` } },
       },
     });

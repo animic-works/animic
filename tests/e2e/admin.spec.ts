@@ -43,6 +43,8 @@ async function adminCalls(page: Page) {
         }),
       () => window.animicTest.getImageModel(),
       () => window.animicTest.saveImageModel({ data: { model: "nai-diffusion-4-5-curated" } }),
+      () => window.animicTest.getImageSteps(),
+      () => window.animicTest.saveImageSteps({ data: { steps: 20 } }),
       () => window.animicTest.getBackup(),
       () => window.animicTest.applyBackupChunk({ data: {} }),
     ];
@@ -199,6 +201,50 @@ test("画像生成のモデルを切り替えると表示と保存先が変わ�
   await models.getByText("V5 Curated").click();
   await page.getByRole("button", { name: "保存する" }).click();
   await expect(current).toContainText("nai-diffusion-5-curated");
+});
+
+test("生成のステップ数を15〜28で保存し、範囲外や整数でない値は保存しない", async ({ page }) => {
+  await loginAdmin(page);
+  await openAdminMenu(page, "画像生成");
+  const steps = page.getByRole("textbox", { name: "ステップ数" });
+  const save = page.getByRole("button", { name: "保存する" });
+  try {
+    await expect(steps).toHaveValue("28");
+    await steps.fill("18");
+    await save.click();
+    await expect(page.getByText("保存しました")).toBeVisible();
+    // 生成キューのDOに保存したステップ数を、開き直しても表示する。
+    await page.reload();
+    await expect(steps).toHaveValue("18");
+
+    for (const [value, message] of [
+      ["14", "ステップ数は15以上にしてください。"],
+      ["29", "ステップ数は28以下にしてください。"],
+      ["2a", "ステップ数は数で指定してください。"],
+    ] as const) {
+      await steps.fill(value);
+      await save.click();
+      await expect(page.getByRole("alert")).toContainText(message);
+    }
+    // 画面からは入らない小数も、Server Functionで拒否する。
+    await loadApi(page);
+    const decimal = await page.evaluate(async () => {
+      try {
+        await window.animicTest.saveImageSteps({ data: { steps: 20.5 } });
+        return "成功";
+      } catch (error) {
+        return error instanceof Error ? error.message : "失敗";
+      }
+    });
+    expect(decimal).toContain("ステップ数は整数で指定してください。");
+    expect(await page.evaluate(() => window.animicTest.getImageSteps())).toBe(18);
+    await page.goto("/admin/image-generation");
+    await expect(steps).toHaveValue("18");
+  } finally {
+    // 生成キューのDOはテストの間で共有するため、既定のステップ数に戻す。
+    await loadApi(page);
+    await page.evaluate(() => window.animicTest.saveImageSteps({ data: { steps: 28 } }));
+  }
 });
 
 test("採点の重みとボーナスを保存し、合計が100でない重み・CCIPだけの重み・範囲外のボーナスは保存しない", async ({

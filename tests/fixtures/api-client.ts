@@ -36,7 +36,9 @@ import {
 } from "../../src/features/image-generation/prompt-phrases.functions";
 import {
   getImageModel,
+  getImageSteps,
   saveImageModel,
+  saveImageSteps,
 } from "../../src/features/image-generation/image-generation-admin.functions";
 import { generateImage } from "../../src/features/image-generation/image-generation.functions";
 import { updateScoringWeights } from "../../src/features/scoring/scoring-weights.functions";
@@ -79,6 +81,8 @@ const api = {
   savePromptPhraseImage,
   getImageModel,
   saveImageModel,
+  getImageSteps,
+  saveImageSteps,
   updateScoringWeights,
   getBackup,
   putBackupImage,
