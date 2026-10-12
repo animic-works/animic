@@ -425,7 +425,7 @@ test("生成した画像を提出すると、採点ワーカーへR2の生成画
 
     // 採点された2人を1人ずつ発表（1人8秒）してから、最終の結果を出す。
     await guest.goto(`/rooms/${code}`);
-    await expect(guest.getByRole("heading", { name: "2nd", exact: true })).toBeVisible({
+    await expect(guest.getByRole("heading", { name: "2nd!", exact: true })).toBeVisible({
       timeout: 30_000,
     });
     await expectLoaded(guest.getByRole("img", { name: "採点ホストさんの提出画像" }));
