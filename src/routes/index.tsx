@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { initialAccountHint } from "../features/home/account-hint";
+import { getCurrentParticipant } from "../lib/auth.functions";
 import { initialSection } from "../features/home/initial-section";
 
 import { getHomeContent } from "../features/home/home-content.functions";
@@ -13,12 +13,15 @@ const title = "Animic | その一枚に、どこまで近づける？";
 const origin = "https://animic.party";
 
 export const Route = createFileRoute("/")({
-  loader: () => getHomeContent(),
+  loader: async () => {
+    const [content, participant] = await Promise.all([getHomeContent(), getCurrentParticipant()]);
+    return { ...content, account: participant?.account ?? null };
+  },
+  headers: () => ({ "Cache-Control": "private, no-store" }),
   head: ({ loaderData }) => {
     return {
       scripts: [
         { children: initialSection },
-        { children: initialAccountHint },
         {
           type: "application/ld+json",
           children: JSON.stringify({
@@ -46,5 +49,6 @@ export const Route = createFileRoute("/")({
 });
 
 function Home() {
-  return <HomePage content={Route.useLoaderData()} />;
+  const { account, ...content } = Route.useLoaderData();
+  return <HomePage content={content} account={account} />;
 }

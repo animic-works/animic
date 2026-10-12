@@ -463,7 +463,7 @@ test("ヒーローの操作は縦長の画面でも文言を折り返さない",
   }
 });
 
-test("前回ログインしていたブラウザーでは「マイページ」を見せずにアイコンを出し、ログインしていなければ最初から「マイページ」を出す", async ({
+test("ログイン済みでは「マイページ」を見せずにアイコンを出し、ログインしていなければ最初から「マイページ」を出す", async ({
   page,
 }) => {
   // 読み込みの間、補助操作の欄に見えていたものを、最初のフレームから記録する。
@@ -489,7 +489,7 @@ test("前回ログインしていたブラウザーでは「マイページ」�
   expect(await seenActions()).toEqual(["マイページ"]);
 
   await signIn(page.context());
-  // 最初の確認でログインを覚え、次の読み込みからは確認が終わるまで隠す。
+  // ログイン直後も再読み込みも、最初からアカウントを表示する。
   await page.reload({ waitUntil: "networkidle" });
   await expect(page.getByRole("button", { name: /^アカウント/ })).toBeVisible();
   await page.reload({ waitUntil: "networkidle" });

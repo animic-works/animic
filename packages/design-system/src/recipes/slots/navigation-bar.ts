@@ -5,9 +5,6 @@ export const navigationBar = defineSlotRecipe({
   slots: ["root", "brand", "content", "links", "primaryActions", "actions", "label", "indicator"],
   base: {
     root: {
-      "&[data-initial-visible]": {
-        _navigationCompact: { transform: "none", visibility: "visible", transition: "none" },
-      },
       position: "fixed",
       insetBlockStart: "0",
       insetInlineEnd: "0",
@@ -148,9 +145,6 @@ export const navigationBar = defineSlotRecipe({
       "[data-navigation-overflow] &": { maxWidth: "100%", flexWrap: "wrap" },
     },
     actions: {
-      // 文書のルートに属性がある間（ログインの確認中など）は、場所を保ったまま隠す。
-      // 属性は利用側が描画前のスクリプトで付け、内容が決まったら外す。
-      ":root[data-animic-navigation-actions-pending] &": { visibility: "hidden" },
       display: "flex",
       alignItems: "center",
       gap: "3",
@@ -214,6 +208,13 @@ export const navigationBar = defineSlotRecipe({
             transition:
               "transform 350ms cubic-bezier(0.2, 0.9, 0.3, 1), visibility 0ms linear 350ms",
             _motionReduce: { transition: "none" },
+            // ハッシュ直アクセスでは初期HTMLの段階からナビを表示する。
+            // base層ではvariantの非表示指定に負けるため、同じvariant内で上書きする。
+            "&[data-initial-visible]": {
+              transform: "none",
+              visibility: "visible",
+              transition: "none",
+            },
           },
         },
       },
