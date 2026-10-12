@@ -44,7 +44,7 @@ async function saveResult(result: SavedBattleResult) {
   );
 }
 
-const illustration = (id: number) => `${origin}/images/account-icons/illustration-${id}.svg`;
+const illustration = (id: number) => `${origin}/images/account-icons/illustration-${id}.webp`;
 
 /** 全員が提出し、`totals`の人が採点された対戦。数だけの人はボーナスなしで、再現度を最終スコアにする。 */
 function scoredResult(
@@ -359,7 +359,7 @@ test("表示名とアイコンを変え、次に作るルームから使う", as
   await page.reload();
   await expect(page.getByRole("button", { name: "アイコンを変更" }).locator("img")).toHaveAttribute(
     "src",
-    "/images/account-icons/illustration-3.svg",
+    "/images/account-icons/illustration-3.webp",
   );
 
   await page.goto("/start");
@@ -368,7 +368,7 @@ test("表示名とアイコンを変え、次に作るルームから使う", as
   await expect(page.getByRole("heading", { name: "ルームコード", exact: true })).toBeVisible();
   const players = page.getByRole("list", { name: "プレイヤー" });
   await expect(players.getByText("あたらしい名前")).toBeVisible();
-  await expect(players.locator('img[src="/images/account-icons/illustration-3.svg"]')).toHaveCount(
+  await expect(players.locator('img[src="/images/account-icons/illustration-3.webp"]')).toHaveCount(
     1,
   );
 });
