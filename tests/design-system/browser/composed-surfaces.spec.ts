@@ -63,6 +63,15 @@ test("編集領域は利用可能な幅で縦に並び、開閉と文字拡大�
   const editorBox = (await editor.boundingBox())!;
   const mediaBox = (await media.boundingBox())!;
   expect(editorBox.x + editorBox.width).toBeLessThan(mediaBox.x);
+  // 縦長のタブレット（iPadの縦向き）でも、比較を上・編集欄を下端に固定して開閉できる。
+  await page.setViewportSize({ width: 820, height: 1180 });
+  await expect(page.getByRole("button", { name: "編集を畳む" })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight)).toBe(
+    true,
+  );
+  const docked = (await editor.boundingBox())!;
+  expect(docked.y + docked.height).toBeCloseTo(1180, 0);
+  expect((await media.boundingBox())!.y).toBeLessThan(docked.y);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("button", { name: "編集を畳む" }).click();
   await expect(editor.getByRole("textbox", { name: "説明" })).toBeHidden();

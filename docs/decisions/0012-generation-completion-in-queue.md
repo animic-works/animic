@@ -2,7 +2,7 @@
 
 - 状態: 承認済み
 - 決定日: 2026-10-12
-- 関連: [アーキテクチャ](../architecture.md#依存関係とクライアントサーバーの分離)、[ADR 0008](0008-generated-image-webp.md)、[ADR 0011](0011-generated-image-storage.md)、Issue #84
+- 関連: [アーキテクチャ](../architecture.md#画像生成と配信)、[ADR 0008](0008-generated-image-webp.md)、[ADR 0011](0011-generated-image-storage.md)、Issue #84
 
 ## 背景
 

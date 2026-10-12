@@ -2,6 +2,13 @@ import base from "@pandacss/preset-base";
 // 利用先ごとの成立条件。同じ値でも他のComponentへ自動適用しない。
 const twoColumnsMin = "30em";
 const wideLayoutMin = "54em";
+// Workspaceの編集欄を下端に固定する画面。スマホの縦長（幅560px以下で高さ480pxを超える）と、
+// 縦長のタブレット（iPadの縦向きなど、幅860px以下で幅が高さの4/5以下）。
+// `workspaceFlow`はその補集合、`DockedShort`はそのうち高さ720px以下の画面。
+const dockedPhone = "(max-width: 35em) and (height > 30em)";
+const dockedTablet = "(max-width: 53.75em) and (height > 30em) and (aspect-ratio <= 4/5)";
+const workspaceDocked = `@media ${dockedPhone}, ${dockedTablet}`;
+const workspaceDockedShort = `@media ${dockedPhone} and (height <= 45em), ${dockedTablet} and (height <= 45em)`;
 // アートワークの配置を切り替える条件。Visualの検査もこの一覧を参照する。
 export const artworkConditions = {
   artworkNarrow: "@media (max-width: 900px)",
@@ -23,8 +30,8 @@ export const conditions = {
   avatarGroupNarrow: "@media (max-width: 35em)",
   composerCompact: "@media (max-width: 35em)",
   // Workspaceの下端に固定した編集欄の中（Workspaceの`workspaceDocked`と同じ条件）。
-  composerDocked: "@media (max-width: 35em) and (height > 30em)",
-  composerDockedShort: "@media (max-width: 35em) and (height > 30em) and (height <= 45em)",
+  composerDocked: workspaceDocked,
+  composerDockedShort: workspaceDockedShort,
   // プロンプト欄の幅が狭いとき（幅1150px前後の画面の左の列）。部品を一回り小さくする。
   composerNarrow: "@container animic-composer (max-width: 16.875rem)",
   readoutCompact: "@media (max-width: 35em)",
@@ -39,11 +46,16 @@ export const conditions = {
   podiumCompact: "@media (max-width: 35em)",
   comparisonStageCompact: "@container animic-comparison-stage (max-width: 53.75em)",
   noticeCompact: "@container animic-notice (max-width: 35em)",
-  // 縦長の狭い画面（高さ480pxを超える）では、編集欄を下端に固定して1画面に収める。
-  workspaceDocked: "@media (max-width: 35em) and (height > 30em)",
-  workspaceFlow: "@media (width > 35em), (height <= 30em)",
+  // 縦長の画面では、編集欄を下端に固定して1画面に収める。
+  workspaceDocked,
+  workspaceFlow:
+    "@media (height <= 30em), (width > 53.75em), (width > 35em) and (aspect-ratio > 4/5)",
   // 下端の編集欄のうち、高さ720px以下の画面。比較画像と余白を詰めて編集欄の高さを残す。
-  workspaceDockedShort: "@media (max-width: 35em) and (height > 30em) and (height <= 45em)",
+  workspaceDockedShort,
+  // 下端の編集欄のうち、スマホとそれより広い縦長のタブレット（互いに重ならない）。
+  // タブレットの比較欄は見出しと枠を持つため、畳んだときの寸法を別に取る。
+  workspaceDockedPhone: `@media ${dockedPhone}`,
+  workspaceDockedTablet: `@media (width > 35em) and ${dockedTablet}`,
   workspaceCompact: "@container animic-workspace (max-width: 53.75em)",
   workspaceNarrow: "@container animic-workspace (max-width: 35em)",
   workspaceVertical: "@container animic-workspace (width < 40em)",
