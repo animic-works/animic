@@ -259,7 +259,7 @@ WebSocketは状態の配信に使い、開始・生成・提出などの操作�
 
 ### Discord Activities
 
-`/activity`は`DiscordRoomPage`でSDKの準備・認証・入室を行い、既存の`RoomPage`を表示します。再戦はWebと同じRoomPageの操作で待機画面へ戻り、同じルームで次の対戦を開始します。SDKは`src/lib/discord-sdk.ts`から動的に読み、通常のWeb画面やSSRでは初期化しません。Discordの起動パラメータがルート`/`に届いた場合は、`src/server.ts`がクエリを保って`/activity`へ転送します。このパラメータだけでは参加資格を認めません。
+`/activity`は`DiscordRoomPage`でSDKの準備・認証・入室を行い、既存の`RoomPage`を表示します。再戦はWebと同じRoomPageの操作で待機画面へ戻り、同じルームで次の対戦を開始します。SDKは`src/lib/discord-sdk.ts`から動的に読み、通常のWeb画面やSSRでは初期化しません。Discordの起動パラメータ（`frame_id`・`instance_id`）がルート`/`に届いた場合は、`src/router.tsx`のrewriteで内部ルートを`/activity`として扱います。DiscordのproxyがHTTP転送を内部で追ってもブラウザのURLは変わらないため、HTTP転送を使わず、SSRとクライアントで同じルートを描画します。起動パラメータはそのまま保持します。このパラメータだけでは参加資格を認めません。Activityの初期表示は接続待ちだけなので、`UIScript`を出さず、起動後の`UIProvider`でスクロールバーを初期化します。Discordのproxyが`head`へ追加する空白・scriptと同期scriptのhydrationが衝突することを避け、ロビーを表示する前に初期化します。
 
 SDKの`authorize`には`identify`・`email`とS256のPKCE challengeを指定します。認可コードとverifierをBetter Authの`/api/auth/sign-in/discord-activity`へ送り、`discord-api.server.ts`がClient Secretでコードを交換して`/users/@me`を取得します。Bot認証のActivity Instance APIで、そのユーザーが指定した起動単位に参加していることも確かめます。`discord-auth.server.ts`はBetter Authの`handleOAuthUserInfo`に検証済み情報を渡し、通常のDiscordログインと同じ`account(providerId, accountId)`から`user.id`を解決してセッションを発行します。この組には一意制約を置きます。戦績は既存の参加者IDに保存し、別の戦績テーブルや後からの複製処理は持ちません。メールアドレスによる連携は通常のログインと同じ検証を使います。
 
@@ -364,7 +364,7 @@ CSSは`@animic/styled-system/styles.css`から一度読み込みます。この�
 
 文書全体を構成する場合は`Page`を使えます。`Page`は基礎設定の適用範囲と文書用の`data-animic-page`を付け、`body`の既定の余白を消します。`scroll="sections"`を指定した場合だけ、文書にCSS Scroll Snapを適用します。スクロールの所有者は文書のままとし、ホイール・タッチ・慣性スクロールをJavaScriptで置き換えません。ページ内へUIの一部を埋め込む用途には`Page`を使いません。
 
-アプリ全体を`UIProvider`（`/ui-provider`）で一度包み、SSRの`head`には同じサブパスの`UIScript`を配置します。Providerは文書内とPortalの操作方法を追跡し、文書のオーバーレイスクロールバーを管理します。スクリプトは初回描画前にネイティブバーの表示を切り替え、本文の幅を後から変更しません。JavaScript無効時・起動失敗時とforced-colorsではネイティブ表示を使います。スクリプトが変更する`html`の属性だけはhydrationの比較対象から外します。余白の予約やDialogごとの横位置補正は行いません。
+アプリ全体を`UIProvider`（`/ui-provider`）で一度包み、Web画面のSSRの`head`には同じサブパスの`UIScript`を配置します。Activityでの初期化は[Discord Activities](#discord-activities)に従います。Providerは文書内とPortalの操作方法を追跡し、文書のオーバーレイスクロールバーを管理します。スクリプトは初回描画前にネイティブバーの表示を切り替え、本文の幅を後から変更しません。JavaScript無効時・起動失敗時とforced-colorsではネイティブ表示を使います。スクリプトが変更する`html`の属性だけはhydrationの比較対象から外します。余白の予約やDialogごとの横位置補正は行いません。
 
 ### Reactの公開API
 

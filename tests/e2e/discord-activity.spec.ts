@@ -180,89 +180,131 @@ test("WebからActivityページを開いた場合は起動方法を案内する
   );
 });
 
-test("実際のEmbedded SDKで準備・認可・認証を経てロビーを開く", async ({ page, context }) => {
-  test.setTimeout(45_000);
-  const id = randomUUID();
-  const instanceId = randomUUID();
-  const commands: string[] = [];
-  await page.exposeFunction("animicDiscordCommand", async (input: unknown) => {
-    const command = v.parse(
-      v.object({ cmd: v.string(), nonce: v.string(), args: v.unknown() }),
-      input,
-    );
-    commands.push(command.cmd);
-    let data: unknown = {};
-    if (command.cmd === "AUTHORIZE") {
-      const args = v.parse(
-        v.object({
-          code_challenge: v.string(),
-          code_challenge_method: v.literal("S256"),
-          scope: v.array(v.string()),
-        }),
-        command.args,
+for (const entryPath of ["/", "/activity"]) {
+  test(`${entryPath}から実際のEmbedded SDKで準備・認可・認証を経てロビーを開く`, async ({
+    page,
+    context,
+  }) => {
+    test.setTimeout(45_000);
+    const id = randomUUID();
+    const instanceId = randomUUID();
+    const commands: string[] = [];
+    await page.exposeFunction("animicDiscordCommand", async (input: unknown) => {
+      const command = v.parse(
+        v.object({ cmd: v.string(), nonce: v.string(), args: v.unknown() }),
+        input,
       );
-      expect(args.scope).toEqual(["identify", "email"]);
-      const response = await context.request.post(`${fakeDiscordUrl}/e2e/grant`, {
-        data: {
-          id,
-          instanceId,
-          email: `${id}@example.test`,
-          challenge: args.code_challenge,
+      commands.push(command.cmd);
+      let data: unknown = {};
+      if (command.cmd === "AUTHORIZE") {
+        const args = v.parse(
+          v.object({
+            code_challenge: v.string(),
+            code_challenge_method: v.literal("S256"),
+            scope: v.array(v.string()),
+          }),
+          command.args,
+        );
+        expect(args.scope).toEqual(["identify", "email"]);
+        const response = await context.request.post(`${fakeDiscordUrl}/e2e/grant`, {
+          data: {
+            id,
+            instanceId,
+            email: `${id}@example.test`,
+            challenge: args.code_challenge,
+          },
+        });
+        data = await response.json();
+      } else if (command.cmd === "AUTHENTICATE") {
+        const args = v.parse(v.object({ access_token: v.string() }), command.args);
+        data = {
+          access_token: args.access_token,
+          user: { id, username: "Discord参加者", discriminator: "0", public_flags: 0 },
+          scopes: ["identify", "email"],
+          expires: new Date(Date.now() + 3600_000).toISOString(),
+          application: { id: e2eOAuthClients.discord.id, name: "Animic", description: "E2E" },
+        };
+      }
+      return { cmd: command.cmd, nonce: command.nonce, evt: null, data };
+    });
+    await page.addInitScript(() => {
+      const messageOrigin = window.location.origin;
+      const dispatch = (payload: unknown) =>
+        window.dispatchEvent(
+          new MessageEvent("message", {
+            origin: messageOrigin,
+            data: [1, payload],
+          }),
+        );
+      // DiscordクライアントのpostMessage応答だけを模擬し、SDKとAPIは本物を使う。
+      Object.defineProperty(window, "postMessage", {
+        value: (message: unknown) => {
+          if (!Array.isArray(message)) return;
+          if (message[0] === 0) {
+            window.setTimeout(
+              () =>
+                dispatch({
+                  cmd: "DISPATCH",
+                  evt: "READY",
+                  nonce: null,
+                  data: {
+                    v: 1,
+                    config: { api_endpoint: "//discord.com/api", environment: "production" },
+                  },
+                }),
+              0,
+            );
+          } else if (message[0] === 1) {
+            void window.animicDiscordCommand(message[1]).then(dispatch);
+          }
         },
       });
-      data = await response.json();
-    } else if (command.cmd === "AUTHENTICATE") {
-      const args = v.parse(v.object({ access_token: v.string() }), command.args);
-      data = {
-        access_token: args.access_token,
-        user: { id, username: "Discord参加者", discriminator: "0", public_flags: 0 },
-        scopes: ["identify", "email"],
-        expires: new Date(Date.now() + 3600_000).toISOString(),
-        application: { id: e2eOAuthClients.discord.id, name: "Animic", description: "E2E" },
-      };
-    }
-    return { cmd: command.cmd, nonce: command.nonce, evt: null, data };
-  });
-  await page.addInitScript(() => {
-    const messageOrigin = window.location.origin;
-    const dispatch = (payload: unknown) =>
-      window.dispatchEvent(
-        new MessageEvent("message", {
-          origin: messageOrigin,
-          data: [1, payload],
-        }),
-      );
-    // DiscordクライアントのpostMessage応答だけを模擬し、SDKとAPIは本物を使う。
-    Object.defineProperty(window, "postMessage", {
-      value: (message: unknown) => {
-        if (!Array.isArray(message)) return;
-        if (message[0] === 0) {
-          window.setTimeout(
-            () =>
-              dispatch({
-                cmd: "DISPATCH",
-                evt: "READY",
-                nonce: null,
-                data: {
-                  v: 1,
-                  config: { api_endpoint: "//discord.com/api", environment: "production" },
-                },
-              }),
-            0,
-          );
-        } else if (message[0] === 1) {
-          void window.animicDiscordCommand(message[1]).then(dispatch);
-        }
-      },
     });
+    const entryUrl = `${entryPath}?frame_id=test&instance_id=${instanceId}&platform=desktop`;
+    if (entryPath === "/") {
+      const initial = await context.request.get(entryUrl, { maxRedirects: 0 });
+      expect(initial.status()).toBe(200);
+      expect(initial.headers()["location"]).toBeUndefined();
+      expect(await initial.text()).toContain("Animic | Discord");
+    }
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    page.on("console", (message) => {
+      if (message.type() === "error") errors.push(message.text());
+    });
+    if (entryPath === "/") {
+      // HTMLを差し替えたページでも、テスト用のlocalhost WebSocketへ接続できるようにする。
+      await context.grantPermissions(["local-network-access"], { origin });
+      await page.route(`**${entryUrl}`, async (route) => {
+        const response = await route.fetch();
+        const html = await response.text();
+        // Discord proxyが追加する改行・script・nonceとCSPを再現する。
+        await route.fulfill({
+          response,
+          headers: {
+            ...response.headers(),
+            "Content-Security-Policy": "script-src 'self' 'nonce-discord-proxy-test'",
+          },
+          body: html
+            .replace(
+              "<script",
+              '\n<script type="text/javascript">/* Discord proxy */</script>\n<script',
+            )
+            .replaceAll("<script", '<script nonce="discord-proxy-test"'),
+        });
+      });
+    }
+    await page.goto(entryUrl);
+    await expect(page.getByRole("heading", { name: "ロビー", exact: true })).toBeVisible({
+      timeout: 20_000,
+    });
+    expect(errors).toEqual([]);
+    expect(new URL(page.url()).searchParams.get("instance_id")).toBe(instanceId);
+    await expect(page.getByRole("button", { name: "スタート", exact: true })).toHaveCount(0);
+    expect(commands.slice(0, 2)).toEqual(["AUTHORIZE", "AUTHENTICATE"]);
+    await expect(page.getByRole("link", { name: "Animic トップ" })).toHaveCount(0);
+    await page.getByRole("button", { name: "招待する", exact: true }).first().click();
+    await page.getByRole("button", { name: "Discordで招待", exact: true }).click();
+    await expect.poll(() => commands).toContain("OPEN_INVITE_DIALOG");
   });
-  await page.goto(`/activity?frame_id=test&instance_id=${instanceId}&platform=desktop`);
-  await expect(page.getByRole("heading", { name: "ロビー", exact: true })).toBeVisible({
-    timeout: 20_000,
-  });
-  expect(commands.slice(0, 2)).toEqual(["AUTHORIZE", "AUTHENTICATE"]);
-  await expect(page.getByRole("link", { name: "Animic トップ" })).toHaveCount(0);
-  await page.getByRole("button", { name: "招待する", exact: true }).first().click();
-  await page.getByRole("button", { name: "Discordで招待", exact: true }).click();
-  await expect.poll(() => commands).toContain("OPEN_INVITE_DIALOG");
-});
+}
