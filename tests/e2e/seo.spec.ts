@@ -6,6 +6,7 @@ const description =
   "お題のイラストをAI画像生成で再現し、どれだけ似せられたかを友だちと競うプロンプト対戦ゲーム";
 const shareDescription =
   "お題のイラストを、プロンプトだけでAIに再現させよう。より近い1枚を作ったほうが勝ち！";
+const inviteDescription = `Animicでの対戦に招待されました。${shareDescription}`;
 const origin = "https://animic.party";
 
 test("検索・共有メタ情報とサイト名が初期HTMLに一度だけ出る", async ({ browser }) => {
@@ -167,7 +168,7 @@ test("招待と各ページが共通画像の共有カードを初期HTMLへ出�
   const guest = await context.newPage();
   try {
     for (const [path, cardTitle, cardDescription, target] of [
-      [`/rooms/${code}`, "対戦への招待 | Animic", shareDescription, `/rooms/${code}`],
+      [`/rooms/${code}`, `ルーム: ${code} | Animic`, inviteDescription, `/rooms/${code}`],
       ["/start", "ルームを作る | Animic", shareDescription, "/start"],
       ["/terms", "利用規約 | Animic", "Animicの利用規約です。", "/terms"],
       [
@@ -202,7 +203,7 @@ test("招待と各ページが共通画像の共有カードを初期HTMLへ出�
     await page.goto(`/rooms/${code}`);
     await expect(page.locator('meta[property="og:title"]')).toHaveAttribute(
       "content",
-      "対戦への招待 | Animic",
+      `ルーム: ${code} | Animic`,
     );
     expect(await page.locator("head").innerHTML()).not.toContain(privateName);
   } finally {
