@@ -1,18 +1,21 @@
+import type { Ref } from "react";
 import { ActionGroup } from "@animic/react/action-group";
 import { Avatar } from "@animic/react/avatar";
 import { Button } from "@animic/react/button";
 import { Container } from "@animic/react/container";
 import { Heading } from "@animic/react/heading";
 import { Layer, LayerItem } from "@animic/react/layer";
+import { ButtonLink } from "@animic/react/link";
 import { Podium } from "@animic/react/podium";
 import { RecordItem, RecordList } from "@animic/react/record-list";
 import { Stack } from "@animic/react/stack";
 import { Text } from "@animic/react/text";
 import { accountIconAvatar, type AccountIcon } from "../account/account-icon";
 import { playerPalettes } from "../room/room-presentation";
+import { XLogoIcon } from "../shared/icons";
 import { getRanking, ordinal, type RankingEntry } from "./battle-outcome";
 import type { BattleSnapshot } from "./battle-state";
-import { ResultBreakdown } from "./result-breakdown";
+import { ResultBreakdown, type ResultMetricsStore } from "./result-breakdown";
 import {
   Crown,
   ResultBurst,
@@ -25,21 +28,35 @@ function formatTotal(total: number | null) {
   return total === null ? "—" : total.toFixed(1);
 }
 
-/** 3人以上の対戦の結果。順位の見出し、上位3人の表彰台、全員の順位と、順位の付いた全員のスコアの内訳を表示する。 */
+/** 順位と最終スコアを入れたXの投稿画面。ルームや結果のURLは入れず、トップページへ案内する。 */
+function shareUrl(rank: number, count: number, total: number | null) {
+  const score = total === null ? "" : `（${formatTotal(total)}pt）`;
+  const params = new URLSearchParams({
+    text: `Animicの対戦で${count}人中${rank}位になりました！${score}`,
+    url: "https://animic.party/",
+  });
+  return `https://x.com/intent/tweet?${params}`;
+}
+
+/**
+ * 最終の結果。人数にかかわらず、順位の見出し、上位3人の表彰台、全員の順位と、順位の付いた全員のスコアの内訳を表示する。
+ */
 export function RankingResult({
-  code,
   battle,
   participantId,
   names,
   icons,
+  metrics,
+  rematchRef,
   onRematch,
   onTop,
 }: {
-  code: string;
   battle: BattleSnapshot;
   participantId: string;
   names: Map<string, string>;
   icons: Map<string, AccountIcon | null>;
+  metrics: ResultMetricsStore;
+  rematchRef?: Ref<HTMLButtonElement>;
   onRematch: () => void;
   onTop: () => void;
 }) {
@@ -60,8 +77,13 @@ export function RankingResult({
       )}
     />
   );
+  const { result } = battle;
   const submitted = battle.mySubmission?.status === "submitted";
   const winner = first?.rank === 1 ? first : undefined;
+  const tied = me?.rank != null && ranking.filter((entry) => entry.rank === me.rank).length > 1;
+  // 1対1で採点できずに勝負不成立になった相手は、提出しているが画像を公開しない。
+  const hiddenImage =
+    ranking.length === 2 && result?.kind === "no-contest" && result.reason === "scoring-failed";
   const title = !winner
     ? "NO GAME"
     : me?.rank == null
@@ -70,16 +92,18 @@ export function RankingResult({
         : "NO ENTRY"
       : `${ordinal(me.rank)}${me.rank <= 3 ? "!" : ""}`;
   const message = !winner
-    ? battle.result?.kind === "no-contest" && battle.result.reason === "scoring-failed"
+    ? result?.kind === "no-contest" && result.reason === "scoring-failed"
       ? "採点できなかったため、勝負不成立です"
-      : battle.result?.kind === "no-contest" && battle.result.reason === "room-closed"
+      : result?.kind === "no-contest" && result.reason === "room-closed"
         ? "全員がルームを離れたため、勝負不成立です"
-        : "誰も提出しなかったため、勝負不成立です"
+        : `${ranking.length === 2 ? "どちらも" : "誰も"}提出しなかったため、勝負不成立です`
     : me?.rank == null
       ? `${submitted ? "採点できなかったため、順位はありません" : "今回は提出できませんでした"}。1位は ${name(winner)} さん`
-      : me.rank === 1
-        ? `あなたが1位！ ${ranking.length}人の中でいちばんお題に近い1枚でした`
-        : `あなたは ${ranking.length}人中 ${me.rank}位。1位は ${name(winner)} さん（${formatTotal(winner.total)}pt）`;
+      : result?.kind === "win" && result.reason === "opponent-not-submitted"
+        ? "ほかの人が提出しなかったため、あなたが1位です"
+        : me.rank === 1
+          ? `${tied ? "同点で1位！" : "あなたが1位！"} ${ranking.length}人の中でいちばんお題に近い1枚でした`
+          : `あなたは ${ranking.length}人中 ${me.rank}位${tied ? "（同点）" : ""}。1位は ${name(winner)} さん（${formatTotal(winner.total)}pt）`;
   const podiumItems = ranking.flatMap((entry, index) =>
     entry.rank !== null && entry.imageUrl
       ? [
@@ -139,6 +163,14 @@ export function RankingResult({
                       leading={<Text variant="numeric.supporting">{entry.rank ?? "—"}</Text>}
                       image={entry.imageUrl}
                       avatar={avatar(entry)}
+                      supplement={
+                        hiddenImage &&
+                        entry.participantId !== participantId && (
+                          <Text variant="caption" tone="muted">
+                            採点できなかったため、画像は公開されません
+                          </Text>
+                        )
+                      }
                       value={<Text variant="numeric.supporting">{formatTotal(entry.total)}</Text>}
                     >
                       <Text variant="label">
@@ -149,6 +181,33 @@ export function RankingResult({
                   ))}
                 </RecordList>
               </ResultRankingReveal>
+              <ActionGroup layout="responsive" align="center">
+                <Button
+                  ref={rematchRef}
+                  shape="pill"
+                  size="lg"
+                  prominence="raised"
+                  onClick={onRematch}
+                >
+                  同じメンバーで再戦
+                </Button>
+                {me?.rank != null && (
+                  <ButtonLink
+                    href={shareUrl(me.rank, ranking.length, me.total)}
+                    target="_blank"
+                    appearance="inverse"
+                    shape="pill"
+                    size="lg"
+                    leadingIcon={<XLogoIcon />}
+                    aria-label="結果をシェア（X）"
+                  >
+                    結果をシェア
+                  </ButtonLink>
+                )}
+                <Button shape="pill" size="lg" appearance="secondary" onClick={onTop}>
+                  トップへ戻る
+                </Button>
+              </ActionGroup>
               {battle.scores && (
                 <Stack>
                   {ranking.flatMap((entry) => {
@@ -159,25 +218,18 @@ export function RankingResult({
                       ? [
                           <ResultBreakdown
                             key={entry.participantId}
-                            code={code}
                             battle={battle}
                             score={score}
                             name={name(entry)}
                             mine={entry.participantId === participantId}
+                            metrics={metrics.get(entry.participantId)}
+                            onRetry={() => metrics.retry(entry.participantId)}
                           />,
                         ]
                       : [];
                   })}
                 </Stack>
               )}
-              <ActionGroup align="center">
-                <Button shape="pill" size="lg" prominence="raised" onClick={onRematch}>
-                  同じメンバーで再戦
-                </Button>
-                <Button shape="pill" size="lg" appearance="secondary" onClick={onTop}>
-                  トップへ戻る
-                </Button>
-              </ActionGroup>
             </Stack>
           </Container>
         </Stack>

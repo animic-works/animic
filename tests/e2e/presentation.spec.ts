@@ -55,7 +55,7 @@ test("1人では開始できず、URL指定で役割や結果を変更できな�
   await expect(page.getByRole("heading", { name: "ルームコード", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "対戦をはじめる", exact: true })).toBeDisabled();
   await expect(page.getByText("操作確認（あなた）", { exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "YOU WIN!" })).toHaveCount(0);
+  await expect(page.getByText("FINAL RESULT", { exact: true })).toHaveCount(0);
 });
 
 test("再読み込み後も対戦の開始時刻を保ち、期限後は未提出として確定する", async ({
@@ -131,7 +131,7 @@ test("時間切れまでに提出しなければ、最後に完成した画像�
     await expect(page.getByText("選ばなければ最後に完成した1枚を提出")).toBeVisible({
       timeout: 15000,
     });
-    await expect(page.getByRole("heading", { name: "YOU WIN!", exact: true })).toBeVisible({
+    await expect(page.getByRole("heading", { name: "1st!", exact: true })).toBeVisible({
       timeout: 15000,
     });
     const current = await roomBattle(page, code);
