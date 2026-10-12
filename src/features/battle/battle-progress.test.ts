@@ -106,6 +106,20 @@ describe("生成受付と完了", () => {
     expect(success(state, "one", 20_000).selectionEndsAt).toBe(18_000);
     expect(success(state, "two", 20_000).generations[1]?.status).toBe("failed");
   });
+  it("生成キューへ依頼できずに失敗とした生成は次の生成を塞がず、同じIDの再送では受け付けない", () => {
+    const failed = failure(accept(battle(), "one"), "one", 1500);
+    expect(failed.generations[0]).toMatchObject({ status: "failed", finishedAt: 1500 });
+    expect(
+      acceptGeneration(failed, { id: "one", participantId: "a", inputHash: "prompt-one" }, 2000),
+    ).toMatchObject({ accepted: false, acceptedAt: 1000 });
+    expect(accept(failed, "two", "a", 2000).generations.map((item) => item.status)).toEqual([
+      "failed",
+      "pending",
+    ]);
+    // 生成キューのDOが先に完了を通知していれば、後から届いた失敗で結果を変えない。
+    const succeeded = success(accept(battle(), "one"), "one", 1500);
+    expect(failure(succeeded, "one", 1600).generations[0]?.status).toBe("succeeded");
+  });
   it("受付のない完了通知を反映しない", () => {
     expect(() => success(battle(), "unknown")).toThrow();
   });
@@ -485,6 +499,10 @@ describe("3人以上の結果", () => {
       winnerId: "a",
       decidedAt: endsAt,
     });
+    // 期限の後に届いた採点は使わず、期限までにそろった人だけで決める。
+    expect(
+      applyScoringJobs(late, jobs(state, { a: 70, b: 90, c: 80 }), endsAt + 1000).result,
+    ).toEqual({ kind: "win", reason: "higher-score", winnerId: "a", decidedAt: endsAt });
     const failed = { a: "failed", b: "failed", c: "failed" } as const;
     expect(applyScoringJobs(state, jobs(state, failed), 5000).result).toEqual({
       kind: "no-contest",
@@ -586,6 +604,24 @@ describe("採点による1対1の勝敗", () => {
       reason: "scoring-failed",
       decidedAt: 304_000,
     });
+  });
+  it("採点期限の後に届いた採点で勝敗を決めず、期限切れとして勝負不成立にする", () => {
+    const state = bothSubmitted();
+    const endsAt = state.scoring.endsAt ?? 0;
+    expect(applyScoringJobs(state, jobs(state, { a: 71.4, b: 60 }), endsAt - 1).result).toEqual({
+      kind: "win",
+      reason: "higher-score",
+      winnerId: "a",
+      decidedAt: endsAt - 1,
+    });
+    const late = applyScoringJobs(state, jobs(state, { a: 71.4, b: 60 }), endsAt + 5000);
+    expect(late.result).toEqual({
+      kind: "no-contest",
+      reason: "scoring-failed",
+      decidedAt: endsAt,
+    });
+    expect(late.scoring.entries.map((entry) => entry.status)).toEqual(["pending", "pending"]);
+    expect(getScoredParticipantIds(late)).toEqual([]);
   });
   it("別の対戦のジョブや結果確定後の採点結果を反映しない", () => {
     const state = bothSubmitted();
