@@ -127,7 +127,7 @@ export function BattleImagesPanel({
             description={pendings.length ? undefined : "プロンプトを書いて「生成する」を押そう"}
           >
             {pendings.length ? (
-              <Spinner label="生成中" size="lg" tone="gradient" />
+              <Spinner label="生成中" labelVisibility="hidden" size="lg" tone="gradient" />
             ) : (
               <>
                 <EmptyImageArtwork />
