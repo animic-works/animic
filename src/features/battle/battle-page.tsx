@@ -150,7 +150,11 @@ export function BattlePage({
     stage === "scoring" ? battle.scoringEndsAt : null,
     receivedAt,
   );
-  const generate = useBattleGeneration({ code, battleId: battle.id });
+  const generate = useBattleGeneration({
+    code,
+    battleId: battle.id,
+    generations: battle.myGenerations,
+  });
   const submission = useBattleSubmission({ code, battleId: battle.id, locked: submitLocked });
   const confirmed = images.succeeded.find((item) => item.id === submission.confirmId);
   const opponentId =

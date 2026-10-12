@@ -33,7 +33,9 @@ export const Route = createFileRoute("/rooms/$code")({
       { title: `ルーム ${params.code} | Animic` },
       ...(loaderData
         ? shareMeta({
-            title: "対戦への招待 | Animic",
+            title: `ルーム: ${params.code} | Animic`,
+            description:
+              "Animicでの対戦に招待されました。お題のイラストを、プロンプトだけでAIに再現させよう。より近い1枚を作ったほうが勝ち！",
             path: `/rooms/${params.code}`,
             image: loaderData.ogImage,
           })
