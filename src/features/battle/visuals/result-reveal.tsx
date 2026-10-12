@@ -1,5 +1,4 @@
 import { useId, type ReactNode } from "react";
-import { Heading } from "@animic/react/heading";
 import { Overlay } from "@animic/react/overlay";
 import { Stack } from "@animic/react/stack";
 import { Text } from "@animic/react/text";
@@ -18,22 +17,8 @@ const callEntrance = keyframes({
   "34%, 68%": { opacity: 1, transform: "none" },
   "80%, 100%": { opacity: 0, transform: "translateX(24vw) skewX(20deg)" },
 });
-const callBand = css({
-  position: "fixed",
-  left: "[-10%]",
-  top: "[50%]",
-  width: "[120%]",
-  height: "[8rem]",
-  translate: "[0 -50%]",
-  rotate: "[-6deg]",
-  pointerEvents: "none",
-  animationName: `[${callSweep}]`,
-  animationDuration: "[1.2s]",
-  animationTimingFunction: "[cubic-bezier(.7,0,.3,1)]",
-  animationFillMode: "both",
-  _motionReduce: { opacity: 0, animationName: "[none]" },
-});
-const callTitle = css({
+// 帯と名前を同じ傾けた枠に入れ、帯の高さを名前の高さに合わせる。長い名前は折り返し、帯も伸びる。
+const callFrame = css({
   position: "fixed",
   top: "[50%]",
   left: "[0]",
@@ -41,6 +26,21 @@ const callTitle = css({
   translate: "[0 -50%]",
   rotate: "[-6deg]",
   pointerEvents: "none",
+});
+const callBand = css({
+  position: "absolute",
+  top: "[-1.25rem]",
+  left: "[-10%]",
+  width: "[120%]",
+  height: "[calc(100% + 2.5rem)]",
+  animationName: `[${callSweep}]`,
+  animationDuration: "[1.2s]",
+  animationTimingFunction: "[cubic-bezier(.7,0,.3,1)]",
+  animationFillMode: "both",
+  _motionReduce: { opacity: 0, animationName: "[none]" },
+});
+const callTitle = css({
+  position: "relative",
   animationName: `[${callEntrance}]`,
   animationDuration: "[1.2s]",
   animationTimingFunction: "[cubic-bezier(.2,.9,.3,1)]",
@@ -52,22 +52,29 @@ const callTitle = css({
 export function RevealCall({ label, name }: { label: string; name: string }) {
   return (
     <Overlay>
-      <svg className={callBand} viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-        <path d="M0 0h100v100H0z" fill="#00b4fc" />
-        <path d="M0 7h100v86H0z" fill="#0b1b2b" />
-        <path d="M0 93h100v7H0z" fill="#ff2d87" />
-      </svg>
-      <div className={callTitle} aria-hidden="true">
-        <Stack align="center" space="tight">
-          <Text variant="eyebrow" tone="highlight">
-            {label}
-          </Text>
-          <Heading level={2} size="display">
-            <Text variant="display.signal" tone="inverse" emphasis="accent-shadow">
+      <div className={callFrame} aria-hidden="true">
+        <svg className={callBand} viewBox="0 0 100 100" preserveAspectRatio="none">
+          <path d="M0 0h100v100H0z" fill="#00b4fc" />
+          <path d="M0 7h100v86H0z" fill="#0b1b2b" />
+          <path d="M0 93h100v7H0z" fill="#ff2d87" />
+        </svg>
+        <div className={callTitle}>
+          <Stack align="center" space="tight">
+            <Text variant="eyebrow" tone="highlight">
+              {label}
+            </Text>
+            <Text
+              as="p"
+              variant="display.feedback"
+              tone="inverse"
+              emphasis="accent-shadow"
+              align="center"
+              wrap="balance"
+            >
               {name}
             </Text>
-          </Heading>
-        </Stack>
+          </Stack>
+        </div>
       </div>
     </Overlay>
   );
