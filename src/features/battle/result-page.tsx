@@ -6,7 +6,6 @@ import { Badge } from "@animic/react/badge";
 import { Button } from "@animic/react/button";
 import { Cluster } from "@animic/react/cluster";
 import { ComparisonStage } from "@animic/react/comparison-stage";
-import { Grid } from "@animic/react/grid";
 import { Heading } from "@animic/react/heading";
 import { Media, MediaPlaceholder } from "@animic/react/media";
 import { Page } from "@animic/react/page";
@@ -31,13 +30,12 @@ import { useReducedMotion } from "./battle-preferences";
 import { shortenName } from "./display-name";
 import type { BattleSnapshot } from "./battle-state";
 import {
-  ResultBreakdown,
   ScoringMetricsLoaderContext,
   useResultMetrics,
   type ScoringMetricsLoader,
 } from "./result-breakdown";
 import { getRevealOrder, getRevealStage, type RevealStage } from "./result-presentation";
-import { RankingResult } from "./result-ranking";
+import { RankingList, RankingResult } from "./result-ranking";
 import { ResultReveal, RevealCounter } from "./result-reveal";
 import { ResultShareLink } from "./result-share";
 import { useRevealElapsed } from "./use-reveal-clock";
@@ -341,25 +339,15 @@ function ResultScreen({
               {topLabel}
             </Button>
           </ActionGroup>
+          {/* 内訳は3人以上の結果と同じ順位の一覧にし、行の「内訳」から開く。 */}
           {battle.scores && (
-            <Grid columns={2}>
-              {battle.scores
-                .toSorted(
-                  (a, b) =>
-                    Number(b.participantId === participantId) -
-                    Number(a.participantId === participantId),
-                )
-                .map((score) => (
-                  <ResultBreakdown
-                    key={score.participantId}
-                    code={code}
-                    battle={battle}
-                    score={score}
-                    name={name(score.participantId)}
-                    mine={score.participantId === participantId}
-                  />
-                ))}
-            </Grid>
+            <RankingList
+              code={code}
+              battle={battle}
+              participantId={participantId}
+              names={names}
+              animate={animate}
+            />
           )}
         </Stack>,
       )}
