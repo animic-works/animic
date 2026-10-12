@@ -1,4 +1,4 @@
-import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
+import { createRootRoute, HeadContent, Outlet, Scripts, useMatches } from "@tanstack/react-router";
 
 import stylesheet from "@animic/styled-system/styles.css?url";
 import { UIProvider, UIScript } from "@animic/react/ui-provider";
@@ -44,11 +44,16 @@ export const Route = createRootRoute({
 });
 
 function Root() {
+  const activity = useMatches({
+    select: (matches) => matches.some((match) => match.routeId === "/activity"),
+  });
   return (
     <html lang="ja" id="animic-document" suppressHydrationWarning>
       <head>
         <HeadContent />
-        <UIScript />
+        {/* Activityは初期表示が接続待ちだけなので、UIProviderによる起動時の計測を使う。
+            proxyがheadへ挿入する空白とscriptを、Reactの同期scriptのhydration対象にしない。 */}
+        {!activity && <UIScript />}
       </head>
       <body>
         <UIProvider>
