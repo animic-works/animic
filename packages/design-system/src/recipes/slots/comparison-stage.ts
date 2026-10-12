@@ -46,4 +46,18 @@ export const comparisonStage = defineSlotRecipe({
     },
     body: { minWidth: 0, _comparisonStageCompact: { gridColumn: "1 / -1", gridRow: "2" } },
   },
+  variants: {
+    // `compact`は、狭い画面で本文（パネル）と下の一覧まで1画面に収めるため、画像を小さくする。
+    size: {
+      standard: {},
+      compact: {
+        first: {
+          _comparisonStageCompact: { width: "min(100%, max(7rem, calc(22svh * 13 / 19)))" },
+        },
+        second: {
+          _comparisonStageCompact: { width: "min(100%, max(7rem, calc(22svh * 13 / 19)))" },
+        },
+      },
+    },
+  },
 });

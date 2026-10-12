@@ -319,6 +319,17 @@ export const textStyles = defineTextStyles({
       letterSpacing: "0",
     },
   },
+  // 大きな見出し（statement）の上に置くラベル。見出しとの釣り合いが取れる大きさにする。
+  "eyebrow.display": {
+    value: {
+      fontFamily: "montserrat",
+      fontSize: "clamp(1rem, 2.4vw, 1.35rem)",
+      fontWeight: "extraBold",
+      fontStyle: "italic",
+      lineHeight: "1.3",
+      letterSpacing: "0.22em",
+    },
+  },
   "eyebrow.strong": {
     value: {
       fontFamily: "montserrat",

@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { getRanking, getResultEntries, getResultHeadline, ordinal } from "./battle-outcome";
+import {
+  getPlacement,
+  getRanking,
+  getResultEntries,
+  getResultHeadline,
+  getShareIntentUrl,
+  getShareText,
+  ordinal,
+} from "./battle-outcome";
 import type { BattleSnapshot } from "./battle-state";
 
 const base: BattleSnapshot = {
@@ -233,5 +241,70 @@ describe("3人以上の順位", () => {
   });
   it("順位を英語の序数で表す", () => {
     expect([1, 2, 3, 4, 11].map(ordinal)).toEqual(["1st", "2nd", "3rd", "4th", "11th"]);
+  });
+});
+
+describe("結果の共有", () => {
+  const trio: BattleSnapshot = { ...base, participantIds: ["b", "a", "c"] };
+  it("本人の順位と最終スコアだけを載せ、ほかの参加者の名前・点は載せない", () => {
+    const battle: BattleSnapshot = {
+      ...trio,
+      result: { kind: "win", reason: "higher-score", winnerId: "b", decidedAt: 90_000 },
+      scores: [score("a", 71.25), score("b", 90), score("c", 60)],
+    };
+    const text = getShareText(battle, "a");
+    expect(text).toBe("Animicのイラスト再現バトルで3人中2位になりました！（71.3pt） #Animic");
+    expect(text).not.toContain("90");
+    expect(getShareText(battle, "b")).toContain("3人中1位");
+  });
+
+  it("1対1は勝ち・引き分けを出し、点のない結果は対戦したことだけを出す", () => {
+    const win: BattleSnapshot = {
+      ...base,
+      result: { kind: "win", reason: "higher-score", winnerId: "a", decidedAt: 90_000 },
+      scores: [score("a", 80), score("b", 70)],
+    };
+    expect(getShareText(win, "a")).toContain("勝ちました！（80.0pt）");
+    expect(getShareText(win, "b")).toContain("対戦しました（70.0pt）");
+    const draw: BattleSnapshot = {
+      ...win,
+      result: { kind: "draw", reason: "same-score", decidedAt: 90_000 },
+    };
+    expect(getShareText(draw, "a")).toContain("引き分けでした！");
+    const noGame: BattleSnapshot = {
+      ...base,
+      result: { kind: "no-contest", reason: "no-submissions", decidedAt: 90_000 },
+    };
+    expect(getShareText(noGame, "a")).toBe("Animicのイラスト再現バトルで2人で対戦しました #Animic");
+  });
+
+  it("Xの投稿画面に、文とトップページのURLだけを渡す", () => {
+    const url = new URL(getShareIntentUrl("テスト #Animic"));
+    expect(url.origin + url.pathname).toBe("https://x.com/intent/post");
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      text: "テスト #Animic",
+      url: "https://animic.party/",
+    });
+  });
+});
+
+describe("ヘッダーの結果の表示", () => {
+  it("3人以上は順位、2人は勝ち負け、結果のない人は「—」にする", () => {
+    const duel: BattleSnapshot = {
+      ...base,
+      result: { kind: "win", reason: "higher-score", winnerId: "b", decidedAt: 90_000 },
+      scores: [score("a", 70), score("b", 90)],
+    };
+    expect(getPlacement(duel, "a")).toBe("LOSE");
+    expect(getPlacement(duel, "b")).toBe("WIN");
+    const trio: BattleSnapshot = { ...duel, participantIds: ["a", "b", "c"] };
+    expect(getPlacement(trio, "a")).toBe("2nd");
+    expect(getPlacement(trio, "c")).toBe("—");
+    expect(
+      getPlacement(
+        { ...base, result: { kind: "no-contest", reason: "no-submissions", decidedAt: 0 } },
+        "a",
+      ),
+    ).toBe("—");
   });
 });

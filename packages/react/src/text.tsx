@@ -28,6 +28,7 @@ interface TextContentProps extends Omit<CommonProps, "ref"> {
     | "numeric"
     | "eyebrow"
     | "eyebrow.strong"
+    | "eyebrow.display"
     | "label.display"
     | "numeric.score"
     | "numeric.hero"

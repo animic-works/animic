@@ -118,3 +118,45 @@ export function getRanking(battle: BattleSnapshot, participantId: string): Ranki
 export function ordinal(rank: number) {
   return rank === 1 ? "1st" : rank === 2 ? "2nd" : rank === 3 ? "3rd" : `${rank}th`;
 }
+
+/** 結果をSNSで共有するときに載せるURL。個別の結果の公開ページはないため、トップページにする。 */
+const shareUrl = "https://animic.party/";
+
+/**
+ * 結果をSNSで共有するときの文。外へ送るのは本人の順位・勝敗と最終スコアだけにし、
+ * ほかの参加者の名前・点や画像は含めない。
+ */
+export function getShareText(battle: BattleSnapshot, participantId: string) {
+  const { result } = battle;
+  const total = battle.scores?.find((item) => item.participantId === participantId)?.total;
+  const score = total === undefined ? "" : `（${total.toFixed(1)}pt）`;
+  const count = battle.participantIds.length;
+  const rank = result ? getRank(participantId, result, battle.scores) : null;
+  const outcome =
+    !result || result.kind === "no-contest" || rank === null
+      ? `${count}人で対戦しました`
+      : count > 2
+        ? `${count}人中${rank}位になりました！`
+        : result.kind === "draw"
+          ? "引き分けでした！"
+          : result.winnerId === participantId
+            ? "勝ちました！"
+            : "対戦しました";
+  return `Animicのイラスト再現バトルで${outcome}${score} #Animic`;
+}
+
+/** Xの投稿画面を開くURL。 */
+export function getShareIntentUrl(text: string) {
+  const query = new URLSearchParams({ text, url: shareUrl });
+  return `https://x.com/intent/post?${query.toString()}`;
+}
+
+/** 結果画面のヘッダーに出す、本人の結果の短い表示。3人以上は順位、2人は勝ち負け。結果のない人は「—」。 */
+export function getPlacement(battle: BattleSnapshot, participantId: string) {
+  const { result } = battle;
+  const rank = result ? getRank(participantId, result, battle.scores) : null;
+  if (!result || result.kind === "no-contest" || rank === null) return "—";
+  if (battle.participantIds.length > 2) return ordinal(rank);
+  if (result.kind === "draw") return "DRAW";
+  return result.winnerId === participantId ? "WIN" : "LOSE";
+}

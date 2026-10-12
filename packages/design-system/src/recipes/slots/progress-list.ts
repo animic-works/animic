@@ -50,6 +50,11 @@ export const progressList = defineSlotRecipe({
       borderRadius: "full",
       background: "disabled.bg",
       "& > svg": { display: "block", width: "100%", height: "100%" },
+      // 進み具合の刻みの間を、次の刻みまでの時間でなめらかにつなぐ。
+      "& [data-progress]": {
+        transition: "stroke-dasharray 220ms linear",
+        _motionReduce: { transition: "none" },
+      },
     },
   },
   variants: {

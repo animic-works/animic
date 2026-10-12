@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { useScrollViewport } from "./use-scroll-viewport";
-import { avatarGroup } from "@animic/styled-system/recipes";
+import { avatarGroup, text } from "@animic/styled-system/recipes";
+import type { TextProps } from "./text";
 export function AvatarGroup({
   summary,
   members,
@@ -18,6 +19,8 @@ export function AvatarGroup({
     current?: boolean;
     state?: "pending" | "active" | "complete";
     value?: string;
+    /** 値の文字の色。値の意味（点数の段階など）に応じて利用側が選ぶ。 */
+    valueTone?: TextProps["tone"];
     marker?: { value: string; label: string };
   }[];
   label: string;
@@ -73,7 +76,15 @@ export function AvatarGroup({
             </span>
             {member.value && (
               <span className={c.value} aria-hidden="true">
-                {member.value}
+                <span
+                  className={
+                    member.valueTone
+                      ? text({ variant: "inherit", tone: member.valueTone })
+                      : undefined
+                  }
+                >
+                  {member.value}
+                </span>
               </span>
             )}
           </li>

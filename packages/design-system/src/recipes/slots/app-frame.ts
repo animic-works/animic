@@ -113,6 +113,21 @@ export const appFrame = defineSlotRecipe({
         compactActions: { display: "none", _appFrameCompact: { display: "none" } },
       },
     },
+    // 1画面に収める進行中の画面では、本文の下の余白を詰めてページをスクロールさせない。
+    contentFit: {
+      scroll: {},
+      viewport: { main: { paddingBlockEnd: "2", _appFrameCompact: { paddingBlockEnd: "2" } } },
+    },
+    // 進行中の画面など、背景の装飾の上でもヘッダーを白い面として区切る。
+    headerAppearance: {
+      transparent: {},
+      surface: {
+        header: {
+          background: "bg.surface",
+          borderBottom: "1px solid token(colors.border.default)",
+        },
+      },
+    },
     width: {
       content: { root: { "--animic-app-frame-content-width": "62rem" } },
       reading: { root: { "--animic-app-frame-content-width": "52rem" } },

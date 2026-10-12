@@ -423,7 +423,9 @@ test("生成した画像を提出すると、採点ワーカーへR2の生成画
         { participant_id: await participantId(guest), total: 60, similarity: 60 },
       ]);
 
-    // 結果が確定すると、提出した人を1人ずつ発表する。スキップすると、その人の画面だけ最終の結果へ進む。
+    // 結果が確定すると、提出した人を1人ずつ発表し、全員の発表が終わったら最終の結果を出す。
+    // 発表の時間は時計を進めて縮める。
+    await guest.clock.install();
     await guest.goto(`/rooms/${code}`);
     await expect(guest.getByRole("status", { name: "JUDGING" })).toHaveText(/JUDGING[12] \/ 2/, {
       timeout: 15_000,
@@ -431,15 +433,27 @@ test("生成した画像を提出すると、採点ワーカーへR2の生成画
     await expect(guest.getByRole("list", { name: "発表の順番" }).getByRole("listitem")).toHaveCount(
       2,
     );
-    await guest.getByRole("button", { name: "スキップ" }).click();
+    // 採点の様子の行に、採点ワーカーが返した指標の点を出す（ホストの髪・服・小物70、ゲストの74.8）。
+    await expect(guest.getByRole("group", { name: "採点の様子" })).toContainText(/70\.0|74\.8/, {
+      timeout: 16_000,
+    });
+    // 2人分の発表の時間（1人12.5秒）を進める。
+    await guest.clock.fastForward(26_000);
     await expect(guest.getByRole("heading", { name: "YOU LOSE…" })).toBeVisible();
-    await expect(guest.getByRole("button", { name: "同じメンバーで再戦" })).toBeFocused();
+    // 結果の共有には、本人の結果とトップページのURLだけを載せる。
+    const share = new URL(
+      (await guest.getByRole("link", { name: "あなたの結果をシェア" }).getAttribute("href")) ?? "",
+    );
+    expect(Object.fromEntries(share.searchParams)).toEqual({
+      text: "Animicのイラスト再現バトルで対戦しました（60.0pt） #Animic",
+      url: "https://animic.party/",
+    });
     await expectLoaded(guest.getByRole("img", { name: "採点ホストさんの提出画像" }));
     await expectLoaded(guest.getByRole("img", { name: "採点ゲストさんの提出画像" }));
 
     // 結果画面で、自分と相手の内訳と指標ごとの点を、操作なしで見られる。
-    // 待機の画面から見ていたページも発表中になる。2人分の発表の時間（16秒）を進めると最終の結果になる。
-    await guestView.clock.fastForward(17_000);
+    // 待機の画面から見ていたページも発表中になる。2人分の発表の時間（25秒）を進めると最終の結果になる。
+    await guestView.clock.fastForward(26_000);
     const breakdown = guestView
       .getByRole("heading", { name: "あなたのスコアの内訳" })
       .locator("..");

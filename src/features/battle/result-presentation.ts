@@ -5,18 +5,21 @@ import type { BattleSnapshot } from "./battle-state";
 export type RevealEntry = NonNullable<BattleSnapshot["scores"]>[number];
 
 /**
- * 結果発表の時間。1人分の枠を、名前の呼び出し・採点の様子・点数の3段階に分ける。
+ * 結果発表の時間。1人分の枠を、名前の呼び出し・採点の様子・点数の3段階に分ける。点数の段階は、数え上げの後の余韻を含む。
  * 採点の様子は指標の数で等分し、指標を1つずつ「採点中→済み」にする。
  */
 export const revealTiming = {
-  introMs: 1_200,
-  judgingMs: 4_000,
-  scoreMs: 2_800,
+  introMs: 1_600,
+  judgingMs: 5_500,
+  scoreMs: 3_600,
+  // 点数・ボーナス・順位が出そろった後、次の人に移るまでの余韻。点数の段階のまま止めておく。
+  holdMs: 1_800,
 } as const;
-export type RevealTiming = { introMs: number; judgingMs: number; scoreMs: number };
+export type RevealTiming = { introMs: number; judgingMs: number; scoreMs: number; holdMs: number };
 
 const metricCount = scoringMetrics.length;
-const slotMs = (timing: RevealTiming) => timing.introMs + timing.judgingMs + timing.scoreMs;
+const slotMs = (timing: RevealTiming) =>
+  timing.introMs + timing.judgingMs + timing.scoreMs + timing.holdMs;
 
 /**
  * 発表の対象を提出時刻の早い順に並べる。同時刻（猶予の期限の自動の提出など）は参加順。
@@ -102,4 +105,42 @@ export function getInterimRanks(
       1 + shown.filter((other) => other.total > entry.total).length,
     ]),
   );
+}
+
+/** 点数の段階の中の時間。再現度を数え上げた後、取ったボーナスを1つずつ加える。点数の段階（`scoreMs`）の中に収める。 */
+export const scoreCountTiming = {
+  similarityMs: 1_200,
+  bonusStartMs: 1_400,
+  bonusGapMs: 600,
+  bonusCountMs: 400,
+} as const;
+
+/** 発表で加えるボーナス。取った（0点より多い）ものだけ、最速提出・最少生成の順に並べる。 */
+export function getRevealBonuses(entry: Pick<RevealEntry, "speedBonus" | "generationBonus">) {
+  return [
+    { id: "speed", label: "最速提出", points: entry.speedBonus ?? 0 },
+    { id: "generation", label: "最少生成", points: entry.generationBonus ?? 0 },
+  ].filter((bonus) => bonus.points > 0);
+}
+
+const easeOut = (progress: number) => 1 - (1 - Math.min(1, Math.max(0, progress))) ** 4;
+
+/**
+ * 点数の段階に入ってからの経過で、数え上げている点数と、出したボーナスの数を決める。
+ * `settled`は、再現度とボーナスを数え終えたか。
+ */
+export function getScoreCount(similarity: number, bonuses: readonly number[], elapsedMs: number) {
+  const t = scoreCountTiming;
+  let value = similarity * easeOut(elapsedMs / t.similarityMs);
+  let shown = 0;
+  for (const [index, points] of bonuses.entries()) {
+    const start = t.bonusStartMs + index * t.bonusGapMs;
+    if (elapsedMs < start) break;
+    shown = index + 1;
+    value += points * easeOut((elapsedMs - start) / t.bonusCountMs);
+  }
+  const end = bonuses.length
+    ? t.bonusStartMs + (bonuses.length - 1) * t.bonusGapMs + t.bonusCountMs
+    : t.similarityMs;
+  return { value, bonuses: shown, settled: elapsedMs >= end };
 }

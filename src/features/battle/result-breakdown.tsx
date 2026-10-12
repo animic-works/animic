@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { createContext, use, useCallback, useEffect, useState } from "react";
 import { Button } from "@animic/react/button";
 import { Cluster } from "@animic/react/cluster";
+import { Dialog } from "@animic/react/dialog";
 import { Heading } from "@animic/react/heading";
 import { Spinner } from "@animic/react/spinner";
 import { Stack } from "@animic/react/stack";
@@ -15,23 +16,42 @@ import { ScoreBreakdown } from "./score-breakdown";
 type Metrics =
   | { status: "loading" | "error" }
   | { status: "loaded"; metrics: ScoringMetricsReport | null };
+type Score = NonNullable<BattleSnapshot["scores"]>[number];
 
-function loadMetrics(code: string, battleId: string, participantId: string) {
-  return getResultScoringMetrics({ data: { code, battleId, participantId } }).then(
-    (metrics): Metrics => ({ status: "loaded", metrics }),
-    (): Metrics => ({ status: "error" }),
+/** 参加者の指標ごとの点を読む関数。 */
+export type ScoringMetricsLoader = (participantId: string) => Promise<ScoringMetricsReport | null>;
+
+/**
+ * 指標の読み方を差し替える口。値が`null`（既定）なら、ルームの対戦について`getResultScoringMetrics`で読む。
+ * ルームのない画面（開発用の確認画面など）で、読み方を外から渡すために使う。
+ */
+export const ScoringMetricsLoaderContext = createContext<ScoringMetricsLoader | null>(null);
+
+function useLoadMetrics(code: string, battleId: string) {
+  const loader = use(ScoringMetricsLoaderContext);
+  return useCallback(
+    (participantId: string) =>
+      (
+        loader?.(participantId) ??
+        getResultScoringMetrics({ data: { code, battleId, participantId } })
+      ).then(
+        (metrics): Metrics => ({ status: "loaded", metrics }),
+        (): Metrics => ({ status: "error" }),
+      ),
+    [loader, code, battleId],
   );
 }
 
 /**
- * 結果発表の採点の様子に出す、発表する人ごとの指標の点。発表の始めに全員分を読み、読めた人の分だけを返す。
- * 届く前の人や読めなかった人は、点なしで発表を進める（待たない）。
+ * 結果画面に出す、参加者ごとの指標の点。最初の描画の後に全員分を読み、読めた人の分だけを返す。
+ * 結果発表の採点の様子と、順位の一覧の要点で使う。届く前の人や読めなかった人は点なしで表示する（待たない）。
  */
-export function useRevealMetrics(
+export function useResultMetrics(
   code: string,
   battleId: string,
   participantIds: readonly string[],
 ) {
+  const load = useLoadMetrics(code, battleId);
   const [metrics, setMetrics] = useState<ReadonlyMap<string, ScoringMetricsReport>>(new Map());
   const key = participantIds.join(",");
   useEffect(() => {
@@ -41,13 +61,66 @@ export function useRevealMetrics(
       if (active && report) setMetrics((current) => new Map(current).set(participantId, report));
     };
     for (const participantId of key ? key.split(",") : [])
-      void loadMetrics(code, battleId, participantId).then((loaded) => add(participantId, loaded));
+      void load(participantId).then((loaded) => add(participantId, loaded));
     return () => {
       active = false;
     };
-  }, [code, battleId, key]);
+  }, [load, key]);
   return metrics;
 }
+
+/** 参加者のスコアの内訳と指標ごとの点。指標は表示したときに読み出す。 */
+function BreakdownContent({
+  code,
+  battle,
+  score,
+}: {
+  code: string;
+  battle: BattleSnapshot;
+  score: Score;
+}) {
+  const { participantId } = score;
+  const load = useLoadMetrics(code, battle.id);
+  const [metrics, setMetrics] = useState<Metrics>({ status: "loading" });
+  useEffect(() => {
+    let active = true;
+    void load(participantId).then((loaded) => active && setMetrics(loaded));
+    return () => {
+      active = false;
+    };
+  }, [load, participantId]);
+  return (
+    <Stack space="compact">
+      <ScoreBreakdown
+        score={score}
+        submission={summarizeSubmission(score.submission, battle.startedAt)}
+        metrics={metrics.status === "loaded" ? metrics.metrics : null}
+      />
+      {metrics.status === "loading" && <Spinner label="指標を読み込んでいます" />}
+      {metrics.status === "error" && (
+        <Cluster justify="between">
+          <div role="alert">
+            <Text tone="danger">指標を読み込めませんでした。</Text>
+          </div>
+          <Button
+            appearance="secondary"
+            shape="pill"
+            size="sm"
+            onClick={() => {
+              setMetrics({ status: "loading" });
+              void load(participantId).then(setMetrics);
+            }}
+          >
+            再試行
+          </Button>
+        </Cluster>
+      )}
+    </Stack>
+  );
+}
+
+const breakdownTitle = (name: string, mine: boolean) =>
+  mine ? "あなたのスコアの内訳" : `${name}さんのスコアの内訳`;
 
 /**
  * 結果画面に出す、採点された参加者のスコアの内訳と指標ごとの点。
@@ -62,51 +135,64 @@ export function ResultBreakdown({
 }: {
   code: string;
   battle: BattleSnapshot;
-  score: NonNullable<BattleSnapshot["scores"]>[number];
+  score: Score;
   name: string;
   mine: boolean;
 }) {
-  const { participantId } = score;
-  const [metrics, setMetrics] = useState<Metrics>({ status: "loading" });
-  useEffect(() => {
-    let active = true;
-    void loadMetrics(code, battle.id, participantId).then((loaded) => active && setMetrics(loaded));
-    return () => {
-      active = false;
-    };
-  }, [code, battle.id, participantId]);
-
   return (
     <Surface appearance="card" padding="content">
       <Stack space="compact">
         <Heading level={2} size="sm">
-          {mine ? "あなたのスコアの内訳" : `${name}さんのスコアの内訳`}
+          {breakdownTitle(name, mine)}
         </Heading>
-        <ScoreBreakdown
-          score={score}
-          submission={summarizeSubmission(score.submission, battle.startedAt)}
-          metrics={metrics.status === "loaded" ? metrics.metrics : null}
-        />
-        {metrics.status === "loading" && <Spinner label="指標を読み込んでいます" />}
-        {metrics.status === "error" && (
-          <Cluster justify="between">
-            <div role="alert">
-              <Text tone="danger">指標を読み込めませんでした。</Text>
-            </div>
-            <Button
-              appearance="secondary"
-              shape="pill"
-              size="sm"
-              onClick={() => {
-                setMetrics({ status: "loading" });
-                void loadMetrics(code, battle.id, participantId).then(setMetrics);
-              }}
-            >
-              再試行
-            </Button>
-          </Cluster>
-        )}
+        <BreakdownContent code={code} battle={battle} score={score} />
       </Stack>
     </Surface>
+  );
+}
+
+/** 順位の一覧の行から、その人のスコアの内訳を開く操作。指標は開いたときに読む。 */
+export function ResultBreakdownButton({
+  code,
+  battle,
+  score,
+  name,
+  mine,
+}: {
+  code: string;
+  battle: BattleSnapshot;
+  score: Score;
+  name: string;
+  mine: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const title = breakdownTitle(name, mine);
+  return (
+    <>
+      <Button
+        appearance="secondary"
+        shape="pill"
+        size="xs"
+        aria-label={title}
+        onClick={() => setOpen(true)}
+      >
+        内訳
+      </Button>
+      <Dialog
+        open={open}
+        onOpenChange={setOpen}
+        title={title}
+        size="compact"
+        presentation="centered"
+        closeButton={false}
+      >
+        <Stack>
+          {open && <BreakdownContent code={code} battle={battle} score={score} />}
+          <Button appearance="secondary" shape="pill" onClick={() => setOpen(false)}>
+            閉じる
+          </Button>
+        </Stack>
+      </Dialog>
+    </>
   );
 }

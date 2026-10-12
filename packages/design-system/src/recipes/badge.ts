@@ -14,6 +14,16 @@ export const badge = defineRecipe({
     textStyle: "caption",
   },
   variants: {
+    // 札を親の幅までに収め、最初の要素（名前など）だけを「…」で縮める。後ろの要素（敬称など）は残す。
+    truncate: {
+      true: {
+        maxWidth: "100%",
+        whiteSpace: "nowrap",
+        "& > :first-child": { minWidth: "0", overflow: "hidden", textOverflow: "ellipsis" },
+        "& > :not(:first-child)": { flexShrink: 0 },
+      },
+      false: {},
+    },
     appearance: {
       annotation: {
         background: "accent.highlight",

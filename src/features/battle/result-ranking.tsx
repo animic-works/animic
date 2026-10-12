@@ -1,7 +1,7 @@
-import type { Ref } from "react";
 import { ActionGroup } from "@animic/react/action-group";
 import { Avatar } from "@animic/react/avatar";
 import { Button } from "@animic/react/button";
+import { Cluster } from "@animic/react/cluster";
 import { Container } from "@animic/react/container";
 import { Heading } from "@animic/react/heading";
 import { Layer, LayerItem } from "@animic/react/layer";
@@ -13,17 +13,45 @@ import { accountIconAvatar, type AccountIcon } from "../account/account-icon";
 import { playerPalettes } from "../room/room-presentation";
 import { getRanking, ordinal, type RankingEntry } from "./battle-outcome";
 import type { BattleSnapshot } from "./battle-state";
-import { ResultBreakdown } from "./result-breakdown";
+import { getScoreRank } from "../scoring/score-rank";
+import { shortenName } from "./display-name";
+import { scoringMetrics, type ScoringMetricsReport } from "../scoring/scoring-metrics";
+import { ResultBreakdownButton, useResultMetrics } from "./result-breakdown";
+import { ResultShareLink } from "./result-share";
 import {
   Crown,
-  ResultBurst,
+  PodiumLaurels,
   ResultConfetti,
   ResultRankingReveal,
   VerdictReveal,
+  WinnerSparkles,
 } from "./visuals/result-artwork";
 
 function formatTotal(total: number | null) {
   return total === null ? "—" : total.toFixed(1);
+}
+
+/**
+ * 順位の一覧の行に添える、その人の要点。再現度と、取ったボーナスと、いちばん高い指標。
+ * 全体の内訳は行の「内訳」から開く。
+ */
+function scoreSummary(
+  score: NonNullable<BattleSnapshot["scores"]>[number],
+  metrics: ScoringMetricsReport | undefined,
+) {
+  const best = scoringMetrics
+    .flatMap((metric) => {
+      const point = metrics?.scores[metric.key];
+      return point == null ? [] : [{ label: metric.label, point }];
+    })
+    .toSorted((a, b) => b.point - a.point)[0];
+  const bonus = (score.speedBonus ?? 0) + (score.generationBonus ?? 0);
+  const bonusText =
+    bonus > 0 ? `（ボーナス +${bonus.toLocaleString("ja-JP", { maximumFractionDigits: 1 })}）` : "";
+  return [
+    `再現度 ${score.similarity.toFixed(1)}${bonusText}`,
+    ...(best ? [`最高 ${best.label} ${best.point.toFixed(1)}`] : []),
+  ];
 }
 
 /** 3人以上の対戦の結果。順位の見出し、上位3人の表彰台、全員の順位と、順位の付いた全員のスコアの内訳を表示する。 */
@@ -34,7 +62,6 @@ export function RankingResult({
   names,
   icons,
   animate,
-  rematchRef,
   onRematch,
   onTop,
 }: {
@@ -45,11 +72,16 @@ export function RankingResult({
   icons: Map<string, AccountIcon | null>;
   /** `false`なら（結果発表が終わった後に開いた場合など）登場の演出を再生せずに出す。 */
   animate: boolean;
-  rematchRef?: Ref<HTMLButtonElement>;
   onRematch: () => void;
   onTop: () => void;
 }) {
   const ranking = getRanking(battle, participantId);
+  // 一覧の各行に、その人の指標の要点を添える。
+  const metrics = useResultMetrics(
+    code,
+    battle.id,
+    battle.scores?.map((score) => score.participantId) ?? [],
+  );
   const me = ranking.find((entry) => entry.participantId === participantId);
   const [first] = ranking;
   const name = (entry: RankingEntry) =>
@@ -93,8 +125,8 @@ export function RankingResult({
             label: `${name(entry)}さんの提出画像`,
             avatar: avatar(entry),
             name: (
-              <Text variant="inherit">
-                {name(entry)}
+              <Text variant="inherit" title={name(entry)}>
+                {shortenName(name(entry), entry.participantId === participantId ? 5 : 7)}
                 {entry.participantId === participantId && (
                   <Text variant="inherit" tone="accent">
                     （あなた）
@@ -102,9 +134,25 @@ export function RankingResult({
                 )}
               </Text>
             ),
-            value: formatTotal(entry.total),
+            value: (
+              <Text
+                variant="inherit"
+                tone={entry.total === null ? undefined : getScoreRank(entry.total).text}
+                emphasis={entry.total === null ? undefined : getScoreRank(entry.total).emphasis}
+              >
+                {formatTotal(entry.total)}
+              </Text>
+            ),
             rank: entry.rank,
-            decoration: index === 0 ? <Crown animate={animate} /> : undefined,
+            decoration:
+              index === 0 ? (
+                <>
+                  <WinnerSparkles />
+                  <Crown animate={animate} />
+                </>
+              ) : undefined,
+            // 帯の飾りは、黄色の帯（3番目）には紺、ほかには白で描く。
+            stepDecoration: <PodiumLaurels tone={index === 2 ? "dark" : "light"} />,
           },
         ]
       : [],
@@ -112,13 +160,12 @@ export function RankingResult({
   return (
     <Layer>
       <LayerItem placement="background">
-        <ResultBurst animate={animate} />
         {animate && me?.rank === 1 && <ResultConfetti />}
       </LayerItem>
       <LayerItem placement="content">
         <Stack space="section">
           <Stack align="center" space="compact">
-            <Text variant="eyebrow.strong" tone="accent">
+            <Text variant="eyebrow.display" tone="accent">
               FINAL RESULT
             </Text>
             <VerdictReveal animate={animate}>
@@ -130,64 +177,74 @@ export function RankingResult({
               {message}
             </Text>
           </Stack>
-          <Podium entering={animate} items={podiumItems} />
+          <Podium presentation="card" entering={animate} items={podiumItems} />
+          {/* 操作は表彰台の下・順位の一覧の上に置き、結果の種類によらず同じ位置にする。 */}
+          <ActionGroup align="center">
+            <Button shape="pill" size="lg" onClick={onRematch}>
+              同じメンバーで再戦
+            </Button>
+            <ResultShareLink battle={battle} participantId={participantId} />
+            <Button shape="pill" size="lg" appearance="secondary" onClick={onTop}>
+              トップへ戻る
+            </Button>
+          </ActionGroup>
           <Container size="summary" gutter="none">
             <Stack space="section">
               <ResultRankingReveal>
                 <RecordList label="順位" entering={animate}>
-                  {ranking.map((entry) => (
-                    <RecordItem
-                      density="compact"
-                      key={entry.participantId}
-                      emphasis={entry.participantId === participantId}
-                      leading={<Text variant="numeric.supporting">{entry.rank ?? "—"}</Text>}
-                      image={entry.imageUrl}
-                      avatar={avatar(entry)}
-                      value={<Text variant="numeric.supporting">{formatTotal(entry.total)}</Text>}
-                    >
-                      <Text variant="label">
-                        {name(entry)}
-                        {entry.participantId === participantId && "（あなた）"}
-                      </Text>
-                    </RecordItem>
-                  ))}
-                </RecordList>
-              </ResultRankingReveal>
-              {battle.scores && (
-                <Stack>
-                  {ranking.flatMap((entry) => {
+                  {ranking.map((entry) => {
                     const score = battle.scores?.find(
                       (item) => item.participantId === entry.participantId,
                     );
-                    return score
-                      ? [
-                          <ResultBreakdown
-                            key={entry.participantId}
-                            code={code}
-                            battle={battle}
-                            score={score}
-                            name={name(entry)}
-                            mine={entry.participantId === participantId}
-                          />,
-                        ]
-                      : [];
+                    const mine = entry.participantId === participantId;
+                    return (
+                      <RecordItem
+                        density="compact"
+                        key={entry.participantId}
+                        emphasis={mine}
+                        leading={<Text variant="numeric.supporting">{entry.rank ?? "—"}</Text>}
+                        image={entry.imageUrl}
+                        avatar={avatar(entry)}
+                        // 内訳を開く操作は点数の横に置き、どの行でも同じ位置にそろえる。
+                        value={
+                          <Cluster layout="nowrap" justify="end">
+                            <Text
+                              variant="numeric.supporting"
+                              tone={
+                                entry.total === null ? undefined : getScoreRank(entry.total).text
+                              }
+                            >
+                              {formatTotal(entry.total)}
+                            </Text>
+                            {score && (
+                              <ResultBreakdownButton
+                                code={code}
+                                battle={battle}
+                                score={score}
+                                name={name(entry)}
+                                mine={mine}
+                              />
+                            )}
+                          </Cluster>
+                        }
+                      >
+                        <Stack space="tight">
+                          <Text variant="label" title={name(entry)}>
+                            {shortenName(name(entry), mine ? 5 : 7)}
+                            {mine && "（あなた）"}
+                          </Text>
+                          {score &&
+                            scoreSummary(score, metrics.get(entry.participantId)).map((part) => (
+                              <Text key={part} variant="caption" tone="supporting">
+                                {part}
+                              </Text>
+                            ))}
+                        </Stack>
+                      </RecordItem>
+                    );
                   })}
-                </Stack>
-              )}
-              <ActionGroup align="center">
-                <Button
-                  ref={rematchRef}
-                  shape="pill"
-                  size="lg"
-                  prominence="raised"
-                  onClick={onRematch}
-                >
-                  同じメンバーで再戦
-                </Button>
-                <Button shape="pill" size="lg" appearance="secondary" onClick={onTop}>
-                  トップへ戻る
-                </Button>
-              </ActionGroup>
+                </RecordList>
+              </ResultRankingReveal>
             </Stack>
           </Container>
         </Stack>

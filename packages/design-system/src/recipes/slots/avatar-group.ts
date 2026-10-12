@@ -134,14 +134,11 @@ export const avatarGroup = defineSlotRecipe({
           padding: "0.45rem 0.9rem 0.45rem 0.45rem",
           background: "bg.surface",
           border: "2px solid token(colors.border.default)",
-          "&[data-current]": { borderColor: "accent.primary" },
+          // 本人の項目は白い面に濃いピンクの枠で示し、値の色の読みやすさを保つ。
+          "&[data-current]": { background: "bg.surface", borderColor: "accent.primary" },
           transition: "background 300ms, transform 400ms cubic-bezier(.3,1.6,.5,1), opacity 300ms",
           // 待機中の項目も同じ枠と高さで並べ、薄くして区別する。
           "&[data-state=pending]": { background: "bg.subtle", opacity: "0.55" },
-          "&[data-current][data-state=pending]": {
-            background:
-              "color-mix(in srgb, token(colors.bg.accent.primary) 70%, token(colors.neutral.0))",
-          },
           "&[data-state=active]": {
             background: "bg.surface",
             borderColor: "accent.primary",

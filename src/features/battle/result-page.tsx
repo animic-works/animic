@@ -1,17 +1,17 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { ActionGroup } from "@animic/react/action-group";
 import { AppFrame } from "@animic/react/app-frame";
 import { Avatar } from "@animic/react/avatar";
 import { Badge } from "@animic/react/badge";
 import { Button } from "@animic/react/button";
 import { Cluster } from "@animic/react/cluster";
-import { CodeDisplay } from "@animic/react/code-display";
 import { ComparisonStage } from "@animic/react/comparison-stage";
 import { Grid } from "@animic/react/grid";
 import { Heading } from "@animic/react/heading";
 import { Media, MediaPlaceholder } from "@animic/react/media";
 import { Page } from "@animic/react/page";
 import { Progress } from "@animic/react/progress";
+import { Readout } from "@animic/react/readout";
 import { Stack } from "@animic/react/stack";
 import { Surface } from "@animic/react/surface";
 import { Text } from "@animic/react/text";
@@ -19,15 +19,28 @@ import { AppBrand } from "../shared/app-brand";
 import { GridBackdrop } from "../shared/visuals/grid-backdrop";
 import { accountIconAvatar, type AccountIcon } from "../account/account-icon";
 import { levels, playerPalettes } from "../room/room-presentation";
-import { getResultEntries, getResultHeadline, type ResultEntry } from "./battle-outcome";
+import { getScoreRank } from "../scoring/score-rank";
+import {
+  getPlacement,
+  getResultEntries,
+  getResultHeadline,
+  type ResultEntry,
+} from "./battle-outcome";
+import { BattleRoomBadge } from "./battle-header";
 import { useReducedMotion } from "./battle-preferences";
 import type { BattleSnapshot } from "./battle-state";
-import { ResultBreakdown, useRevealMetrics } from "./result-breakdown";
+import {
+  ResultBreakdown,
+  ScoringMetricsLoaderContext,
+  useResultMetrics,
+  type ScoringMetricsLoader,
+} from "./result-breakdown";
 import { getRevealOrder, getRevealStage, type RevealStage } from "./result-presentation";
 import { RankingResult } from "./result-ranking";
-import { ResultReveal, RevealControls, RevealCounter } from "./result-reveal";
-import { useRevealClock } from "./use-reveal-clock";
-import { ResultBurst, ResultConfetti, VerdictReveal } from "./visuals/result-artwork";
+import { ResultReveal, RevealCounter } from "./result-reveal";
+import { ResultShareLink } from "./result-share";
+import { useRevealElapsed } from "./use-reveal-clock";
+import { ResultBurst, ResultConfetti, ResultShards, VerdictReveal } from "./visuals/result-artwork";
 function ParticipantResult({
   entry,
   name,
@@ -72,7 +85,11 @@ function ParticipantResult({
         {entry.total !== null && (
           <Stack space="tight" align="center">
             <Text variant="caption">最終スコア</Text>
-            <Text variant="numeric.display">
+            <Text
+              variant="numeric.display"
+              tone={getScoreRank(entry.total).text}
+              emphasis={getScoreRank(entry.total).emphasis}
+            >
               {entry.total.toLocaleString("ja-JP", { maximumFractionDigits: 2 })}
               <Text variant="caption">pt</Text>
             </Text>
@@ -87,16 +104,12 @@ function ParticipantResult({
     </Surface>
   );
 }
-export function ResultPage({
-  code,
-  battle,
-  participantId,
-  names,
-  icons,
-  receivedAt,
-  onRematch,
-  onTop,
-}: {
+/** ヘッダーの下に横幅いっぱいに通す、発表の進み具合の線。 */
+function RevealProgress({ value }: { value: number }) {
+  return <Progress label="発表の進み具合" value={value} presentation="track" tone="gradient" />;
+}
+
+type ResultPageProps = {
   code: string;
   battle: BattleSnapshot;
   participantId: string;
@@ -106,16 +119,40 @@ export function ResultPage({
   receivedAt: number | null;
   onRematch: () => void;
   onTop: () => void;
-}) {
+  /**
+   * 指標の読み方。省略すると、ルームの対戦について`getResultScoringMetrics`で読む。
+   * ルームのない画面（開発用の確認画面など）だけが渡す。
+   */
+  loadMetrics?: ScoringMetricsLoader;
+};
+
+export function ResultPage({ loadMetrics, ...props }: ResultPageProps) {
+  return (
+    <ScoringMetricsLoaderContext value={loadMetrics ?? null}>
+      <ResultScreen {...props} />
+    </ScoringMetricsLoaderContext>
+  );
+}
+
+function ResultScreen({
+  code,
+  battle,
+  participantId,
+  names,
+  icons,
+  receivedAt,
+  onRematch,
+  onTop,
+}: Omit<ResultPageProps, "loadMetrics">) {
   const order = getRevealOrder(battle);
-  const clock = useRevealClock(battle.serverTime, receivedAt, battle.result?.decidedAt ?? 0);
+  const elapsed = useRevealElapsed(battle.serverTime, receivedAt, battle.result?.decidedAt ?? 0);
   const reduced = useReducedMotion();
-  const live = getRevealStage(order.length, clock.elapsedMs);
+  const live = getRevealStage(order.length, elapsed);
   // 動きを減らす設定では、発表の演出を省いて最初から最終の結果を出す。
   const stage: RevealStage = reduced ? { kind: "final" } : live;
   // 発表があるときだけ、採点の様子に出す指標の点を先に読む。
   const [revealing] = useState(live.kind === "reveal");
-  const metrics = useRevealMetrics(
+  const metrics = useResultMetrics(
     code,
     battle.id,
     revealing ? order.map((entry) => entry.participantId) : [],
@@ -124,49 +161,21 @@ export function ResultPage({
   const [watched, setWatched] = useState(false);
   if (stage.kind === "reveal" && !watched) setWatched(true);
   const animate = watched && !reduced;
-  const final = stage.kind === "final";
-  // 発表を見終えた・スキップしたら、消えた操作の代わりに次の操作へフォーカスを移す。見出しが隠れないようスクロールはしない。
-  const rematch = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    if (final && animate) rematch.current?.focus({ preventScroll: true });
-  }, [final, animate]);
   if (!battle.result) return null;
-  const roomLabel = (
-    <Badge>
-      ルーム <CodeDisplay value={code} presentation="inline" />
-    </Badge>
-  );
+  const roomLabel = <BattleRoomBadge code={code} settings={battle.settings} />;
   if (stage.kind === "reveal")
     return (
       <Page decoration={<GridBackdrop />}>
         <AppFrame
           width="full"
+          headerAppearance="surface"
+          contentFit="viewport"
           brand={<AppBrand />}
           context={roomLabel}
-          // 狭い画面では、何人目かを採点パネルで示し、ヘッダーには操作だけを置く。
-          actions={
-            <>
-              <RevealCounter stage={stage} count={order.length} />
-              <RevealControls rate={clock.rate} onRateChange={clock.setRate} onSkip={clock.skip} />
-            </>
-          }
-          compactActions={
-            <RevealControls
-              compact
-              rate={clock.rate}
-              onRateChange={clock.setRate}
-              onSkip={clock.skip}
-            />
-          }
-          progress={
-            <Progress
-              label="発表の進み具合"
-              value={stage.progress * 100}
-              presentation="track"
-              tone="gradient"
-              striped
-            />
-          }
+          actions={<RevealCounter stage={stage} count={order.length} />}
+          // 狭い画面では、何人目かを採点パネルで示し、ヘッダーはロゴだけにする。
+          compactActions={null}
+          progress={<RevealProgress value={stage.progress * 100} />}
         >
           <ResultReveal
             battle={battle}
@@ -176,20 +185,37 @@ export function ResultPage({
             names={names}
             icons={icons}
             metrics={metrics}
-            rate={clock.rate}
           />
         </AppFrame>
       </Page>
     );
+  // 最終の結果も発表中と同じヘッダーにし、右側には自分の結果を出す。
+  // 発表があった結果では、ヘッダーの下に満ちた進み具合の線を残し、発表中から切り替わるときに高さを変えない。
   const frame = (content: ReactNode) => (
-    <AppFrame brand={<AppBrand />} context={roomLabel}>
+    <AppFrame
+      headerAppearance="surface"
+      brand={<AppBrand />}
+      context={roomLabel}
+      actions={<Readout label="RESULT" value={getPlacement(battle, participantId)} />}
+      compactActions={null}
+      progress={order.length > 0 && <RevealProgress value={100} />}
+    >
       {content}
     </AppFrame>
   );
   // 3人以上は順位、2人は勝ち負けで表示する。
   if (battle.participantIds.length > 2)
     return (
-      <Page decoration={<GridBackdrop />}>
+      <Page
+        decoration={
+          <>
+            <GridBackdrop />
+            <ResultShards />
+            {/* 見出しの左右の帯は、ページの上端（白いヘッダーの裏）から始め、ヘッダーの下に隙間を作らない。 */}
+            <ResultBurst animate={animate} />
+          </>
+        }
+      >
         {frame(
           <RankingResult
             code={code}
@@ -198,7 +224,6 @@ export function ResultPage({
             names={names}
             icons={icons}
             animate={animate}
-            rematchRef={rematch}
             onRematch={onRematch}
             onTop={onTop}
           />,
@@ -227,6 +252,7 @@ export function ResultPage({
       decoration={
         <>
           <GridBackdrop />
+          <ResultShards />
           <ResultBurst animate={animate} />
           {animate && battle.result.kind === "win" && battle.result.winnerId === participantId && (
             <ResultConfetti />
@@ -237,7 +263,7 @@ export function ResultPage({
       {frame(
         <Stack space="section">
           <Stack align="center" space="compact">
-            <Text variant="eyebrow.strong" tone="accent">
+            <Text variant="eyebrow.display" tone="accent">
               RESULT
             </Text>
             <VerdictReveal animate={animate}>
@@ -261,6 +287,16 @@ export function ResultPage({
               />
             </Stack>
           </ComparisonStage>
+          {/* 操作は結果の札の下・内訳の上に置き、結果の種類によらず同じ位置にする。 */}
+          <ActionGroup align="center">
+            <Button shape="pill" size="lg" onClick={onRematch}>
+              同じメンバーで再戦
+            </Button>
+            <ResultShareLink battle={battle} participantId={participantId} />
+            <Button shape="pill" size="lg" appearance="secondary" onClick={onTop}>
+              トップへ戻る
+            </Button>
+          </ActionGroup>
           {battle.scores && (
             <Grid columns={2}>
               {battle.scores
@@ -281,14 +317,6 @@ export function ResultPage({
                 ))}
             </Grid>
           )}
-          <ActionGroup align="center">
-            <Button ref={rematch} shape="pill" size="lg" prominence="raised" onClick={onRematch}>
-              同じメンバーで再戦
-            </Button>
-            <Button shape="pill" size="lg" appearance="secondary" onClick={onTop}>
-              トップへ戻る
-            </Button>
-          </ActionGroup>
         </Stack>,
       )}
     </Page>

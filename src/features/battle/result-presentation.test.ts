@@ -5,11 +5,15 @@ import {
   getInterimRanks,
   getRevealEndsAt,
   getRevealOrder,
+  getRevealBonuses,
   getRevealStage,
+  getScoreCount,
   revealTiming,
+  scoreCountTiming,
 } from "./result-presentation";
 
-const slot = revealTiming.introMs + revealTiming.judgingMs + revealTiming.scoreMs;
+const slot =
+  revealTiming.introMs + revealTiming.judgingMs + revealTiming.scoreMs + revealTiming.holdMs;
 const decided = { kind: "draw", reason: "same-score", decidedAt: 100_000 } as const;
 const score = (participantId: string, submittedAt: number, total = 50) => ({
   participantId,
@@ -64,29 +68,30 @@ const stage = (elapsed: number, count = 2) => getRevealStage(count, elapsed);
 
 describe("発表の段階", () => {
   it("1人分を呼び出し・採点の様子・点数の順に進める", () => {
-    expect(slot).toBe(8_000);
+    // 呼び出し1.6秒・採点の様子5.5秒（1指標1.1秒）・点数3.6秒・余韻1.8秒。
+    expect(slot).toBe(12_500);
     expect(stage(-3_000)).toMatchObject({ kind: "reveal", index: 0, phase: "intro" });
     expect(stage(0)).toMatchObject({ index: 0, phase: "intro", progress: 0 });
-    expect(stage(1_199)).toMatchObject({ index: 0, phase: "intro" });
-    expect(stage(1_200)).toMatchObject({ index: 0, phase: "judging", step: 0, stepProgress: 0 });
+    expect(stage(1_599)).toMatchObject({ index: 0, phase: "intro" });
+    expect(stage(1_600)).toMatchObject({ index: 0, phase: "judging", step: 0, stepProgress: 0 });
     for (const step of [1, 2, 3, 4])
-      expect(stage(1_200 + 800 * step)).toMatchObject({ phase: "judging", step });
-    expect(stage(1_600)).toMatchObject({ step: 0, stepProgress: 0.5 });
-    expect(stage(5_199)).toMatchObject({ index: 0, phase: "judging", step: 4 });
-    expect(stage(5_200)).toMatchObject({ index: 0, phase: "score", step: 0 });
-    expect(stage(7_999)).toMatchObject({ index: 0, phase: "score" });
-    expect(stage(8_000)).toMatchObject({ index: 1, phase: "intro", progress: 0.5 });
+      expect(stage(1_600 + 1_100 * step)).toMatchObject({ phase: "judging", step });
+    expect(stage(2_150)).toMatchObject({ step: 0, stepProgress: 0.5 });
+    expect(stage(7_099)).toMatchObject({ index: 0, phase: "judging", step: 4 });
+    expect(stage(7_100)).toMatchObject({ index: 0, phase: "score", step: 0 });
+    expect(stage(12_499)).toMatchObject({ index: 0, phase: "score" });
+    expect(stage(12_500)).toMatchObject({ index: 1, phase: "intro", progress: 0.5 });
   });
 
   it("全員の発表が終わったら最終の結果にする", () => {
-    expect(stage(15_999)).toMatchObject({ kind: "reveal", index: 1, phase: "score" });
-    expect(stage(16_000)).toEqual({ kind: "final" });
+    expect(stage(24_999)).toMatchObject({ kind: "reveal", index: 1, phase: "score" });
+    expect(stage(25_000)).toEqual({ kind: "final" });
     expect(stage(Infinity)).toEqual({ kind: "final" });
     expect(getRevealStage(0, 0)).toEqual({ kind: "final" });
   });
 
   it("時間を変えても同じ規則で区切る", () => {
-    const timing = { introMs: 100, judgingMs: 500, scoreMs: 400 };
+    const timing = { introMs: 100, judgingMs: 500, scoreMs: 300, holdMs: 100 };
     expect(getRevealStage(3, 2_550, timing)).toMatchObject({
       index: 2,
       phase: "judging",
@@ -123,5 +128,30 @@ describe("途中の順位", () => {
       ]),
     );
     expect(getInterimRanks(order, 0)).toEqual(new Map());
+  });
+});
+
+describe("点数の数え上げ", () => {
+  it("取ったボーナスだけを、最速提出・最少生成の順に加える", () => {
+    expect(getRevealBonuses({ speedBonus: 3, generationBonus: 1.5 })).toEqual([
+      { id: "speed", label: "最速提出", points: 3 },
+      { id: "generation", label: "最少生成", points: 1.5 },
+    ]);
+    expect(getRevealBonuses({ speedBonus: 0, generationBonus: null })).toEqual([]);
+  });
+
+  it("再現度を数え上げた後、ボーナスを1つずつ加え、点数の段階の中で数え終える", () => {
+    const t = scoreCountTiming;
+    expect(getScoreCount(80, [3, 1.5], 0)).toEqual({ value: 0, bonuses: 0, settled: false });
+    expect(getScoreCount(80, [3, 1.5], t.similarityMs)).toMatchObject({ value: 80, bonuses: 0 });
+    expect(getScoreCount(80, [3, 1.5], t.bonusStartMs + t.bonusCountMs)).toMatchObject({
+      value: 83,
+      bonuses: 1,
+      settled: false,
+    });
+    const end = t.bonusStartMs + t.bonusGapMs + t.bonusCountMs;
+    expect(getScoreCount(80, [3, 1.5], end)).toEqual({ value: 84.5, bonuses: 2, settled: true });
+    expect(end).toBeLessThan(revealTiming.scoreMs);
+    expect(getScoreCount(80, [], t.similarityMs)).toEqual({ value: 80, bonuses: 0, settled: true });
   });
 });

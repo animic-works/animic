@@ -1,7 +1,17 @@
 import { defineSlotRecipe } from "@pandacss/dev";
 export const podium = defineSlotRecipe({
   className: "podium",
-  slots: ["avatar", "root", "item", "image", "name", "value", "step", "decoration"],
+  slots: [
+    "avatar",
+    "root",
+    "item",
+    "image",
+    "name",
+    "value",
+    "step",
+    "decoration",
+    "stepDecoration",
+  ],
   base: {
     avatar: { display: "inline-flex", _podiumCompact: { display: "none" } },
     root: {
@@ -64,6 +74,7 @@ export const podium = defineSlotRecipe({
       _podiumCompact: { height: "2.25rem" },
     },
     decoration: { position: "absolute", top: "-2rem", left: "50%", translate: "-50% 0", zIndex: 1 },
+    stepDecoration: { position: "absolute", inset: "0", pointerEvents: "none" },
   },
   variants: {
     entering: {
@@ -103,5 +114,77 @@ export const podium = defineSlotRecipe({
       },
       third: { step: { color: "fg.default", background: "linear-gradient(#ffd23d, #f0b400)" } },
     },
+    // 人ごとの縦長のカード。枠と下の帯を順位の色で塗り、1位のカードを一回り大きく中央に置く。
+    presentation: {
+      steps: {},
+      card: {
+        root: {
+          gridTemplateColumns: "minmax(0, 13rem) minmax(0, 15.5rem) minmax(0, 13rem)",
+          maxWidth: "46rem",
+          _podiumCompact: {
+            gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1.18fr) minmax(0, 1fr)",
+          },
+        },
+        item: {
+          gap: "0.45rem",
+          padding: "0.55rem 0.55rem 0",
+          borderWidth: "3",
+          borderStyle: "solid",
+          borderColor: "var(--animic-podium-color)",
+          borderRadius: "1.25rem",
+          background: "bg.surface",
+          boxShadow: "soft.1",
+          _podiumCompact: { padding: "0.35rem 0.35rem 0", borderRadius: "1rem" },
+        },
+        image: {
+          width: "100%",
+          border: "0",
+          borderRadius: "0.85rem",
+          boxShadow: "none",
+          _podiumCompact: { borderRadius: "0.65rem" },
+        },
+        step: {
+          position: "relative",
+          height: "3rem",
+          marginInline: "-0.55rem",
+          borderRadius: "0 0 1rem 1rem",
+          _podiumCompact: {
+            height: "2.4rem",
+            marginInline: "-0.35rem",
+            borderRadius: "0 0 0.8rem 0.8rem",
+          },
+        },
+      },
+    },
   },
+  compoundVariants: [
+    {
+      presentation: "card",
+      place: "first",
+      css: {
+        item: {
+          "--animic-podium-color": "token(colors.accent.primary)",
+          boxShadow:
+            "0 0 0 6px color-mix(in srgb, token(colors.accent.primary) 14%, transparent), 0 14px 40px -12px color-mix(in srgb, token(colors.accent.primary) 55%, transparent)",
+        },
+        image: { width: "100%", border: "0", boxShadow: "none" },
+        step: { height: "3.6rem", _podiumCompact: { height: "2.8rem" } },
+      },
+    },
+    {
+      presentation: "card",
+      place: "second",
+      css: {
+        item: { "--animic-podium-color": "token(colors.accent.secondary)" },
+        step: { height: "3rem", _podiumCompact: { height: "2.4rem" } },
+      },
+    },
+    {
+      presentation: "card",
+      place: "third",
+      css: {
+        item: { "--animic-podium-color": "token(colors.accent.highlight)" },
+      },
+    },
+  ],
 });
