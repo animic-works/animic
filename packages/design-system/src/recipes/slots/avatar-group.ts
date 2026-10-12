@@ -112,12 +112,13 @@ export const avatarGroup = defineSlotRecipe({
           textOverflow: "ellipsis",
         },
       },
+      // 一覧は項目の幅に合わせて中央に置き、収まらない人数では横にスクロールする。
       expanded: {
         text: { _avatarGroupCompact: { display: "grid" } },
-        frame: { display: "block" },
+        frame: { justifyContent: "center" },
         root: {
-          flex: "1 1 auto",
-          justifyContent: "safe center",
+          flex: "0 1 auto",
+          justifyContent: "start",
           flexWrap: "nowrap",
           padding: "0.8rem",
           borderRadius: "1.4rem",
@@ -130,12 +131,14 @@ export const avatarGroup = defineSlotRecipe({
         },
         item: {
           flex: "0 0 12.5rem",
-          padding: "0.45rem 0.8rem 0.45rem 0.45rem",
-          background: "bg.subtle",
-          border: "2px solid transparent",
+          padding: "0.45rem 0.9rem 0.45rem 0.45rem",
+          background: "bg.surface",
+          border: "2px solid token(colors.border.default)",
+          // 本人の項目は白い面に濃いピンクの枠で示し、値の色の読みやすさを保つ。
           "&[data-current]": { background: "bg.surface", borderColor: "accent.primary" },
           transition: "background 300ms, transform 400ms cubic-bezier(.3,1.6,.5,1), opacity 300ms",
-          "&[data-state=pending]": { opacity: "0.55" },
+          // 待機中の項目も同じ枠と高さで並べ、薄くして区別する。
+          "&[data-state=pending]": { background: "bg.subtle", opacity: "0.55" },
           "&[data-state=active]": {
             background: "bg.surface",
             borderColor: "accent.primary",
@@ -143,10 +146,12 @@ export const avatarGroup = defineSlotRecipe({
             boxShadow:
               "0 10px 22px -12px color-mix(in srgb, token(colors.accent.primary) 70%, transparent)",
           },
-          "&[data-state=complete]": { background: "bg.surface", borderColor: "border.default" },
           _motionReduce: { transition: "none" },
           _avatarGroupNarrow: { flexBasis: "auto" },
         },
+        // 順位などの印はアバターに重ねず、項目の右端（値の後ろ）に並べる。
+        value: { order: 1, fontSize: "1.05rem" },
+        marker: { position: "static", order: 2, flexShrink: 0 },
       },
     },
   },

@@ -20,6 +20,9 @@ export const progress = defineSlotRecipe({
       backgroundImage: "var(--animic-progress-fill, none)",
       width: "100%",
       clipPath: "inset(0 calc(100% - var(--animic-progress-value)) 0 0 round 999px)",
+      // 利用側の時計の刻みで届く値の間を、なめらかにつなぐ。
+      transition: "clip-path 250ms linear",
+      _motionReduce: { transition: "none" },
       _indeterminate: { clipPath: "none" },
     },
     value: { textStyle: "numeric", color: "fg.default" },

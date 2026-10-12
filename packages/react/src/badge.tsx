@@ -4,6 +4,8 @@ import { domProps } from "./dom";
 export type BadgeProps = CommonProps<HTMLSpanElement> & {
   shape?: "pill" | "rounded";
   size?: "xs" | "sm" | "md";
+  /** 札を親の幅までに収め、最初の要素（名前など）だけを「…」で縮める。後ろの要素（敬称など）は残す。 */
+  truncate?: boolean;
 } & (
     | {
         appearance?: "standard";
@@ -21,6 +23,7 @@ export function Badge({ ref, ...props }: BadgeProps) {
         tone: props.tone,
         size: props.size,
         shape: props.shape,
+        truncate: props.truncate,
       })}
     >
       {props.children}

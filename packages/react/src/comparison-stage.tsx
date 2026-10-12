@@ -4,12 +4,15 @@ export function ComparisonStage({
   first,
   second,
   children,
+  size,
 }: {
   first: ReactNode;
   second: ReactNode;
   children: ReactNode;
+  /** `compact`は狭い画面で画像を小さくし、パネルと下の一覧まで1画面に収める。 */
+  size?: "standard" | "compact";
 }) {
-  const c = comparisonStage();
+  const c = comparisonStage({ size });
   return (
     <div className={c.root}>
       <div className={c.layout}>

@@ -7,16 +7,19 @@ export function Readout({
   presentation,
   emphasis,
   format = "text",
+  fill,
 }: {
+  /** 外側で決めた大きさいっぱいに広げる。文言の長さによらず同じ大きさで並べるときに使う。 */
+  fill?: boolean;
   role?: "timer" | "status";
   label: string;
   value: string;
-  tone?: "neutral" | "highlight" | "primary";
+  tone?: "neutral" | "highlight" | "primary" | "violet" | "indigo";
   presentation?: "panel" | "stamp";
   emphasis?: "normal" | "urgent";
   format?: "text" | "clock";
 }) {
-  const c = readout({ tone, presentation, emphasis, format });
+  const c = readout({ tone, presentation, emphasis, format, fill });
   return (
     <div className={c.root} role={role} aria-label={label}>
       <span className={c.label}>{label}</span>

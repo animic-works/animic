@@ -1,6 +1,7 @@
+import { useEffect, useRef, type ReactNode } from "react";
 import { useScrollViewport } from "./use-scroll-viewport";
-import type { ReactNode } from "react";
-import { avatarGroup } from "@animic/styled-system/recipes";
+import { avatarGroup, text } from "@animic/styled-system/recipes";
+import type { TextProps } from "./text";
 export function AvatarGroup({
   summary,
   members,
@@ -18,13 +19,31 @@ export function AvatarGroup({
     current?: boolean;
     state?: "pending" | "active" | "complete";
     value?: string;
+    /** 値の文字の色。値の意味（点数の段階など）に応じて利用側が選ぶ。 */
+    valueTone?: TextProps["tone"];
     marker?: { value: string; label: string };
   }[];
   label: string;
   presentation?: "compact" | "expanded";
 }) {
-  const { ref: scrollingRef, scrollbars: scrollingBars } =
-    useScrollViewport<HTMLOListElement>(label);
+  const list = useRef<HTMLOListElement>(null);
+  const { ref: scrollingRef, scrollbars: scrollingBars } = useScrollViewport<HTMLOListElement>(
+    label,
+    list,
+  );
+  // 横にスクロールする一覧では、進行中（active）の項目が見えるよう一覧の中央へ寄せる。ページはスクロールしない。
+  const active = members.findIndex((member) => member.state === "active");
+  useEffect(() => {
+    const viewport = list.current;
+    const item = viewport?.children[active];
+    if (!viewport || !(item instanceof HTMLElement)) return;
+    const bounds = viewport.getBoundingClientRect();
+    const box = item.getBoundingClientRect();
+    viewport.scrollBy({
+      left: box.left + box.width / 2 - (bounds.left + bounds.width / 2),
+      behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+    });
+  }, [active]);
   const c = avatarGroup({ presentation, crowded: members.length > 3 });
   return (
     <div className={c.frame}>
@@ -57,7 +76,15 @@ export function AvatarGroup({
             </span>
             {member.value && (
               <span className={c.value} aria-hidden="true">
-                {member.value}
+                <span
+                  className={
+                    member.valueTone
+                      ? text({ variant: "inherit", tone: member.valueTone })
+                      : undefined
+                  }
+                >
+                  {member.value}
+                </span>
               </span>
             )}
           </li>

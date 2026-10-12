@@ -27,8 +27,10 @@ export const scoringMetrics = [
   },
 ] as const;
 
+export type ScoringMetricKey = (typeof scoringMetrics)[number]["key"];
+
 /** 指標ごとの0〜100点。除外された指標や失敗した指標は`null`。 */
-export type ScoringMetricScores = Record<(typeof scoringMetrics)[number]["key"], number | null>;
+export type ScoringMetricScores = Record<ScoringMetricKey, number | null>;
 
 const weightSchema = v.pipe(
   v.number(),
@@ -56,6 +58,12 @@ export const scoringWeightsSchema = v.pipe(
   ),
 );
 export type ScoringWeights = v.InferOutput<typeof scoringWeightsSchema>;
+
+/**
+ * 参加者の指標ごとの点と、その対戦を始めたときの重み。重みを採点ジョブへ写す前の対戦では`weights`が`null`。
+ * 人物のいない画像でCCIPを除いた場合も、割り直す前の設定した重みを持つ。
+ */
+export type ScoringMetricsReport = { scores: ScoringMetricScores; weights: ScoringWeights | null };
 
 /** 管理画面で変えるまで使う重み。採点ノードの既定値と同じ。 */
 export const defaultScoringWeights: ScoringWeights = {

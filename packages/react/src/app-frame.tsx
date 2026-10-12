@@ -11,11 +11,16 @@ export interface AppFrameProps extends CommonProps {
   compactActions?: ReactNode;
   progress?: ReactNode;
   width?: "reading" | "wide" | "full" | "content";
+  headerAppearance?: "transparent" | "surface";
+  /** `viewport`なら本文を1画面に収める前提で、本文の下の余白を詰める。 */
+  contentFit?: "scroll" | "viewport";
   bottomAction?: boolean;
 }
 export function AppFrame({ ref, ...props }: AppFrameProps) {
   const c = appFrame({
     width: props.width,
+    headerAppearance: props.headerAppearance,
+    contentFit: props.contentFit,
     brandOnly: !props.context && !props.actions && !props.progress && props.width !== "full",
     bottomAction: props.bottomAction,
     compactControls: props.compactContext !== undefined || props.compactActions !== undefined,

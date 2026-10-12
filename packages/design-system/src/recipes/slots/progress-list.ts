@@ -24,7 +24,6 @@ export const progressList = defineSlotRecipe({
       listStyle: "none",
       margin: "0",
       padding: "0",
-      _progressListCompact: { gridTemplateColumns: "repeat(2, minmax(0, 1fr))" },
     },
     item: {
       display: "grid",
@@ -35,17 +34,13 @@ export const progressList = defineSlotRecipe({
       borderRadius: "0.75rem",
       background: "bg.subtle",
       color: "fg.muted",
-      _progressListCompact: {
-        gridTemplateColumns: "1.4rem minmax(0, 1fr)",
-        gap: "1",
-        padding: "0.35rem 0.45rem",
-      },
+      // 狭い画面でも1行に1項目を並べ、高さを抑える。
+      _progressListCompact: { padding: "0.15rem 0.5rem" },
     },
     label: { minWidth: 0, overflowWrap: "anywhere", textStyle: "code.compact" },
     value: {
       textStyle: "code.compact",
       whiteSpace: "nowrap",
-      _progressListCompact: { gridColumn: "2" },
     },
     indicator: {
       display: "grid",
@@ -55,6 +50,11 @@ export const progressList = defineSlotRecipe({
       borderRadius: "full",
       background: "disabled.bg",
       "& > svg": { display: "block", width: "100%", height: "100%" },
+      // 進み具合の刻みの間を、次の刻みまでの時間でなめらかにつなぐ。
+      "& [data-progress]": {
+        transition: "stroke-dasharray 220ms linear",
+        _motionReduce: { transition: "none" },
+      },
     },
   },
   variants: {

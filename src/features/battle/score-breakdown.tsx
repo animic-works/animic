@@ -9,7 +9,7 @@ import { Surface } from "@animic/react/surface";
 import { Text } from "@animic/react/text";
 import type { FinalScore } from "../scoring/final-score";
 import { getScoreRank } from "../scoring/score-rank";
-import { scoringMetrics, type ScoringMetricScores } from "../scoring/scoring-metrics";
+import { scoringMetrics, type ScoringMetricsReport } from "../scoring/scoring-metrics";
 import type { summarizeSubmission } from "./battle-history";
 
 function formatTotal(total: number | null) {
@@ -31,6 +31,7 @@ function ScoreGrade({ score, size }: { score: number; size?: "sm" | "lg" }) {
  * 参加者のスコアの内訳（再現度・提出時間・生成回数と、取ったボーナス）と、指標ごとの点。
  * 再現度と指標の点には、ランクの印を添えてランクの色で出す。
  * 戦績の詳細と結果画面で使う。見出しは使う側で付ける。`metrics`が`null`なら指標を出さない。
+ * 指標はモデル名ではなく、トップページの採点方法と同じ名前と、その対戦を始めたときの重みで出す。
  * その対戦で定義していない（点が0の）ボーナスは出さない。
  */
 export function ScoreBreakdown({
@@ -40,7 +41,7 @@ export function ScoreBreakdown({
 }: {
   score: FinalScore | null;
   submission: ReturnType<typeof summarizeSubmission>;
-  metrics: ScoringMetricScores | null;
+  metrics: ScoringMetricsReport | null;
 }) {
   const terms = [
     { label: "再現度", value: formatTotal(score?.similarity ?? null), bonus: null },
@@ -96,7 +97,11 @@ export function ScoreBreakdown({
             指標
           </Heading>
           {scoringMetrics.map((metric) => {
-            const point = metrics[metric.key];
+            const point = metrics.scores[metric.key];
+            // 重みを記録する前の対戦では、重みを出さない。
+            const description = metrics.weights
+              ? `${metric.description}・重み ${metrics.weights[metric.key]}%`
+              : metric.description;
             return (
               <MediaObject
                 key={metric.key}
@@ -115,7 +120,7 @@ export function ScoreBreakdown({
                         {metric.label}
                       </Text>
                       <Text variant="caption" tone="supporting">
-                        {metric.description}
+                        {description}
                       </Text>
                     </Stack>
                     <Text variant="caption" tone="muted">
@@ -125,7 +130,7 @@ export function ScoreBreakdown({
                 ) : (
                   <Meter
                     label={metric.label}
-                    description={metric.description}
+                    description={description}
                     value={point}
                     valueText={point.toFixed(1)}
                     tone={getScoreRank(point).tone}

@@ -6,6 +6,8 @@ export interface ActionProps {
   appearance?: "soft" | "overlay" | "outlined" | "quiet" | "primary" | "secondary" | "inverse";
   size?: "xs" | "sm" | "compact" | "md" | "lg" | "hero" | "nav";
   compactLabel?: string;
+  /** 狭い画面では文字を隠し、アイコンだけの丸い操作にする。`aria-label`を必ず渡す。 */
+  compactIconOnly?: boolean;
   leadingIcon?: ReactNode;
   trailingIcon?: ReactNode;
 }

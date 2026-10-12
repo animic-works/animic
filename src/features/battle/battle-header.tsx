@@ -21,19 +21,34 @@ export function BattleRoomLabel({
   code: string;
   settings: BattleSnapshot["settings"];
 }) {
-  // ルームコードと対戦条件は1つの札にまとめ、高さと並びをそろえる。
-  // 狭い画面では、ロゴとルームコードを1行に収めるため対戦条件を省略する。
   return (
     <>
       <AppBrand linked={false} />
-      <Badge tone="surface">
-        ルーム <Text variant="code.compact">{code}</Text>
-        <WorkspaceHeaderDetail>
-          {"｜"}
-          {levels[settings.difficulty].label}・{settings.durationSeconds}秒
-        </WorkspaceHeaderDetail>
-      </Badge>
+      <BattleRoomBadge code={code} settings={settings} />
     </>
+  );
+}
+
+/**
+ * ルームコードと対戦条件の札。対戦画面と結果画面のヘッダーで使う。
+ * ルームコードと対戦条件は1つの札にまとめ、高さと並びをそろえる。
+ * 対戦画面の狭い画面では、ロゴとルームコードを1行に収めるため対戦条件を省略する。
+ */
+export function BattleRoomBadge({
+  code,
+  settings,
+}: {
+  code: string;
+  settings: BattleSnapshot["settings"];
+}) {
+  return (
+    <Badge tone="surface">
+      ルーム <Text variant="code.compact">{code}</Text>
+      <WorkspaceHeaderDetail>
+        {"｜"}
+        {levels[settings.difficulty].label}・{settings.durationSeconds}秒
+      </WorkspaceHeaderDetail>
+    </Badge>
   );
 }
 

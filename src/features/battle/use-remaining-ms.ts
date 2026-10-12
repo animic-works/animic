@@ -20,21 +20,10 @@ function subscribe(listener: () => void) {
 }
 const getSnapshot = () => now;
 const getServerSnapshot = () => null;
-const subscribeNothing = () => () => {};
 
-/**
- * 配信時のサーバー時刻に受信後の経過（単調増加時計を200ms刻みで読む）を足した、今のサーバー時刻。
- * 端末の時計は使わない。`active`が`false`の間は時計を読み直さず、描画し直さない。
- */
-export function useServerNow(serverTime: number, receivedAt: number | null, active = true) {
-  const current = useSyncExternalStore(
-    active ? subscribe : subscribeNothing,
-    getSnapshot,
-    getServerSnapshot,
-  );
-  return (
-    serverTime + (current === null || receivedAt === null ? 0 : Math.max(0, current - receivedAt))
-  );
+/** 単調増加時計（`performance.now()`）を200ms刻みで読む。サーバーの描画では`null`。 */
+export function useMonotonicNow() {
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
 
 /** 配信時刻と受信後の経過から数え、画面の演出や端末時計の変更で締切を延ばさない。 */
@@ -43,6 +32,7 @@ export function useRemainingMs(
   deadline: number | null,
   receivedAt: number | null,
 ) {
-  const current = useServerNow(serverTime, receivedAt);
-  return deadline === null ? null : Math.max(0, deadline - current);
+  const current = useMonotonicNow();
+  const elapsed = current === null || receivedAt === null ? 0 : Math.max(0, current - receivedAt);
+  return deadline === null ? null : Math.max(0, deadline - serverTime - elapsed);
 }

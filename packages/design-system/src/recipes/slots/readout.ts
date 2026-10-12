@@ -60,7 +60,6 @@ export const readout = defineSlotRecipe({
           background: "transparent",
           color: "var(--animic-readout-ink, token(colors.fg.default))",
           boxShadow: "none",
-          rotate: "-8deg",
           _readoutNarrow: { minWidth: "0", padding: "0.35rem 0.8rem 0.4rem" },
           _readoutCompact: {
             minWidth: "0",
@@ -72,6 +71,8 @@ export const readout = defineSlotRecipe({
         value: { textStyle: "label.stamp", color: "inherit" },
       },
     },
+    // 外側で決めた大きさいっぱいに広げ、文字を中央に置く。文言の長さによらず同じ大きさで並べるときに使う。
+    fill: { true: {}, false: {} },
     tone: {
       neutral: {},
       // 期限が迫った別の段階（画像を選ぶ時間など）。黄色の面にする。
@@ -90,6 +91,37 @@ export const readout = defineSlotRecipe({
           "--animic-readout-ink": "token(colors.accent.primary)",
         },
       },
+      // 同じ場所に並ぶ別の種類の値（ボーナスなど）を、文字と枠の色で見分ける。白い面の上で読める濃さの色にする。
+      violet: {
+        root: {
+          "--animic-readout-border": "token(colors.violet.0)",
+          "--animic-readout-ink": "token(colors.violet.0)",
+        },
+      },
+      indigo: {
+        root: {
+          "--animic-readout-border": "token(colors.indigo.0)",
+          "--animic-readout-ink": "token(colors.indigo.0)",
+        },
+      },
     },
   },
+  compoundVariants: [
+    {
+      fill: true,
+      css: {
+        root: {
+          width: "100%",
+          height: "100%",
+          minWidth: "0",
+          alignContent: "center",
+          _readoutNarrow: { minWidth: "0" },
+          _readoutCompact: { minWidth: "0" },
+        },
+        // 大きさを固定するため、文字は折り返さない。
+        label: { whiteSpace: "nowrap" },
+        value: { whiteSpace: "nowrap" },
+      },
+    },
+  ],
 });

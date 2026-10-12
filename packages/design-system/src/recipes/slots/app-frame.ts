@@ -33,6 +33,8 @@ export const appFrame = defineSlotRecipe({
       height: "0.375rem",
       background:
         "linear-gradient(90deg, token(colors.accent.secondary), token(colors.accent.primary))",
+      // 進み具合（Progress）を置いたときは、その表示だけを見せ、角の丸みから下地の線をのぞかせない。
+      "&:not(:empty)": { background: "transparent" },
     },
     root: { minHeight: "100svh", "--animic-app-frame-content-width": "72rem" },
     header: {
@@ -109,6 +111,21 @@ export const appFrame = defineSlotRecipe({
       false: {
         compactContext: { display: "none", _appFrameCompact: { display: "none" } },
         compactActions: { display: "none", _appFrameCompact: { display: "none" } },
+      },
+    },
+    // 1画面に収める進行中の画面では、本文の下の余白を詰めてページをスクロールさせない。
+    contentFit: {
+      scroll: {},
+      viewport: { main: { paddingBlockEnd: "2", _appFrameCompact: { paddingBlockEnd: "2" } } },
+    },
+    // 進行中の画面など、背景の装飾の上でもヘッダーを白い面として区切る。
+    headerAppearance: {
+      transparent: {},
+      surface: {
+        header: {
+          background: "bg.surface",
+          borderBottom: "1px solid token(colors.border.default)",
+        },
       },
     },
     width: {

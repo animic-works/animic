@@ -45,7 +45,7 @@ desktop-comfyui-serverの通信仕様で決まっているURLパスとキー名�
 | `scoring_result`    | 採点ジョブと参加者ごとの`total`                                                                                  |
 | `scoring_weight`    | 再現度の指標ごとの重み・ボーナスの点と対象の下限・保存した日時。変えるたびに行を足す                             |
 
-採点ジョブのIDは対戦の状態で発行し、登録は冪等にします。登録のときに、対戦を始めた時刻より前に保存した最新の重み（なければ既定値）を`scoring_job`の`weights`へ写します（`src/features/scoring/scoring-weights.server.ts`）。採点ワーカーから受け取った出力は加工せず`raw_result`に保存し、指標ごとの点とジョブの重みから計算した`total`を`scoring_result`に保存します。計算は採点ノードと同じく、点のある指標だけで重みを割り直した加重平均（小数3桁）です（`weightedTotal`）。重みを写す前に登録したジョブは、採点ノードの`total`を使います。戦績の詳細と結果画面のスコアの内訳では、対戦IDと参加者ID（戦績の詳細は本人、結果画面は採点された全員）で成功した採点ジョブを探し（`getScoringMetrics`、`scoring_job`の`battle_id`に索引あり）、`raw_result`から指標ごとの点を読みます。点のない指標（人物のいない画像のCCIP、失敗した指標）は対象外として表示します。指標の表示名は`src/features/scoring/scoring-metrics.ts`にあります。
+採点ジョブのIDは対戦の状態で発行し、登録は冪等にします。登録のときに、対戦を始めた時刻より前に保存した最新の重み（なければ既定値）を`scoring_job`の`weights`へ写します（`src/features/scoring/scoring-weights.server.ts`）。採点ワーカーから受け取った出力は加工せず`raw_result`に保存し、指標ごとの点とジョブの重みから計算した`total`を`scoring_result`に保存します。計算は採点ノードと同じく、点のある指標だけで重みを割り直した加重平均（小数3桁）です（`weightedTotal`）。重みを写す前に登録したジョブは、採点ノードの`total`を使います。戦績の詳細と結果画面のスコアの内訳では、対戦IDと参加者ID（戦績の詳細は本人、結果画面は採点された全員）で成功した採点ジョブを探し（`getScoringMetrics`、`scoring_job`の`battle_id`に索引あり）、`raw_result`から指標ごとの点を、`weights`から対戦を始めたときの重みを読みます（重みを写す前のジョブは重みなし）。点のない指標（人物のいない画像のCCIP、失敗した指標）は対象外として表示し、重みは割り直す前の値を表示します。指標の表示名は`src/features/scoring/scoring-metrics.ts`にあります。
 
 ボーナスの点と対象の下限は、重みと同じ`scoring_weight`の行に保存します（`speed_bonus`・`generation_bonus`・`bonus_min_similarity`）。ボーナスの列を加える前に保存した行は`null`で、既定値（3点・3点・0点）を使います。ボーナスは採点ジョブには写さず、ルームのDOが対戦を始めるときに、開始時刻より前に保存した最新の値を読んで対戦の状態に記録します。重みとボーナスは同じ開始時刻で引くため、同じ行の値になります。
 

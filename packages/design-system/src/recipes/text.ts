@@ -57,6 +57,7 @@ export const text = defineRecipe({
       numeric: { textStyle: "numeric" },
       eyebrow: { textStyle: "eyebrow" },
       "eyebrow.strong": { textStyle: "eyebrow.strong" },
+      "eyebrow.display": { textStyle: "eyebrow.display" },
       "label.display": { textStyle: "label.display" },
       "numeric.counter": { textStyle: "numeric.counter" },
       "numeric.display": { textStyle: "numeric.display" },

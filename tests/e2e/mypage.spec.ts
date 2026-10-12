@@ -5,6 +5,7 @@ import type { Page } from "@playwright/test";
 import { getBattleRecords } from "../../src/features/battle/battle-history";
 import type { SavedBattleResult } from "../../src/features/battle/battle-history";
 import type { FinalScore } from "../../src/features/scoring/final-score";
+import { defaultScoringWeights } from "../../src/features/scoring/scoring-metrics";
 import { expectAccessible } from "../design-system/browser/accessibility";
 import { create, join, loadApi, signIn, snapshot } from "./api";
 import { executeLocalD1 } from "./d1";
@@ -88,7 +89,7 @@ function scoredResult(
   };
 }
 
-/** 採点ワーカーが報告した指標を、採点ジョブとしてD1へ入れる。 */
+/** 採点ワーカーが報告した指標を、対戦を始めたときの重み（既定値）とともに採点ジョブとしてD1へ入れる。 */
 async function saveScoringJob(battleId: string, participantId: string, total: number) {
   const id = crypto.randomUUID();
   const report = JSON.stringify({
@@ -101,7 +102,7 @@ async function saveScoringJob(battleId: string, participantId: string, total: nu
   });
   const raw = JSON.stringify([{ nodeId: "3", label: "similarity", values: { text: [report] } }]);
   await executeLocalD1(
-    `INSERT INTO scoring_job (id, battle_id, room_code, workflow_version, inputs, state, created_at, raw_result) VALUES (${sql(id)}, ${sql(battleId)}, 'MYPAGE23', 'illust-similarity-v2', '[]', 'succeeded', 0, ${sql(raw)}); INSERT INTO scoring_result (job_id, participant_id, total) VALUES (${sql(id)}, ${sql(participantId)}, ${total})`,
+    `INSERT INTO scoring_job (id, battle_id, room_code, workflow_version, inputs, state, created_at, raw_result, weights) VALUES (${sql(id)}, ${sql(battleId)}, 'MYPAGE23', 'illust-similarity-v2', '[]', 'succeeded', 0, ${sql(raw)}, ${sql(JSON.stringify(defaultScoringWeights))}); INSERT INTO scoring_result (job_id, participant_id, total) VALUES (${sql(id)}, ${sql(participantId)}, ${total})`,
   );
 }
 
@@ -304,12 +305,12 @@ test("成績・1位だけの絞り込み・詳細の内訳と指標を表示し�
     await expect(page.getByText("77.0").first()).toBeVisible();
     await expect(page.getByText("ボーナス +3")).toBeVisible();
     await expect(page.getByText("ボーナス +0")).toBeVisible();
-    // 指標はモデル名ではなく参加者に分かる名前で出し、点数にランクを添える。
-    await expect(page.getByRole("meter", { name: /髪・服・小物/ })).toHaveAttribute(
+    // 指標はモデル名ではなく参加者に分かる名前と、その対戦を始めたときの重みで出し、点数にランクを添える。
+    await expect(page.getByRole("meter", { name: /髪・服・小物.*重み 25%/ })).toHaveAttribute(
       "aria-valuenow",
       "74.8",
     );
-    await expect(page.getByRole("meter", { name: /絵の印象/ })).toBeVisible();
+    await expect(page.getByRole("meter", { name: /絵の印象.*重み 10%/ })).toBeVisible();
     await expect(page.getByRole("img", { name: "ランクA" }).first()).toBeVisible();
     await expect(page.getByText("PixAI Tagger")).toHaveCount(0);
     await expect(page.getByText("採点の対象外")).toBeVisible();

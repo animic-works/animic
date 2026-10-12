@@ -423,15 +423,37 @@ test("生成した画像を提出すると、採点ワーカーへR2の生成画
         { participant_id: await participantId(guest), total: 60, similarity: 60 },
       ]);
 
-    // 採点された2人を1人ずつ発表（1人8秒）してから、最終の結果を出す。
+    // 結果が確定すると、提出した人を1人ずつ発表し、全員の発表が終わったら最終の結果を出す。
+    // 発表の時間は時計を進めて縮める。
+    await guest.clock.install();
     await guest.goto(`/rooms/${code}`);
-    await expect(guest.getByRole("heading", { name: "2nd!", exact: true })).toBeVisible({
-      timeout: 30_000,
+    await expect(guest.getByRole("status", { name: "JUDGING" })).toHaveText(/JUDGING[12] \/ 2/, {
+      timeout: 15_000,
+    });
+    await expect(guest.getByRole("list", { name: "発表の順番" }).getByRole("listitem")).toHaveCount(
+      2,
+    );
+    // 採点の様子の行に、採点ワーカーが返した指標の点を出す（ホストの髪・服・小物70、ゲストの74.8）。
+    await expect(guest.getByRole("group", { name: "採点の様子" })).toContainText(/70\.0|74\.8/, {
+      timeout: 16_000,
+    });
+    // 2人分の発表の時間（1人12.5秒）を進める。
+    await guest.clock.fastForward(26_000);
+    await expect(guest.getByRole("heading", { name: "YOU LOSE…" })).toBeVisible();
+    // 結果の共有には、本人の結果とトップページのURLだけを載せる。
+    const share = new URL(
+      (await guest.getByRole("link", { name: "あなたの結果をシェア" }).getAttribute("href")) ?? "",
+    );
+    expect(Object.fromEntries(share.searchParams)).toEqual({
+      text: "Animicのイラスト再現バトルで対戦しました（60.0pt） #Animic",
+      url: "https://animic.party/",
     });
     await expectLoaded(guest.getByRole("img", { name: "採点ホストさんの提出画像" }));
     await expectLoaded(guest.getByRole("img", { name: "採点ゲストさんの提出画像" }));
 
     // 結果画面で、自分と相手の内訳と指標ごとの点を、操作なしで見られる。
+    // 待機の画面から見ていたページも発表中になる。2人分の発表の時間（25秒）を進めると最終の結果になる。
+    await guestView.clock.fastForward(26_000);
     const breakdown = guestView
       .getByRole("heading", { name: "あなたのスコアの内訳" })
       .locator("..");
@@ -439,11 +461,13 @@ test("生成した画像を提出すると、採点ワーカーへR2の生成画
     await expect(breakdown.getByText("1回")).toBeVisible();
     // 再現度が下限より低いため、どちらのボーナスも取れない。
     await expect(breakdown.getByText("ボーナス +0")).toHaveCount(2);
-    await expect(breakdown.getByRole("meter", { name: /絵の印象/ })).toHaveAttribute(
+    // 指標はモデル名ではなく、トップページと同じ名前と、この対戦を始めたときの重みで出す。
+    await expect(breakdown.getByRole("meter", { name: /絵の印象.*重み 0%/ })).toHaveAttribute(
       "aria-valuenow",
       "88.5",
     );
     await expect(breakdown.getByText("採点の対象外")).toBeVisible();
+    await expect(breakdown.getByText("PixAI")).toHaveCount(0);
     const hostBreakdown = guestView
       .getByRole("heading", { name: "採点ホストさんのスコアの内訳" })
       .locator("..");
@@ -461,8 +485,15 @@ test("生成した画像を提出すると、採点ワーカーへR2の生成画
         participantId: target,
       });
     const guestId = await participantId(guest);
-    expect(await metrics(guest, hostId)).toMatchObject({ pixai: 70, dinov2: null });
-    expect(await metrics(host, guestId)).toMatchObject({ ccip: null, dinov2: 88.5 });
+    const startWeights = { ccip: 0, pixai: 0, siglip2: 0, dinov2: 0, depth: 100 };
+    expect(await metrics(guest, hostId)).toMatchObject({
+      scores: { pixai: 70, dinov2: null },
+      weights: startWeights,
+    });
+    expect(await metrics(host, guestId)).toMatchObject({
+      scores: { ccip: null, dinov2: 88.5 },
+      weights: startWeights,
+    });
     expect(await metrics(host, guestId, crypto.randomUUID())).toBeNull();
   });
 });
@@ -494,13 +525,10 @@ test("採点に失敗した勝負不成立では、自分の画像を表示し�
     await expect(guest.getByText("採点できなかったため、勝負不成立です")).toBeVisible({
       timeout: 15_000,
     });
-    // 順位の一覧の自分の行に提出画像を出し、相手の行には画像を公開しない理由を出す。
-    const rows = guest.getByRole("list", { name: "順位" }).getByRole("listitem");
-    const submitted = 'img[src^="/generated-images/"]';
-    await expectLoaded(rows.filter({ hasText: "採点ゲスト" }).locator(submitted));
-    const hidden = rows.filter({ hasText: "採点ホスト" });
+    await expectLoaded(guest.getByRole("img", { name: "採点ゲストさんの提出画像" }));
+    await expect(guest.getByRole("img", { name: "採点ホストさんの提出画像" })).toHaveCount(0);
+    const hidden = guest.getByRole("img", { name: "提出済み" });
     await expect(hidden).toContainText("採点できなかったため、画像は公開されません");
-    await expect(hidden.locator(submitted)).toHaveCount(0);
   });
 });
 

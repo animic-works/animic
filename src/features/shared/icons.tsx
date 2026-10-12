@@ -147,7 +147,7 @@ export function ChevronUpIcon() {
   );
 }
 
-/** Xのロゴ。Xへ共有する操作に使う。 */
+/** Xのロゴ。Xへ共有する操作に添える。 */
 export function XLogoIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
