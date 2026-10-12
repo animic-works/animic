@@ -423,14 +423,23 @@ test("生成した画像を提出すると、採点ワーカーへR2の生成画
         { participant_id: await participantId(guest), total: 60, similarity: 60 },
       ]);
 
+    // 結果が確定すると、提出した人を1人ずつ発表する。スキップすると、その人の画面だけ最終の結果へ進む。
     await guest.goto(`/rooms/${code}`);
-    await expect(guest.getByRole("heading", { name: "YOU LOSE…" })).toBeVisible({
+    await expect(guest.getByRole("status", { name: "JUDGING" })).toHaveText(/JUDGING[12] \/ 2/, {
       timeout: 15_000,
     });
+    await expect(guest.getByRole("list", { name: "発表の順番" }).getByRole("listitem")).toHaveCount(
+      2,
+    );
+    await guest.getByRole("button", { name: "スキップ" }).click();
+    await expect(guest.getByRole("heading", { name: "YOU LOSE…" })).toBeVisible();
+    await expect(guest.getByRole("button", { name: "同じメンバーで再戦" })).toBeFocused();
     await expectLoaded(guest.getByRole("img", { name: "採点ホストさんの提出画像" }));
     await expectLoaded(guest.getByRole("img", { name: "採点ゲストさんの提出画像" }));
 
     // 結果画面で、自分と相手の内訳と指標ごとの点を、操作なしで見られる。
+    // 待機の画面から見ていたページも発表中になる。2人分の発表の時間（16秒）を進めると最終の結果になる。
+    await guestView.clock.fastForward(17_000);
     const breakdown = guestView
       .getByRole("heading", { name: "あなたのスコアの内訳" })
       .locator("..");
@@ -438,11 +447,13 @@ test("生成した画像を提出すると、採点ワーカーへR2の生成画
     await expect(breakdown.getByText("1回")).toBeVisible();
     // 再現度が下限より低いため、どちらのボーナスも取れない。
     await expect(breakdown.getByText("ボーナス +0")).toHaveCount(2);
-    await expect(breakdown.getByRole("meter", { name: /絵の印象/ })).toHaveAttribute(
+    // 指標はモデル名ではなく、トップページと同じ名前と、この対戦を始めたときの重みで出す。
+    await expect(breakdown.getByRole("meter", { name: /絵の印象.*重み 0%/ })).toHaveAttribute(
       "aria-valuenow",
       "88.5",
     );
     await expect(breakdown.getByText("採点の対象外")).toBeVisible();
+    await expect(breakdown.getByText("PixAI")).toHaveCount(0);
     const hostBreakdown = guestView
       .getByRole("heading", { name: "採点ホストさんのスコアの内訳" })
       .locator("..");
@@ -460,8 +471,15 @@ test("生成した画像を提出すると、採点ワーカーへR2の生成画
         participantId: target,
       });
     const guestId = await participantId(guest);
-    expect(await metrics(guest, hostId)).toMatchObject({ pixai: 70, dinov2: null });
-    expect(await metrics(host, guestId)).toMatchObject({ ccip: null, dinov2: 88.5 });
+    const startWeights = { ccip: 0, pixai: 0, siglip2: 0, dinov2: 0, depth: 100 };
+    expect(await metrics(guest, hostId)).toMatchObject({
+      scores: { pixai: 70, dinov2: null },
+      weights: startWeights,
+    });
+    expect(await metrics(host, guestId)).toMatchObject({
+      scores: { ccip: null, dinov2: 88.5 },
+      weights: startWeights,
+    });
     expect(await metrics(host, guestId, crypto.randomUUID())).toBeNull();
   });
 });

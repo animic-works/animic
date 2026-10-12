@@ -27,10 +27,9 @@ import {
   Logo,
   SampleArtwork,
   ScoreArtwork,
-  ScoreWeightSwatch,
-  ScoreWeightsBar,
   StepArtwork,
 } from "./visuals/home-artwork";
+import { ScoreWeightSwatch, ScoreWeightsBar } from "../scoring/visuals/score-weights";
 
 // 画像を登録していない項目に出すイラスト・重みのグラフの有無は、項目のIDで決める。
 const stepIllustration = (id: string) =>

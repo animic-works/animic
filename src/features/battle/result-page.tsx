@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ActionGroup } from "@animic/react/action-group";
 import { AppFrame } from "@animic/react/app-frame";
 import { Avatar } from "@animic/react/avatar";
@@ -11,6 +11,7 @@ import { Grid } from "@animic/react/grid";
 import { Heading } from "@animic/react/heading";
 import { Media, MediaPlaceholder } from "@animic/react/media";
 import { Page } from "@animic/react/page";
+import { Progress } from "@animic/react/progress";
 import { Stack } from "@animic/react/stack";
 import { Surface } from "@animic/react/surface";
 import { Text } from "@animic/react/text";
@@ -19,10 +20,14 @@ import { GridBackdrop } from "../shared/visuals/grid-backdrop";
 import { accountIconAvatar, type AccountIcon } from "../account/account-icon";
 import { levels, playerPalettes } from "../room/room-presentation";
 import { getResultEntries, getResultHeadline, type ResultEntry } from "./battle-outcome";
+import { useReducedMotion } from "./battle-preferences";
 import type { BattleSnapshot } from "./battle-state";
-import { ResultBreakdown } from "./result-breakdown";
+import { ResultBreakdown, useRevealMetrics } from "./result-breakdown";
+import { getRevealOrder, getRevealStage, type RevealStage } from "./result-presentation";
 import { RankingResult } from "./result-ranking";
-import { ResultBurst, ResultConfetti } from "./visuals/result-artwork";
+import { ResultReveal, RevealControls, RevealCounter } from "./result-reveal";
+import { useRevealClock } from "./use-reveal-clock";
+import { ResultBurst, ResultConfetti, VerdictReveal } from "./visuals/result-artwork";
 function ParticipantResult({
   entry,
   name,
@@ -88,6 +93,7 @@ export function ResultPage({
   participantId,
   names,
   icons,
+  receivedAt,
   onRematch,
   onTop,
 }: {
@@ -96,19 +102,87 @@ export function ResultPage({
   participantId: string;
   names: Map<string, string>;
   icons: Map<string, AccountIcon | null>;
+  /** Snapshotを受信した時刻（`performance.now()`）。サーバーの描画では`null`。 */
+  receivedAt: number | null;
   onRematch: () => void;
   onTop: () => void;
 }) {
+  const order = getRevealOrder(battle);
+  const clock = useRevealClock(battle.serverTime, receivedAt, battle.result?.decidedAt ?? 0);
+  const reduced = useReducedMotion();
+  const live = getRevealStage(order.length, clock.elapsedMs);
+  // 動きを減らす設定では、発表の演出を省いて最初から最終の結果を出す。
+  const stage: RevealStage = reduced ? { kind: "final" } : live;
+  // 発表があるときだけ、採点の様子に出す指標の点を先に読む。
+  const [revealing] = useState(live.kind === "reveal");
+  const metrics = useRevealMetrics(
+    code,
+    battle.id,
+    revealing ? order.map((entry) => entry.participantId) : [],
+  );
+  // この画面で発表を見たか。発表が終わった後に開いた場合は、最終の結果の登場の演出を再生しない。
+  const [watched, setWatched] = useState(false);
+  if (stage.kind === "reveal" && !watched) setWatched(true);
+  const animate = watched && !reduced;
+  const final = stage.kind === "final";
+  // 発表を見終えた・スキップしたら、消えた操作の代わりに次の操作へフォーカスを移す。見出しが隠れないようスクロールはしない。
+  const rematch = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (final && animate) rematch.current?.focus({ preventScroll: true });
+  }, [final, animate]);
   if (!battle.result) return null;
+  const roomLabel = (
+    <Badge>
+      ルーム <CodeDisplay value={code} presentation="inline" />
+    </Badge>
+  );
+  if (stage.kind === "reveal")
+    return (
+      <Page decoration={<GridBackdrop />}>
+        <AppFrame
+          width="full"
+          brand={<AppBrand />}
+          context={roomLabel}
+          // 狭い画面では、何人目かを採点パネルで示し、ヘッダーには操作だけを置く。
+          actions={
+            <>
+              <RevealCounter stage={stage} count={order.length} />
+              <RevealControls rate={clock.rate} onRateChange={clock.setRate} onSkip={clock.skip} />
+            </>
+          }
+          compactActions={
+            <RevealControls
+              compact
+              rate={clock.rate}
+              onRateChange={clock.setRate}
+              onSkip={clock.skip}
+            />
+          }
+          progress={
+            <Progress
+              label="発表の進み具合"
+              value={stage.progress * 100}
+              presentation="track"
+              tone="gradient"
+              striped
+            />
+          }
+        >
+          <ResultReveal
+            battle={battle}
+            order={order}
+            stage={stage}
+            participantId={participantId}
+            names={names}
+            icons={icons}
+            metrics={metrics}
+            rate={clock.rate}
+          />
+        </AppFrame>
+      </Page>
+    );
   const frame = (content: ReactNode) => (
-    <AppFrame
-      brand={<AppBrand />}
-      context={
-        <Badge>
-          ルーム <CodeDisplay value={code} presentation="inline" />
-        </Badge>
-      }
-    >
+    <AppFrame brand={<AppBrand />} context={roomLabel}>
       {content}
     </AppFrame>
   );
@@ -123,6 +197,8 @@ export function ResultPage({
             participantId={participantId}
             names={names}
             icons={icons}
+            animate={animate}
+            rematchRef={rematch}
             onRematch={onRematch}
             onTop={onTop}
           />,
@@ -151,8 +227,8 @@ export function ResultPage({
       decoration={
         <>
           <GridBackdrop />
-          <ResultBurst animate />
-          {battle.result.kind === "win" && battle.result.winnerId === participantId && (
+          <ResultBurst animate={animate} />
+          {animate && battle.result.kind === "win" && battle.result.winnerId === participantId && (
             <ResultConfetti />
           )}
         </>
@@ -164,9 +240,11 @@ export function ResultPage({
             <Text variant="eyebrow.strong" tone="accent">
               RESULT
             </Text>
-            <Heading level={1} size="statement">
-              {headline.title}
-            </Heading>
+            <VerdictReveal animate={animate}>
+              <Heading level={1} size="statement">
+                {headline.title}
+              </Heading>
+            </VerdictReveal>
             <Text align="center">{headline.message}</Text>
           </Stack>
           <ComparisonStage first={mine && participant(mine)} second={theirs && participant(theirs)}>
@@ -204,7 +282,7 @@ export function ResultPage({
             </Grid>
           )}
           <ActionGroup align="center">
-            <Button shape="pill" size="lg" prominence="raised" onClick={onRematch}>
+            <Button ref={rematch} shape="pill" size="lg" prominence="raised" onClick={onRematch}>
               同じメンバーで再戦
             </Button>
             <Button shape="pill" size="lg" appearance="secondary" onClick={onTop}>

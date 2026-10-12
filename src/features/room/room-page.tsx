@@ -111,6 +111,7 @@ export function RoomPage({
       <ResultPage
         code={room.code}
         battle={screen.battle}
+        receivedAt={current.at}
         names={names}
         icons={icons}
         participantId={participantId}

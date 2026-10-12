@@ -1,3 +1,4 @@
+import type { Ref } from "react";
 import { ActionGroup } from "@animic/react/action-group";
 import { Avatar } from "@animic/react/avatar";
 import { Button } from "@animic/react/button";
@@ -32,6 +33,8 @@ export function RankingResult({
   participantId,
   names,
   icons,
+  animate,
+  rematchRef,
   onRematch,
   onTop,
 }: {
@@ -40,6 +43,9 @@ export function RankingResult({
   participantId: string;
   names: Map<string, string>;
   icons: Map<string, AccountIcon | null>;
+  /** `false`なら（結果発表が終わった後に開いた場合など）登場の演出を再生せずに出す。 */
+  animate: boolean;
+  rematchRef?: Ref<HTMLButtonElement>;
   onRematch: () => void;
   onTop: () => void;
 }) {
@@ -98,7 +104,7 @@ export function RankingResult({
             ),
             value: formatTotal(entry.total),
             rank: entry.rank,
-            decoration: index === 0 ? <Crown animate /> : undefined,
+            decoration: index === 0 ? <Crown animate={animate} /> : undefined,
           },
         ]
       : [],
@@ -106,8 +112,8 @@ export function RankingResult({
   return (
     <Layer>
       <LayerItem placement="background">
-        <ResultBurst animate />
-        {me?.rank === 1 && <ResultConfetti />}
+        <ResultBurst animate={animate} />
+        {animate && me?.rank === 1 && <ResultConfetti />}
       </LayerItem>
       <LayerItem placement="content">
         <Stack space="section">
@@ -115,7 +121,7 @@ export function RankingResult({
             <Text variant="eyebrow.strong" tone="accent">
               FINAL RESULT
             </Text>
-            <VerdictReveal animate>
+            <VerdictReveal animate={animate}>
               <Heading level={1} size="statement" emphasis="offset">
                 {title}
               </Heading>
@@ -124,11 +130,11 @@ export function RankingResult({
               {message}
             </Text>
           </Stack>
-          <Podium entering items={podiumItems} />
+          <Podium entering={animate} items={podiumItems} />
           <Container size="summary" gutter="none">
             <Stack space="section">
               <ResultRankingReveal>
-                <RecordList label="順位" entering>
+                <RecordList label="順位" entering={animate}>
                   {ranking.map((entry) => (
                     <RecordItem
                       density="compact"
@@ -169,7 +175,13 @@ export function RankingResult({
                 </Stack>
               )}
               <ActionGroup align="center">
-                <Button shape="pill" size="lg" prominence="raised" onClick={onRematch}>
+                <Button
+                  ref={rematchRef}
+                  shape="pill"
+                  size="lg"
+                  prominence="raised"
+                  onClick={onRematch}
+                >
                   同じメンバーで再戦
                 </Button>
                 <Button shape="pill" size="lg" appearance="secondary" onClick={onTop}>

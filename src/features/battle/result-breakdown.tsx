@@ -6,7 +6,7 @@ import { Spinner } from "@animic/react/spinner";
 import { Stack } from "@animic/react/stack";
 import { Surface } from "@animic/react/surface";
 import { Text } from "@animic/react/text";
-import type { ScoringMetricScores } from "../scoring/scoring-metrics";
+import type { ScoringMetricsReport } from "../scoring/scoring-metrics";
 import { summarizeSubmission } from "./battle-history";
 import type { BattleSnapshot } from "./battle-state";
 import { getResultScoringMetrics } from "./battle.functions";
@@ -14,13 +14,39 @@ import { ScoreBreakdown } from "./score-breakdown";
 
 type Metrics =
   | { status: "loading" | "error" }
-  | { status: "loaded"; metrics: ScoringMetricScores | null };
+  | { status: "loaded"; metrics: ScoringMetricsReport | null };
 
 function loadMetrics(code: string, battleId: string, participantId: string) {
   return getResultScoringMetrics({ data: { code, battleId, participantId } }).then(
     (metrics): Metrics => ({ status: "loaded", metrics }),
     (): Metrics => ({ status: "error" }),
   );
+}
+
+/**
+ * 結果発表の採点の様子に出す、発表する人ごとの指標の点。発表の始めに全員分を読み、読めた人の分だけを返す。
+ * 届く前の人や読めなかった人は、点なしで発表を進める（待たない）。
+ */
+export function useRevealMetrics(
+  code: string,
+  battleId: string,
+  participantIds: readonly string[],
+) {
+  const [metrics, setMetrics] = useState<ReadonlyMap<string, ScoringMetricsReport>>(new Map());
+  const key = participantIds.join(",");
+  useEffect(() => {
+    let active = true;
+    const add = (participantId: string, loaded: Metrics) => {
+      const report = loaded.status === "loaded" ? loaded.metrics : null;
+      if (active && report) setMetrics((current) => new Map(current).set(participantId, report));
+    };
+    for (const participantId of key ? key.split(",") : [])
+      void loadMetrics(code, battleId, participantId).then((loaded) => add(participantId, loaded));
+    return () => {
+      active = false;
+    };
+  }, [code, battleId, key]);
+  return metrics;
 }
 
 /**

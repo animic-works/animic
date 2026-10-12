@@ -2,7 +2,7 @@ import { and, asc, eq, inArray, lt, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import * as v from "valibot";
 
-import { scoringWeightsSchema } from "./scoring-metrics";
+import { scoringWeightsSchema, type ScoringMetricsReport } from "./scoring-metrics";
 import { scoringJob, scoringResult } from "./scoring.schema";
 import { loadScoringWeights } from "./scoring-weights.server";
 import {
@@ -219,10 +219,21 @@ export async function completeScoringJob(
   return true;
 }
 
-/** 対戦で採点に成功した参加者の、指標ごとの点。採点されていなければ`null`。 */
-export async function getScoringMetrics(db: D1Database, battleId: string, participantId: string) {
+/**
+ * 対戦で採点に成功した参加者の、指標ごとの点と対戦を始めたときの重み。採点されていなければ`null`。
+ * 本人の分だけを読む。ほかの参加者の指標は返さない。
+ */
+export async function getScoringMetrics(
+  db: D1Database,
+  battleId: string,
+  participantId: string,
+): Promise<ScoringMetricsReport | null> {
   const [row] = await drizzle(db)
-    .select({ workflowVersion: scoringJob.workflowVersion, rawResult: scoringJob.rawResult })
+    .select({
+      workflowVersion: scoringJob.workflowVersion,
+      rawResult: scoringJob.rawResult,
+      weights: scoringJob.weights,
+    })
     .from(scoringJob)
     .innerJoin(scoringResult, eq(scoringResult.jobId, scoringJob.id))
     .where(
@@ -233,5 +244,10 @@ export async function getScoringMetrics(db: D1Database, battleId: string, partic
       ),
     )
     .limit(1);
-  return row?.rawResult ? readScoringMetrics(row.workflowVersion, JSON.parse(row.rawResult)) : null;
+  const scores = row?.rawResult
+    ? readScoringMetrics(row.workflowVersion, JSON.parse(row.rawResult))
+    : null;
+  if (!scores) return null;
+  const weights = row?.weights ? v.safeParse(scoringWeightsSchema, JSON.parse(row.weights)) : null;
+  return { scores, weights: weights?.success ? weights.output : null };
 }
