@@ -144,3 +144,24 @@ export function getScoreCount(similarity: number, bonuses: readonly number[], el
     : t.similarityMs;
   return { value, bonuses: shown, settled: elapsedMs >= end };
 }
+
+/**
+ * 点数を数え終えた人の数。発表している人は、点数の段階で再現度とボーナスを数え終えた時点（`getScoreCount`の`settled`）で数に入れる。
+ * 発表の順番の列の「発表済み」・最終スコア・途中の順位と、採点パネルの下の順位の帯は、この数で出す。
+ */
+export function getRevealedCount(
+  order: readonly Pick<RevealEntry, "similarity" | "speedBonus" | "generationBonus">[],
+  stage: Extract<RevealStage, { kind: "reveal" }>,
+  timing: RevealTiming = revealTiming,
+) {
+  const entry = order.at(stage.index);
+  const settled =
+    stage.phase === "score" &&
+    entry !== undefined &&
+    getScoreCount(
+      entry.similarity,
+      getRevealBonuses(entry).map((bonus) => bonus.points),
+      stage.offsetMs - timing.introMs - timing.judgingMs,
+    ).settled;
+  return stage.index + (settled ? 1 : 0);
+}
