@@ -10,7 +10,7 @@ test.beforeAll(async () => {
   );
 });
 
-test("ルールと準備状態を同期し、画面から開始・結果・再戦へ進める", async ({ page, browser }) => {
+test("ルールと準備状態を同期し、同じルームで3戦目以降も再戦できる", async ({ page, browser }) => {
   test.setTimeout(60000);
   const guestContext = await browser.newContext({ reducedMotion: "reduce" });
   try {
@@ -71,6 +71,34 @@ test("ルールと準備状態を同期し、画面から開始・結果・再�
     await dialog.getByRole("button", { name: "このままはじめる", exact: true }).click();
     for (const participant of [page, guest])
       await expect(participant.getByRole("timer")).toBeVisible();
+    for (let round = 3; round <= 4; round += 1) {
+      for (const participant of [page, guest]) {
+        await expect(
+          participant.getByRole("heading", { name: "NO GAME", exact: true }),
+        ).toBeVisible({
+          timeout: 15000,
+        });
+        await participant.getByRole("button", { name: "同じメンバーで再戦", exact: true }).click();
+        await expect(participant).toHaveURL(new RegExp(`/rooms/${code}$`));
+      }
+      await page
+        .getByRole("radiogroup", { name: "難易度" })
+        .getByText("ふつう", { exact: true })
+        .click();
+      await expect(guest.getByText("ふつう", { exact: true })).toBeVisible();
+      await page
+        .getByRole("radiogroup", { name: "難易度" })
+        .getByText("かんたん", { exact: true })
+        .click();
+      await expect(guest.getByText("かんたん", { exact: true })).toBeVisible();
+      await guest.getByRole("button", { name: "準備完了にする", exact: true }).click();
+      await expect(
+        guest.getByRole("button", { name: "準備完了を取り消す", exact: true }),
+      ).toBeVisible();
+      await page.getByRole("button", { name: "対戦をはじめる", exact: true }).click();
+      for (const participant of [page, guest])
+        await expect(participant.getByRole("timer")).toBeVisible();
+    }
   } finally {
     await guestContext.close();
   }
