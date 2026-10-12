@@ -192,6 +192,8 @@ test("対戦画面で「生成する」から生成して表示し、送れな�
       if (request.url().includes("/_serverFn/") && body.includes(marker)) sent.push(body);
     });
     await page.goto(`/rooms/${code}`);
+    // サーバー描画だけでは入力イベントを受け取れないため、初期化の完了を待つ。
+    await expect(page.locator("html")).toHaveAttribute("data-animic-scrollbars", "ready");
     await expect(page.getByRole("timer")).toBeVisible();
     const input = page.getByRole("combobox", { name: "プロンプト（キャラ）" });
     const generateButton = page.getByRole("button", { name: "生成する", exact: true });
@@ -250,6 +252,8 @@ test("応答が届かなかった要求をサーバーが受け付けていた�
       if (request.url().includes("/_serverFn/") && body.includes(marker)) sent.push(body);
     });
     await page.goto(`/rooms/${code}`);
+    // サーバー描画だけでは入力イベントを受け取れないため、初期化の完了を待つ。
+    await expect(page.locator("html")).toHaveAttribute("data-animic-scrollbars", "ready");
     await expect(page.getByRole("timer")).toBeVisible();
     const input = page.getByRole("combobox", { name: "プロンプト（キャラ）" });
     const generateButton = page.getByRole("button", { name: "生成する", exact: true });
