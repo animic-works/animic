@@ -71,7 +71,8 @@ export function RankingResult({
   icons: Map<string, AccountIcon | null>;
   /** `false`なら（結果発表が終わった後に開いた場合など）登場の演出を再生せずに出す。 */
   animate: boolean;
-  onRematch: () => void;
+  /** 省略すると再戦の操作を出さない。 */
+  onRematch?: () => void;
   onTop: () => void;
 }) {
   const ranking = getRanking(battle, participantId);
@@ -181,15 +182,17 @@ export function RankingResult({
           <Podium presentation="card" entering={animate} items={podiumItems} />
           {/* 操作は表彰台の下・順位の一覧の上に置き、結果の種類によらず同じ位置にする。 */}
           <ActionGroup align="center">
-            <Button
-              shape="pill"
-              size="lg"
-              compactLabel="再戦"
-              aria-label="同じメンバーで再戦"
-              onClick={onRematch}
-            >
-              同じメンバーで再戦
-            </Button>
+            {onRematch && (
+              <Button
+                shape="pill"
+                size="lg"
+                compactLabel="再戦"
+                aria-label="同じメンバーで再戦"
+                onClick={onRematch}
+              >
+                同じメンバーで再戦
+              </Button>
+            )}
             <ResultShareLink battle={battle} participantId={participantId} />
             <Button
               shape="pill"

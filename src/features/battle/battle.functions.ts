@@ -24,8 +24,8 @@ export const startBattle = createServerFn({ method: "POST" })
     const current = await createAuth().api.getSession({ headers: getRequestHeaders() });
     if (!current) return { error: "参加するにはセッションの再作成が必要です。" };
     const room = env.ROOMS.getByName(data.code);
-    if (!(await room.canStart(current.user.id, data.previousBattleId)))
-      return { error: "接続中の参加者が2人以上の状態で、ホストが開始してください。" };
+    const error = await room.getStartError(current.user.id, data.previousBattleId);
+    if (error) return { error };
     const [chosen] = await drizzle(env.DB)
       .select()
       .from(topic)

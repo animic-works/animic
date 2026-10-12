@@ -26,6 +26,22 @@ export function canJoinRoom(state: Pick<RoomState, "members">, participantId: st
     state.members.length < roomCapacity
   );
 }
+/** 1つのルームで行える対戦の数。 */
+export const roomBattleLimit = 2;
+/** 始めた対戦の数（`battleCount`）から、このルームでまだ対戦を始められるか。 */
+export function hasBattlesLeft(battleCount: number) {
+  return battleCount < roomBattleLimit;
+}
+/** 対戦の結果が出た後、操作のない接続を切るまでの時間。 */
+export const idleConnectionMs = 5 * 60_000;
+/**
+ * 操作のない接続を切る時刻。対戦の結果が出た後だけ数え、結果が決まった時刻と、
+ * その接続の最後の操作（なければ接続した時刻）の遅い方から数える。
+ */
+export function getIdleDeadline(battle: RoomState["battle"], lastActiveAt: number) {
+  const decidedAt = battle?.result?.decidedAt;
+  return decidedAt === undefined ? null : Math.max(decidedAt, lastActiveAt) + idleConnectionMs;
+}
 export const participantNameSchema = v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(20));
 const memberSchema = v.object({
   id: v.string(),
@@ -48,6 +64,8 @@ export const roomStateSchema = v.object({
   code: roomCodeSchema,
   settings: v.optional(v.nullable(battleSettingsSchema), null),
   battle: v.optional(v.nullable(battleStateSchema), null),
+  // このルームで始めた対戦の数。この値を保存する前に作ったルームは0から数える。
+  battleCount: v.optional(v.number(), 0),
   version: v.number(),
   hostId: v.nullable(v.string()),
   members: v.array(memberSchema),
@@ -60,6 +78,7 @@ export const roomSnapshotSchema = v.object({
   code: roomCodeSchema,
   settings: v.optional(v.nullable(battleSettingsSchema), null),
   battle: v.optional(v.nullable(battleSnapshotSchema), null),
+  battleCount: v.number(),
   version: v.number(),
   hostId: v.nullable(v.string()),
   members: v.array(v.object({ ...memberSchema.entries, connected: v.boolean() })),
