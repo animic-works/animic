@@ -2,10 +2,8 @@ import { createContext, use, useCallback, useEffect, useState } from "react";
 import { Button } from "@animic/react/button";
 import { Cluster } from "@animic/react/cluster";
 import { Dialog } from "@animic/react/dialog";
-import { Heading } from "@animic/react/heading";
 import { Spinner } from "@animic/react/spinner";
 import { Stack } from "@animic/react/stack";
-import { Surface } from "@animic/react/surface";
 import { Text } from "@animic/react/text";
 import type { ScoringMetricsReport } from "../scoring/scoring-metrics";
 import { summarizeSubmission } from "./battle-history";
@@ -121,35 +119,6 @@ function BreakdownContent({
 
 const breakdownTitle = (name: string, mine: boolean) =>
   mine ? "あなたのスコアの内訳" : `${name}さんのスコアの内訳`;
-
-/**
- * 結果画面に出す、採点された参加者のスコアの内訳と指標ごとの点。
- * 内訳は結果の確定後に配信される`scores`から出し、指標はルームの状態に含めないため表示したときに読み出す。
- */
-export function ResultBreakdown({
-  code,
-  battle,
-  score,
-  name,
-  mine,
-}: {
-  code: string;
-  battle: BattleSnapshot;
-  score: Score;
-  name: string;
-  mine: boolean;
-}) {
-  return (
-    <Surface appearance="card" padding="content">
-      <Stack space="compact">
-        <Heading level={2} size="sm">
-          {breakdownTitle(name, mine)}
-        </Heading>
-        <BreakdownContent code={code} battle={battle} score={score} />
-      </Stack>
-    </Surface>
-  );
-}
 
 /** 順位の一覧の行から、その人のスコアの内訳を開く操作。指標は開いたときに読む。 */
 export function ResultBreakdownButton({

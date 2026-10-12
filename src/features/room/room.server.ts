@@ -16,7 +16,6 @@ import {
   getScoredParticipantIds,
   serializeBattleResult,
   getScoringRequests,
-  applyScoringJobs,
   getBattleDeadline,
 } from "../battle/battle-state";
 import type { BattleSettings, Topic, GenerationOutcome } from "../battle/battle-state";
@@ -32,12 +31,11 @@ import { isRoomCreationRetry } from "./room-creation";
 import type { RoomCreation } from "./room-creation";
 import { session } from "../../lib/auth-schema";
 import {
+  applyRoomScoring,
   canJoinRoom,
   reconcileRoom,
   getIdleDeadline,
   getRoomDeadline,
-  hasBattlesLeft,
-  roomBattleLimit,
   roomCapacity,
   roomCloseDelayMs,
   roomStateSchema,
@@ -53,7 +51,6 @@ const attachmentSchema = v.object({
   activeAt: v.optional(v.number()),
 });
 const scoringCheckIntervalMs = 3000;
-const battleLimitError = `このルームで遊べる対戦は${roomBattleLimit}回までです。`;
 // 画面は15秒ごとにpingを送る。隠れたタブではブラウザーがタイマーを1分ごとにまとめることがあるため、
 // 余裕を見て、これより長くpingのない接続を切れたものとして扱う。
 const staleSocketMs = 90_000;
@@ -161,8 +158,8 @@ export class Room extends DurableObject<Env> {
     const connected = this.#connected();
     return {
       code: state.code,
+      discordInstanceId: state.discordInstanceId,
       battle: state.battle ? getBattleSnapshot(state.battle, participantId, Date.now()) : null,
-      battleCount: state.battleCount,
       settings: state.settings,
       version: state.version,
       hostId: state.hostId,
@@ -252,7 +249,8 @@ export class Room extends DurableObject<Env> {
   // 採点ジョブの登録と結果の取得は冪等にし、失敗しても次のAlarmでやり直す。
   async #syncScoring() {
     this.#scoringCheckAt = null;
-    const state = this.#read();
+    // 閉じる時刻や採点期限を過ぎた対戦の採点ジョブを登録しないよう、期限を反映した状態から始める。
+    const state = this.#reconcile();
     const battle = state?.battle;
     const requests = battle ? getScoringRequests(battle) : [];
     if (!state || state.closed || !battle || !requests.length) return;
@@ -262,15 +260,16 @@ export class Room extends DurableObject<Env> {
         this.env.DB,
         requests.map((request) => request.jobId),
       );
-      // D1との通信中に対戦が進んだ場合も、現在の対戦の状態から反映する。
+      // D1との通信中に対戦が進んだ場合や期限を過ぎた場合も、現在の状態に期限を反映してから反映する。
       const current = this.#read();
-      // 結果の確定後に登録が届いた場合も、そのジョブを割り当てない。
-      if (!current?.battle || current.battle.id !== battle.id || current.battle.result) {
+      const next =
+        current && applyRoomScoring(current, this.#connected(), battle.id, jobs, Date.now());
+      // 結果の確定後やルームを閉じた後に登録が届いた場合も、そのジョブを割り当てない。
+      if (!next) {
         await cancelScoringJobs(this.env.DB, battle.id);
         return;
       }
-      current.battle = applyScoringJobs(current.battle, jobs, Date.now());
-      this.#save(current);
+      this.#save(next);
     } catch {
       console.error("採点ジョブを確認できませんでした。再試行します。", { battleId: battle.id });
     }
@@ -356,11 +355,19 @@ export class Room extends DurableObject<Env> {
     await this.#schedule();
   }
 
-  async create(code: string, creation: RoomCreation, icon: AccountIcon | null) {
+  async create(
+    code: string,
+    creation: RoomCreation,
+    icon: AccountIcon | null,
+    discordInstanceId?: string,
+  ) {
     const previous = this.#reconcile();
     if (previous) {
       if (!isRoomCreationRetry(previous.creation, creation)) return false;
-      if (previous.closed) throw new Error("この作成要求のルームは終了しています。");
+      if (previous.closed) {
+        if (discordInstanceId && previous.discordInstanceId === discordInstanceId) return false;
+        throw new Error("この作成要求のルームは終了しています。");
+      }
       await this.#schedule();
       return true;
     }
@@ -368,9 +375,9 @@ export class Room extends DurableObject<Env> {
     this.#save({
       creation,
       code,
+      discordInstanceId,
       version: 0,
       battle: null,
-      battleCount: 0,
       settings: null,
       hostId: participantId,
       members: [{ id: participantId, name, ready: false, icon }],
@@ -440,7 +447,7 @@ export class Room extends DurableObject<Env> {
       !canStartBattle(state.members.filter((member) => connected.has(member.id)).length)
     )
       return "接続中の参加者が2人以上の状態で、ホストが開始してください。";
-    return hasBattlesLeft(state.battleCount) ? null : battleLimitError;
+    return null;
   }
 
   async startBattle(
@@ -449,16 +456,16 @@ export class Room extends DurableObject<Env> {
     topic: Topic,
     previousBattleId: string | null,
   ) {
-    // 最終スコアのボーナスは、対戦を始めた時刻に使う値を記録する。再現度の重みも同じ時刻で引く。
+    // 最終スコアのボーナスは、開始を求められた時刻に使う値を記録する（再現度の重みは対戦の開始時刻で引く）。
     // D1を待つ間にほかの操作が進むため、状態は読み込んだ後に確かめる。
+    const { bonus } = await loadScoringWeights(this.env.DB, new Date());
+    // 持ち時間をD1との通信の分だけ短くしないよう、対戦の時刻は読み込んだ後の時刻から数える。
     const now = Date.now();
-    const { bonus } = await loadScoringWeights(this.env.DB, new Date(now));
     const state = this.#reconcile();
     if (!state || state.closed || state.hostId !== participantId)
       throw new Error("ホストのみ開始できます。");
     if (state.battle && state.battle.previousBattleId === previousBattleId) return;
     this.#touch(participantId);
-    if (!hasBattlesLeft(state.battleCount)) throw new Error(battleLimitError);
     if (JSON.stringify(state.settings) !== JSON.stringify(settings))
       throw new Error("対戦の条件が変更されています。");
     const connected = this.#connected();
@@ -472,7 +479,6 @@ export class Room extends DurableObject<Env> {
       now,
       bonus,
     );
-    state.battleCount += 1;
     for (const member of state.members) member.ready = false;
     this.#save(state);
     await this.#publish();

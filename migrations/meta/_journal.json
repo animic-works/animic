@@ -85,6 +85,13 @@
       "when": 1791748050971,
       "tag": "0011_phrase-aliases",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1791826345126,
+      "tag": "0012_discord-account-identity",
+      "breakpoints": true
     }
   ]
 }

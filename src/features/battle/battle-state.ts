@@ -512,7 +512,8 @@ export function applyScoringJobs(
   jobs: ScoringJobOutcome[],
   now: number,
 ): BattleState {
-  const next = structuredClone(state);
+  // 採点期限を先に反映し、期限の後に届いた採点で勝敗を決めない。
+  const next = reconcileBattle(state, now);
   if (next.result) return next;
   next.scoring.entries = next.scoring.entries.map((entry) => {
     const job = jobs.find((item) => item.id === entry.jobId);

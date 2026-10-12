@@ -463,7 +463,7 @@ test("ヒーローの操作は縦長の画面でも文言を折り返さない",
   }
 });
 
-test("前回ログインしていたブラウザーでは「マイページ」を見せずにアイコンを出し、ログインしていなければ最初から「マイページ」を出す", async ({
+test("ログイン済みでは「マイページ」を見せずにアイコンを出し、ログインしていなければ最初から「マイページ」を出す", async ({
   page,
 }) => {
   // 読み込みの間、補助操作の欄に見えていたものを、最初のフレームから記録する。
@@ -472,9 +472,12 @@ test("前回ログインしていたブラウザーでは「マイページ」�
     window.animicSeenActions = seen;
     const record = () => {
       const header = document.querySelector("[data-animic-navigation]");
-      const actions = header?.lastElementChild;
-      if (actions && getComputedStyle(actions).visibility === "visible")
-        seen.add(actions.textContent?.includes("マイページ") ? "マイページ" : "アイコン");
+      // HTMLの解析途中では、最後の子がまだ補助操作の欄とは限らない。
+      // 空の欄や別のナビ要素をアイコンと数えず、実際の操作要素を記録する。
+      const mypage = header?.querySelector('a[href="/mypage"]');
+      const account = header?.querySelector('button[aria-label^="アカウント"]');
+      if (mypage?.checkVisibility({ visibilityProperty: true })) seen.add("マイページ");
+      if (account?.checkVisibility({ visibilityProperty: true })) seen.add("アイコン");
       requestAnimationFrame(record);
     };
     requestAnimationFrame(record);
@@ -486,7 +489,7 @@ test("前回ログインしていたブラウザーでは「マイページ」�
   expect(await seenActions()).toEqual(["マイページ"]);
 
   await signIn(page.context());
-  // 最初の確認でログインを覚え、次の読み込みからは確認が終わるまで隠す。
+  // ログイン直後も再読み込みも、最初からアカウントを表示する。
   await page.reload({ waitUntil: "networkidle" });
   await expect(page.getByRole("button", { name: /^アカウント/ })).toBeVisible();
   await page.reload({ waitUntil: "networkidle" });

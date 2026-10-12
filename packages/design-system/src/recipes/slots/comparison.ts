@@ -95,8 +95,9 @@ export const comparison = defineSlotRecipe({
       minWidth: 0,
       _comparisonNarrow: {
         justifyContent: "center",
+        // 縦長のタブレットで編集欄を畳んだときは、配置する側が変数で高さの上限を広げる。
         gridTemplateColumns:
-          "repeat(2, min(calc(50% - 0.75rem), max(12rem, calc(30svh * 13 / 19))))",
+          "repeat(2, min(calc(50% - 0.75rem), max(12rem, calc(var(--animic-comparison-media-block, 30svh) * 13 / 19))))",
       },
       _comparisonCompact: {
         paddingInline: "0",

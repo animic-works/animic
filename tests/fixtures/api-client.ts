@@ -1,4 +1,5 @@
 import { ensureParticipant } from "../../src/lib/auth.client";
+import { enterDiscordRoom } from "../../src/features/room/discord-room.functions";
 import { getCurrentParticipant } from "../../src/lib/auth.functions";
 import {
   createRoom,
@@ -36,7 +37,9 @@ import {
 } from "../../src/features/image-generation/prompt-phrases.functions";
 import {
   getImageModel,
+  getImageSteps,
   saveImageModel,
+  saveImageSteps,
 } from "../../src/features/image-generation/image-generation-admin.functions";
 import { generateImage } from "../../src/features/image-generation/image-generation.functions";
 import { updateScoringWeights } from "../../src/features/scoring/scoring-weights.functions";
@@ -52,6 +55,7 @@ let room: RoomSnapshot | null = null;
 let connection = "未接続";
 
 const api = {
+  enterDiscordRoom,
   ensureParticipant,
   getCurrentParticipant,
   createRoom,
@@ -79,6 +83,8 @@ const api = {
   savePromptPhraseImage,
   getImageModel,
   saveImageModel,
+  getImageSteps,
+  saveImageSteps,
   updateScoringWeights,
   getBackup,
   putBackupImage,

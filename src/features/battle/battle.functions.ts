@@ -21,7 +21,9 @@ export const startBattle = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     setResponseHeader("Cache-Control", "private, no-store");
-    const current = await createAuth().api.getSession({ headers: getRequestHeaders() });
+    const current = await createAuth(getRequestHeaders()).api.getSession({
+      headers: getRequestHeaders(),
+    });
     if (!current) return { error: "参加するにはセッションの再作成が必要です。" };
     const room = env.ROOMS.getByName(data.code);
     const error = await room.getStartError(current.user.id, data.previousBattleId);
@@ -52,7 +54,9 @@ export const submitBattleImage = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     setResponseHeader("Cache-Control", "private, no-store");
-    const current = await createAuth().api.getSession({ headers: getRequestHeaders() });
+    const current = await createAuth(getRequestHeaders()).api.getSession({
+      headers: getRequestHeaders(),
+    });
     if (!current) throw new Error("参加するにはセッションの再作成が必要です。");
     await env.ROOMS.getByName(data.code).submitImage(
       data.battleId,
@@ -76,7 +80,9 @@ export const getResultScoringMetrics = createServerFn({ method: "GET" })
   )
   .handler(async ({ data }) => {
     setResponseHeader("Cache-Control", "private, no-store");
-    const current = await createAuth().api.getSession({ headers: getRequestHeaders() });
+    const current = await createAuth(getRequestHeaders()).api.getSession({
+      headers: getRequestHeaders(),
+    });
     if (!current) return null;
     const visible = await env.ROOMS.getByName(data.code).canViewScore(
       data.battleId,

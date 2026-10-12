@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { create, signIn } from "./api";
+import { continueWithoutLogin, create, signIn } from "./api";
 import { executeLocalD1 } from "./d1";
 
 const origin = "http://127.0.0.1:4173";
@@ -51,8 +51,7 @@ test.describe("ログイン", () => {
       await expect(guest.getByText(code, { exact: true }).first()).toBeAttached();
       await expect(guest.getByRole("button", { name: "Googleでログイン" })).toBeVisible();
       await expect(guest.getByRole("button", { name: "Discordでログイン" })).toBeVisible();
-      await guest.getByRole("button", { name: "ログインせずに進む" }).click();
-      await expect(guest.getByRole("heading", { name: "表示名を決めよう" })).toBeVisible();
+      await continueWithoutLogin(guest);
       await guest.getByRole("button", { name: "ログイン方法を選び直す" }).click();
       await expect(guest.getByRole("heading", { name: "ログインしてはじめよう" })).toBeVisible();
     } finally {

@@ -21,6 +21,7 @@ import type { BattleSnapshot } from "./battle-state";
 import {
   getInterimRanks,
   getRevealBonuses,
+  getRevealedCount,
   getScoreCount,
   revealTiming,
   scoreCountTiming,
@@ -87,17 +88,11 @@ export function ResultReveal({
   const entry = order[stage.index];
   const mine = entry.participantId === participantId;
   const name = nameOf(people, entry.participantId);
-  const revealed = stage.index + (stage.phase === "score" ? 1 : 0);
+  // 点数を数え終えたら（数え終える時刻はボーナスの数で決まる）、発表済みとして数え、順位の帯と発表の順番の列に出す。
+  const revealed = getRevealedCount(order, stage);
   const ranks = getInterimRanks(order, revealed);
   const last = stage.index === order.length - 1 && order.length > 1;
-  // 点数を数え終えたら（数え終える時刻はボーナスの数で決まる）、順位を出す。
-  const rankShown =
-    stage.phase === "score" &&
-    getScoreCount(
-      entry.similarity,
-      getRevealBonuses(entry).map((bonus) => bonus.points),
-      stage.offsetMs - revealTiming.introMs - revealTiming.judgingMs,
-    ).settled;
+  const rankShown = revealed > stage.index;
   return (
     <Stack space="compact">
       {stage.phase === "intro" && (

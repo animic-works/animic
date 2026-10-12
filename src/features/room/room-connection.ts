@@ -14,6 +14,26 @@ const closedMessages = new Map([
   ],
 ]);
 
+const invalidMessage = "受信した情報を確認できませんでした。";
+
+/**
+ * 配信のメッセージを読む。JSONとして読めないものと、ルームの状態の形に合わないものは`invalid`にする。
+ * 生存確認の応答（`pong`）と文字列でないものは読まない（`ignored`）。
+ */
+export function readRoomMessage(
+  data: unknown,
+): { kind: "ignored" } | { kind: "invalid" } | { kind: "room"; room: RoomSnapshot } {
+  if (data === "pong" || typeof data !== "string") return { kind: "ignored" };
+  let json: unknown;
+  try {
+    json = JSON.parse(data);
+  } catch {
+    return { kind: "invalid" };
+  }
+  const parsed = v.safeParse(roomSnapshotSchema, json);
+  return parsed.success ? { kind: "room", room: parsed.output } : { kind: "invalid" };
+}
+
 export function connectRoom(
   initial: RoomSnapshot,
   onRoom: (room: RoomSnapshot) => void,
@@ -26,6 +46,7 @@ export function connectRoom(
   let heartbeat: ReturnType<typeof setInterval> | undefined;
   let lastMessage = Date.now();
   let failures = 0;
+  let invalid = false;
   function connect() {
     if (disposed) return;
     const url = new URL(`/rooms/${initial.code}/connection`, window.location.href);
@@ -33,6 +54,7 @@ export function connectRoom(
     socket = new WebSocket(url);
     socket.addEventListener("open", () => {
       failures = 0;
+      invalid = false;
       lastMessage = Date.now();
       onConnection("接続済み");
       heartbeat = setInterval(() => {
@@ -42,16 +64,21 @@ export function connectRoom(
     });
     socket.addEventListener("message", (event: MessageEvent<unknown>) => {
       lastMessage = Date.now();
-      if (event.data === "pong") return;
-      if (typeof event.data !== "string") return;
-      try {
-        const parsed = v.safeParse(roomSnapshotSchema, JSON.parse(event.data));
-        if (parsed.success && parsed.output.version > current.version) {
-          current = parsed.output;
-          onRoom(current);
-        }
-      } catch {
-        onConnection("受信した情報を確認できませんでした。");
+      const message = readRoomMessage(event.data);
+      if (message.kind === "ignored") return;
+      // 確認できなかったことを毎回伝えられるよう、正しく受信したら接続済みの状態へ戻す。
+      if (message.kind === "invalid") {
+        invalid = true;
+        onConnection(invalidMessage);
+        return;
+      }
+      if (invalid) {
+        invalid = false;
+        onConnection("接続済み");
+      }
+      if (message.room.version > current.version) {
+        current = message.room;
+        onRoom(current);
       }
     });
     socket.addEventListener("close", (event) => {

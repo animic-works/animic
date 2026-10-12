@@ -62,6 +62,7 @@ export function RankingResult({
   icons,
   animate,
   onRematch,
+  topLabel = "トップへ戻る",
   onTop,
 }: {
   code: string;
@@ -73,15 +74,10 @@ export function RankingResult({
   animate: boolean;
   /** 省略すると再戦の操作を出さない。 */
   onRematch?: () => void;
+  topLabel?: string;
   onTop: () => void;
 }) {
   const ranking = getRanking(battle, participantId);
-  // 一覧の各行に、その人の指標の要点を添える。
-  const metrics = useResultMetrics(
-    code,
-    battle.id,
-    battle.scores?.map((score) => score.participantId) ?? [],
-  );
   const me = ranking.find((entry) => entry.participantId === participantId);
   const [first] = ranking;
   const name = (entry: RankingEntry) =>
@@ -198,73 +194,109 @@ export function RankingResult({
               shape="pill"
               size="lg"
               appearance="secondary"
-              compactLabel="トップへ"
-              aria-label="トップへ戻る"
+              compactLabel={topLabel === "トップへ戻る" ? "トップへ" : "終了"}
+              aria-label={topLabel}
               onClick={onTop}
             >
-              トップへ戻る
+              {topLabel}
             </Button>
           </ActionGroup>
-          <Container size="summary" gutter="none">
-            <Stack space="section">
-              <ResultRankingReveal>
-                <RecordList label="順位" entering={animate}>
-                  {ranking.map((entry) => {
-                    const score = battle.scores?.find(
-                      (item) => item.participantId === entry.participantId,
-                    );
-                    const mine = entry.participantId === participantId;
-                    return (
-                      <RecordItem
-                        density="compact"
-                        key={entry.participantId}
-                        emphasis={mine}
-                        leading={<Text variant="numeric.supporting">{entry.rank ?? "—"}</Text>}
-                        image={entry.imageUrl}
-                        // 内訳を開く操作は点数の下に置き、どの行でも同じ位置にそろえる（狭い画面でも詳細の文を1行に収める）。
-                        value={
-                          <Stack space="tight" align="center">
-                            <Text
-                              variant="numeric.supporting"
-                              tone={
-                                entry.total === null ? undefined : getScoreRank(entry.total).text
-                              }
-                            >
-                              {formatTotal(entry.total)}
-                            </Text>
-                            {score && (
-                              <ResultBreakdownButton
-                                code={code}
-                                battle={battle}
-                                score={score}
-                                name={name(entry)}
-                                mine={mine}
-                              />
-                            )}
-                          </Stack>
-                        }
-                      >
-                        <Stack space="tight">
-                          <Text variant="label" title={name(entry)}>
-                            {shortenName(name(entry), mine ? 5 : 9)}
-                            {mine && "（あなた）"}
-                          </Text>
-                          {score &&
-                            scoreSummary(score, metrics.get(entry.participantId)).map((part) => (
-                              <Text key={part} variant="caption" tone="supporting">
-                                {part}
-                              </Text>
-                            ))}
-                        </Stack>
-                      </RecordItem>
-                    );
-                  })}
-                </RecordList>
-              </ResultRankingReveal>
-            </Stack>
-          </Container>
+          <RankingList
+            code={code}
+            battle={battle}
+            participantId={participantId}
+            names={names}
+            animate={animate}
+          />
         </Stack>
       </LayerItem>
     </Layer>
+  );
+}
+
+/**
+ * 結果の順位の一覧。行ごとに順位・提出画像・最終スコアと、再現度・ボーナス・いちばん高い指標の要点を出し、
+ * 全体の内訳は行の「内訳」から開く。3人以上と1対1の結果で同じ一覧を使う。
+ */
+export function RankingList({
+  code,
+  battle,
+  participantId,
+  names,
+  animate,
+}: {
+  code: string;
+  battle: BattleSnapshot;
+  participantId: string;
+  names: Map<string, string>;
+  /** `false`なら行の登場の演出を再生せずに出す。 */
+  animate: boolean;
+}) {
+  const ranking = getRanking(battle, participantId);
+  // 一覧の各行に、その人の指標の要点を添える。
+  const metrics = useResultMetrics(
+    code,
+    battle.id,
+    battle.scores?.map((score) => score.participantId) ?? [],
+  );
+  const name = (entry: RankingEntry) =>
+    names.get(entry.participantId) ?? (entry.participantId === participantId ? "あなた" : "参加者");
+  return (
+    <Container size="summary" gutter="none">
+      <Stack space="section">
+        <ResultRankingReveal>
+          <RecordList label="順位" entering={animate}>
+            {ranking.map((entry) => {
+              const score = battle.scores?.find(
+                (item) => item.participantId === entry.participantId,
+              );
+              const mine = entry.participantId === participantId;
+              return (
+                <RecordItem
+                  density="compact"
+                  key={entry.participantId}
+                  emphasis={mine}
+                  leading={<Text variant="numeric.supporting">{entry.rank ?? "—"}</Text>}
+                  image={entry.imageUrl}
+                  // 内訳を開く操作は点数の下に置き、どの行でも同じ位置にそろえる（狭い画面でも詳細の文を1行に収める）。
+                  value={
+                    <Stack space="tight" align="center">
+                      <Text
+                        variant="numeric.supporting"
+                        tone={entry.total === null ? undefined : getScoreRank(entry.total).text}
+                      >
+                        {formatTotal(entry.total)}
+                      </Text>
+                      {score && (
+                        <ResultBreakdownButton
+                          code={code}
+                          battle={battle}
+                          score={score}
+                          name={name(entry)}
+                          mine={mine}
+                        />
+                      )}
+                    </Stack>
+                  }
+                >
+                  <Stack space="tight">
+                    <Text variant="label" title={name(entry)}>
+                      {shortenName(name(entry), mine ? 5 : 9)}
+                      {mine && "（あなた）"}
+                    </Text>
+                    {score &&
+                      scoreSummary(score, metrics.get(entry.participantId)).map((part) => (
+                        <Text key={part} variant="caption" tone="supporting">
+                          {part}
+                        </Text>
+                      ))}
+                  </Stack>
+                </RecordItem>
+              );
+            })}
+          </RecordList>
+        </ResultRankingReveal>
+      </Stack>
+    </Container>
   );
 }

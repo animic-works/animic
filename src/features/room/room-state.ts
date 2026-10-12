@@ -3,10 +3,13 @@ import * as v from "valibot";
 import { accountIconSchema } from "../account/account-icon";
 import {
   abandonBattle,
+  applyScoringJobs,
   battleStateSchema,
   battleSettingsSchema,
   battleSnapshotSchema,
+  reconcileBattle,
 } from "../battle/battle-state";
+import type { ScoringJobOutcome } from "../battle/battle-state";
 
 // 読み間違えやすい0・O・1・I・Lを除く。
 export const ROOM_CODE_CHARS = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
@@ -25,12 +28,6 @@ export function canJoinRoom(state: Pick<RoomState, "members">, participantId: st
     state.members.some((member) => member.id === participantId) ||
     state.members.length < roomCapacity
   );
-}
-/** 1つのルームで行える対戦の数。 */
-export const roomBattleLimit = 2;
-/** 始めた対戦の数（`battleCount`）から、このルームでまだ対戦を始められるか。 */
-export function hasBattlesLeft(battleCount: number) {
-  return battleCount < roomBattleLimit;
 }
 /** 対戦の結果が出た後、操作のない接続を切るまでの時間。 */
 export const idleConnectionMs = 5 * 60_000;
@@ -62,10 +59,9 @@ export const roomStateSchema = v.object({
     null,
   ),
   code: roomCodeSchema,
+  discordInstanceId: v.optional(v.string()),
   settings: v.optional(v.nullable(battleSettingsSchema), null),
   battle: v.optional(v.nullable(battleStateSchema), null),
-  // このルームで始めた対戦の数。この値を保存する前に作ったルームは0から数える。
-  battleCount: v.optional(v.number(), 0),
   version: v.number(),
   hostId: v.nullable(v.string()),
   members: v.array(memberSchema),
@@ -76,9 +72,9 @@ export const roomStateSchema = v.object({
 export type RoomState = v.InferOutput<typeof roomStateSchema>;
 export const roomSnapshotSchema = v.object({
   code: roomCodeSchema,
+  discordInstanceId: v.optional(v.string()),
   settings: v.optional(v.nullable(battleSettingsSchema), null),
   battle: v.optional(v.nullable(battleSnapshotSchema), null),
-  battleCount: v.number(),
   version: v.number(),
   hostId: v.nullable(v.string()),
   members: v.array(v.object({ ...memberSchema.entries, connected: v.boolean() })),
@@ -110,6 +106,26 @@ export function reconcileRoom(state: RoomState, connected: Set<string>, now: num
       }
     }
   }
+  return next;
+}
+
+/**
+ * 採点ジョブの結果を反映したルームの状態。採点ジョブを確かめる間にルームを閉じる時刻や採点期限を
+ * 過ぎた場合に、遅れて届いた採点で勝敗を決めないよう、同じ時刻で期限を反映してから採点を反映する。
+ * 閉じたルームや、別の対戦・結果の確定した対戦には反映せず`null`を返す。
+ */
+export function applyRoomScoring(
+  state: RoomState,
+  connected: Set<string>,
+  battleId: string,
+  jobs: ScoringJobOutcome[],
+  now: number,
+): RoomState | null {
+  const next = reconcileRoom(state, connected, now);
+  if (next.closed || !next.battle || next.battle.id !== battleId) return null;
+  const battle = reconcileBattle(next.battle, now);
+  if (battle.result) return null;
+  next.battle = applyScoringJobs(battle, jobs, now);
   return next;
 }
 

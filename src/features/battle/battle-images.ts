@@ -31,3 +31,15 @@ export function getBattleImages(
     numberOf: (id: string) => ordered.findIndex((item) => item.id === id) + 1,
   };
 }
+
+/**
+ * 比較の見出しに出す案内。選んでいる画像は比較の枠で見えるため、提出済み・時間切れのときと、
+ * 選べる画像があるのに選んでいないときだけ出す。選べる画像がまだなければ出さない（`null`）。
+ */
+export function getImagesNotice(images: ReturnType<typeof getBattleImages>, noImage: boolean) {
+  const { submitted, selected, succeeded, numberOf } = images;
+  if (submitted) return `#${numberOf(submitted.id)} を提出しました`;
+  if (noImage) return "時間切れのため提出できません";
+  if (!selected && succeeded.length > 0) return "画像を1枚選んでください";
+  return null;
+}

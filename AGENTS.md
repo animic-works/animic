@@ -12,7 +12,7 @@ UI・デザインシステムの判断理由を調べる際は、[デザイン�
 
 デザインシステムの生成と契約検証は`vp run test:design-system`、ブラウザ・アクセシビリティ・画像比較は`vp run test:design-system:browser`、使用状況の解析は`vp run design-system:analyze`です。生成手順は[CONTRIBUTING.md](CONTRIBUTING.md#デザインシステムの生成と検証)に従い、`packages/styled-system/generated/`を手で編集しないでください。
 
-セットアップと検証は[CONTRIBUTING.md](CONTRIBUTING.md#セットアップと検証)に従います。静的検査はリポジトリルートで`vp run check`を実行します。`vp check`だけではプロジェクト全体の型チェックとKnipを含みません。業務ルールの単体テストは`vp run test`、Workers上のD1・DOとブラウザを含む検証は`vp run test:e2e`です。E2Eは専用のローカルDBを初期化してビルドから実行します。コマンドを変更したら、このファイルの案内も合わせて更新してください。
+セットアップは[環境を用意する](CONTRIBUTING.md#環境を用意する)、検証は[変更を検証する](CONTRIBUTING.md#変更を検証する)に従います。静的検査はリポジトリルートで`vp run check`を実行します。`vp check`だけではプロジェクト全体の型チェックとKnipを含みません。業務ルールの単体テストは`vp run test`、Workers上のD1・DOとブラウザを含む検証は`vp run test:e2e`です。E2Eは専用のローカルDBを初期化してビルドから実行します。コマンドを変更したら、このファイルの案内も合わせて更新してください。
 
 favicon・OGP用ロゴを変更したら[アイコンの更新](CONTRIBUTING.md#アイコンの更新)に従い、`vp run icons:generate`で派生画像を再生成してください。
 
