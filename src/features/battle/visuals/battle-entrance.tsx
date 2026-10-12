@@ -60,9 +60,6 @@ export function BattleKickoff() {
               START!
             </Text>
           </Heading>
-          <Text variant="label.supporting" tone="inverse">
-            お題にいちばん近い1枚を作ろう
-          </Text>
         </Stack>
       </div>
     </Overlay>
