@@ -33,6 +33,8 @@ export const appFrame = defineSlotRecipe({
       height: "0.375rem",
       background:
         "linear-gradient(90deg, token(colors.accent.secondary), token(colors.accent.primary))",
+      // 進み具合（Progress）を置いたときは、その表示だけを見せ、角の丸みから下地の線をのぞかせない。
+      "&:not(:empty)": { background: "transparent" },
     },
     root: { minHeight: "100svh", "--animic-app-frame-content-width": "72rem" },
     header: {
