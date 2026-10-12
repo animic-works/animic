@@ -9,7 +9,13 @@ import type { AccountIcon } from "../account/account-icon";
 import { PromptComposer } from "../image-generation/prompt-composer";
 import type { PromptGroup } from "../image-generation/prompt-phrases";
 import { GridBackdrop } from "../shared/visuals/grid-backdrop";
-import { getBattleClock, getBattleDeadline, getWaitingClock, isScoringSlow } from "./battle-clock";
+import {
+  getBattleClock,
+  getBattleDeadline,
+  getExpiredActions,
+  getWaitingClock,
+  isScoringSlow,
+} from "./battle-clock";
 import { BattlePlayers, BattleProgress, BattleRoomLabel, BattleTimer } from "./battle-header";
 import { getBattleImages, type BattleImagePick } from "./battle-images";
 import { BattleImagesPanel } from "./battle-images-panel";
@@ -123,6 +129,9 @@ export function BattlePage({
   const noImage = hasNoImageToSubmit(stage, battle.myGenerations);
   const remaining = useRemainingMs(battle.serverTime, getBattleDeadline(battle, stage), receivedAt);
   const clock = getBattleClock(battle, stage, remaining);
+  // 手元の残り時間が0になったら、サーバーの締切の配信が届くまでの間も、その段階の操作を止めておく。
+  const expired = getExpiredActions(stage, remaining);
+  const submitLocked = locked || expired.submission;
   // 提出した後も、ほかの人が使える残り時間（生成、終わっていれば画像選択の猶予）を待機の表示に出す。
   const generationLeft = useRemainingMs(
     battle.serverTime,
@@ -146,7 +155,7 @@ export function BattlePage({
     battleId: battle.id,
     generations: battle.myGenerations,
   });
-  const submission = useBattleSubmission({ code, battleId: battle.id, locked });
+  const submission = useBattleSubmission({ code, battleId: battle.id, locked: submitLocked });
   const confirmed = images.succeeded.find((item) => item.id === submission.confirmId);
   const opponentId =
     battle.participantIds.length === 2
@@ -185,7 +194,7 @@ export function BattlePage({
               maxCharacters={characterCount(battle.settings.difficulty)}
               successCount={images.succeeded.length}
               pending={images.pendings.length > 0}
-              locked={stage !== "generating" || locked}
+              locked={stage !== "generating" || locked || expired.generation}
               onGenerate={generate}
               modifierKey={modifierKey}
               collapsed={!expanded}
@@ -199,15 +208,18 @@ export function BattlePage({
           images={images}
           entrance={entrance}
           arrival={arrival}
-          locked={locked}
+          locked={submitLocked}
           noImage={noImage}
           pending={submission.pending}
           error={submission.error}
           quick={quick}
           onQuickChange={setQuick}
-          onPick={(id) => setPick({ id, after: images.succeeded.length })}
+          onPick={(id) => {
+            setPick({ id, after: images.succeeded.length });
+            submission.clearError();
+          }}
           onZoom={() => setZoomOpen(true)}
-          onSubmit={(id) => (quick ? void submission.submit(id) : submission.setConfirmId(id))}
+          onSubmit={(id) => (quick ? void submission.submit(id) : submission.confirm(id))}
         />
       </Workspace>
       {(entrance === "kickoff" || entrance === "revealing") && <BattleKickoff />}
@@ -220,12 +232,12 @@ export function BattlePage({
       />
       <SubmitConfirmDialog
         image={confirmed}
-        open={Boolean(confirmed) && !locked}
+        open={Boolean(confirmed) && !submitLocked}
         pending={submission.pending}
         error={submission.error}
         quick={quick}
         onQuickChange={setQuick}
-        onCancel={() => submission.setConfirmId(null)}
+        onCancel={() => submission.confirm(null)}
         onSubmit={(id) => void submission.submit(id)}
       />
       <SubmissionWaitDialog

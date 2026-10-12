@@ -2,7 +2,10 @@ import { useState } from "react";
 import { useToast } from "@animic/react/toast";
 import { submitBattleImage } from "./battle.functions";
 
-/** 画像の提出と、提出前の確認・失敗の表示を扱う。 */
+/**
+ * 画像の提出と、提出前の確認・失敗の表示を扱う。
+ * 失敗の表示は、確認を開く・選び直す・別の画像を選ぶまで残し、別の画像の確認へ持ち越さない。
+ */
 export function useBattleSubmission({
   code,
   battleId,
@@ -33,5 +36,11 @@ export function useBattleSubmission({
     }
   }
 
-  return { confirmId, setConfirmId, pending, error, submit };
+  /** 提出前の確認を開く（`null`で閉じる）。前の失敗の表示は消す。 */
+  function confirm(generationId: string | null) {
+    setConfirmId(generationId);
+    setError(undefined);
+  }
+
+  return { confirmId, confirm, pending, error, submit, clearError: () => setError(undefined) };
 }
