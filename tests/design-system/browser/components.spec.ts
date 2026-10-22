@@ -131,6 +131,8 @@ test("Toastは画面下の中央に出し、次の通知で置き換えて時間
   await page.getByRole("button", { name: "短い通知を表示" }).click();
   await expect(visible).toHaveCount(1);
   await expect(visible).toContainText("保存しました");
+  // 読み上げ検査中はhoverで表示時間を止め、検査の所要時間と自動消去を競合させない。
+  await visible.hover();
   const region = page.locator('[data-scope="toast"][data-part="group"]');
   await expect(region).toHaveCSS("z-index", "20");
   await expectAccessible(
@@ -145,6 +147,7 @@ test("Toastは画面下の中央に出し、次の通知で置き換えて時間
     expect(box.x + box.width / 2).toBeCloseTo(viewport.width / 2, 0);
     expect(box.y + box.height).toBeGreaterThan(viewport.height / 2);
   }
+  await page.mouse.move(0, 0);
   await expect(notices).toHaveCount(0, { timeout: 5000 });
 });
 test("Primary state・focus・reduced motion", async ({ page }) => {

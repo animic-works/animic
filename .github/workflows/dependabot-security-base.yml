@@ -1,0 +1,30 @@
+name: Dependabot security PR base
+
+# Security updates start on the default branch. Retarget the same-repository
+# Dependabot PRs after CI without checking out or executing pull request code.
+on:
+  workflow_run:
+    workflows: [Checks]
+    types: [completed]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  retarget:
+    if: github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Move Dependabot security PRs to develop
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api --paginate "repos/$GITHUB_REPOSITORY/pulls?state=open&base=main&per_page=100" \
+            --jq '.[] | select(.user.login == "dependabot[bot]" and .head.repo.full_name == .base.repo.full_name) | .number' |
+            while read -r pr_number; do
+              gh api -X PATCH "repos/$GITHUB_REPOSITORY/pulls/$pr_number" \
+                -f base=develop --silent
+            done

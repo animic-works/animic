@@ -21,6 +21,7 @@ jobs:
           HEAD_BRANCH: ${{ github.head_ref }}
           HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
           BASE_REPO: ${{ github.repository }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
         shell: bash
         run: |
           if [[ "$BASE_BRANCH" == main ]]; then
@@ -29,6 +30,9 @@ jobs:
               exit 1
             }
           elif [[ "$BASE_BRANCH" == develop ]]; then
+            if [[ "$HEAD_REPO" == "$BASE_REPO" && "$PR_AUTHOR" == 'dependabot[bot]' && "$HEAD_BRANCH" == dependabot/* ]]; then
+              exit 0
+            fi
             [[ "$HEAD_BRANCH" =~ ^(feat|fix|refactor|perf|docs|test|build|ci|style|revert|chore)/([1-9][0-9]*-)?[a-z][a-z0-9]*(-[a-z0-9]+)*$ ]] || {
               echo 'トピックブランチ名はtype/Issue番号-kebab-case形式にしてください。エージェント名のプレフィックスは禁止です。' >&2
               exit 1
@@ -43,7 +47,7 @@ jobs:
           fetch-depth: 0
       - uses: voidzero-dev/setup-vp@3754dd7dbdb32bd8f6d28b6043de13ad3a75f21f # v1.21.1
         with:
-          version: "0.3.3"
+          version: "1.3.0"
           node-version-file: .node-version
           cache: true
           run-install: false

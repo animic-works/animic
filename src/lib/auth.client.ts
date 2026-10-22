@@ -20,21 +20,23 @@ async function request<T extends { error: unknown }>(send: () => Promise<T>, mes
   return result;
 }
 
+async function ensureParticipantSession() {
+  const current = await request(
+    () => authClient.getSession(),
+    "参加者情報を確認できませんでした。",
+  );
+  if (current.data) return;
+  await request(
+    () => authClient.signIn.anonymous(),
+    "参加の準備ができませんでした。もう一度お試しください。",
+  );
+}
+
 export async function ensureParticipant() {
-  const ensure = async () => {
-    const current = await request(
-      () => authClient.getSession(),
-      "参加者情報を確認できませんでした。",
-    );
-    if (current.data) return;
-    await request(
-      () => authClient.signIn.anonymous(),
-      "参加の準備ができませんでした。もう一度お試しください。",
-    );
-  };
   // 複数タブでの初回参加が別々の匿名ユーザーを作らないよう直列化する。
-  if (navigator.locks) await navigator.locks.request("animic-anonymous-session", ensure);
-  else await ensure();
+  if (navigator.locks)
+    await navigator.locks.request("animic-anonymous-session", ensureParticipantSession);
+  else await ensureParticipantSession();
 }
 
 /**

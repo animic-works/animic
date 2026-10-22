@@ -6,6 +6,10 @@ import type { ScoredSubmission } from "./final-score";
 
 const bonus = { speedPoints: 3, generationPoints: 3, minSimilarity: 0 };
 
+function parsesBonus(value: object) {
+  return v.safeParse(scoreBonusSchema, { ...bonus, ...value }).success;
+}
+
 function scored(
   participantId: string,
   similarity: number,
@@ -82,11 +86,10 @@ describe("最終スコア", () => {
     ]);
   });
   it("ボーナスは0〜20点、下限は0〜100点の整数だけを受け付ける", () => {
-    const parse = (value: object) => v.safeParse(scoreBonusSchema, { ...bonus, ...value }).success;
-    expect(parse({ speedPoints: 0, generationPoints: 20, minSimilarity: 100 })).toBe(true);
-    expect(parse({ speedPoints: 21 })).toBe(false);
-    expect(parse({ generationPoints: -1 })).toBe(false);
-    expect(parse({ speedPoints: 1.5 })).toBe(false);
-    expect(parse({ minSimilarity: 101 })).toBe(false);
+    expect(parsesBonus({ speedPoints: 0, generationPoints: 20, minSimilarity: 100 })).toBe(true);
+    expect(parsesBonus({ speedPoints: 21 })).toBe(false);
+    expect(parsesBonus({ generationPoints: -1 })).toBe(false);
+    expect(parsesBonus({ speedPoints: 1.5 })).toBe(false);
+    expect(parsesBonus({ minSimilarity: 101 })).toBe(false);
   });
 });
