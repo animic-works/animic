@@ -1,0 +1,232 @@
+diff --git a/package.json b/package.json
+index 347a7c4..9735b89 100644
+--- a/package.json
++++ b/package.json
+@@ -48,7 +48,7 @@
+     "eventemitter3": "^5.0.0",
+     "lodash.transform": "^4.6.0",
+     "uuid": "^11.0.0",
+-    "zod": "^3.9.8"
++    "zod": "4.6.7"
+   },
+   "devDependencies": {
+     "@babel/eslint-parser": "^7.15.7",
+diff --git a/rollup.config.mjs b/rollup.config.mjs
+index 808710c..08739f4 100644
+--- a/rollup.config.mjs
++++ b/rollup.config.mjs
+@@ -14,7 +14,7 @@ const outDir = 'output';
+  */
+ function buildConfig(format) {
+   return {
+-    //external: ['zod', 'lodash.transform', 'events', 'uuid'],
++    external: ['zod', '@types/lodash.transform', '@types/uuid', 'big-integer', 'decimal.js-light', 'eventemitter3', 'lodash.transform', 'uuid'],
+     input: 'src/index.ts',
+     output: {
+       dir: outDir,
+diff --git a/src/schema/common.ts b/src/schema/common.ts
+index b238e56..f82b9fa 100644
+--- a/src/schema/common.ts
++++ b/src/schema/common.ts
+@@ -61,7 +61,7 @@ export const ReceiveFramePayload = zod
+ // TODO afgiel -- next breaking change release
+ // remove Scopes and ScopesObject in favor of Types.OAuthScopes
+ export const ScopesObject = {
+-  ...AuthenticateResponseSchema.shape.scopes.element.overlayType._def.innerType.options[0].Values,
++  ...AuthenticateResponseSchema.shape.scopes.element.overlayType.unwrap().options[0].enum,
+   UNHANDLED: -1,
+ } as const;
+ 
+diff --git a/src/schema/events.ts b/src/schema/events.ts
+index 96261f6..655eeee 100644
+--- a/src/schema/events.ts
++++ b/src/schema/events.ts
+@@ -39,7 +39,7 @@ export const DispatchEventFrame = ReceiveFrame.extend({
+   data: zod.object({}).passthrough(),
+ });
+ 
+-export interface EventArgs<Z extends zod.AnyZodObject = zod.AnyZodObject> {
++export interface EventArgs<Z extends zod.ZodObject = zod.ZodObject> {
+   payload: Z;
+   // BAD CODE - this arg is being called at runtime, but it's only used to
+   // enforce typescript. The perf hit is low and the DX with zod is worth it
+@@ -88,9 +88,9 @@ export const ActivityJoinIntentObject = {
+   SPECTATE: 1,
+ } as const;
+ 
+-export function parseEventPayload<K extends keyof typeof EventSchema = keyof typeof EventSchema>(
++export function parseEventPayload(
+   data: zod.infer<typeof EventFrame>,
+-): zod.infer<(typeof EventSchema)[K]['payload']> {
++): zod.infer<(typeof EventSchema)[keyof typeof EventSchema]['payload']> {
+   const event = data.evt;
+   if (!(event in Events)) {
+     throw new Error(`Unrecognized event type ${data.evt}`);
+diff --git a/src/schema/index.ts b/src/schema/index.ts
+index 349cfaf..bb8ce40 100644
+--- a/src/schema/index.ts
++++ b/src/schema/index.ts
+@@ -32,10 +32,10 @@ export const IncomingPayload = zod
+   })
+   .passthrough();
+ 
+-export function parseIncomingPayload<K extends keyof typeof Events.EventSchema = keyof typeof Events.EventSchema>(
++export function parseIncomingPayload(
+   payload: zod.infer<typeof IncomingPayload>,
+ ):
+-  | zod.infer<(typeof Events.EventSchema)[K]['payload']>
++  | zod.infer<(typeof Events.EventSchema)[keyof typeof Events.EventSchema]['payload']>
+   | zod.infer<typeof Responses.ResponseFrame>
+   | zod.infer<typeof Events.ErrorEvent> {
+   const incoming = IncomingPayload.parse(payload);
+diff --git a/src/utils/commandFactory.ts b/src/utils/commandFactory.ts
+index c99d2a1..3eb8b81 100644
+--- a/src/utils/commandFactory.ts
++++ b/src/utils/commandFactory.ts
+@@ -3,21 +3,21 @@ import {Commands, ReceiveFramePayload} from '../schema/common';
+ import type {TSendCommand} from '../schema/types';
+ import {Command, Schemas} from '../generated/schemas';
+ 
+-export function commandFactory<Args extends any, Response extends zod.ZodTypeAny>(
++export function commandFactory<Args, Response extends zod.ZodTypeAny>(
+   sendCommand: TSendCommand,
+   cmd: Exclude<Commands, Commands.SUBSCRIBE | Commands.UNSUBSCRIBE>,
+-  response: zod.ZodTypeAny,
++  response: Response,
+   transferTransform: (args: Args) => Transferable[] | undefined = () => undefined,
+ ): (args: Args) => Promise<zod.infer<Response>> {
+   const payload = ReceiveFramePayload.extend({
+     cmd: zod.literal(cmd),
+-    data: response,
++    data: zod.unknown(),
+   });
+ 
+   return async (args: Args) => {
+     const reply = await sendCommand({cmd, args, transfer: transferTransform(args)});
+     const parsed = payload.parse(reply);
+-    return parsed.data;
++    return zod.parse(response, parsed.data);
+   };
+ }
+ 
+@@ -26,22 +26,25 @@ type InferResponse<T extends Command> = zod.infer<(typeof Schemas)[T]['response'
+ 
+ export function schemaCommandFactory<T extends Command, TArgs = InferArgs<T>>(
+   cmd: T,
++  transferTransform?: (args: TArgs) => Transferable[] | undefined,
++): (sendCommand: TSendCommand) => (args: TArgs) => Promise<InferResponse<T>>;
++export function schemaCommandFactory<TArgs>(
++  cmd: Command,
+   transferTransform: (args: TArgs) => Transferable[] | undefined = () => undefined,
+-): (sendCommand: TSendCommand) => (args: TArgs) => Promise<InferResponse<T>> {
++) {
+   const response = Schemas[cmd].response;
+   const payload = ReceiveFramePayload.extend({
+     cmd: zod.literal(cmd),
+-    data: response,
++    data: zod.unknown(),
+   });
+-
+-  return (sendCommand) => async (args) => {
++  return (sendCommand: TSendCommand) => async (args: TArgs) => {
+     const reply = await sendCommand({
+       // @ts-expect-error - Merge commands
+-      cmd: cmd,
++      cmd,
+       args,
+       transfer: transferTransform(args),
+     });
+     const parsed = payload.parse(reply);
+-    return parsed.data;
++    return zod.parse(response, parsed.data);
+   };
+ }
+diff --git a/src/utils/compatCommandFactory.ts b/src/utils/compatCommandFactory.ts
+index eb28422..44f6232 100644
+--- a/src/utils/compatCommandFactory.ts
++++ b/src/utils/compatCommandFactory.ts
+@@ -9,8 +9,8 @@ import {TSendCommand} from '../schema/types';
+  *  client doesn't support one of the new args.
+  */
+ export default function compatCommandFactory<
+-  Args extends any,
+-  FallbackArgs extends any,
++  Args,
++  FallbackArgs,
+   Response extends zod.ZodTypeAny,
+ >({
+   sendCommand,
+@@ -21,26 +21,26 @@ export default function compatCommandFactory<
+ }: {
+   sendCommand: TSendCommand;
+   cmd: Exclude<Commands, Commands.SUBSCRIBE | Commands.UNSUBSCRIBE>;
+-  response: zod.ZodTypeAny;
++  response: Response;
+   fallbackTransform: (args: Args) => FallbackArgs;
+   transferTransform?: (args: Args | FallbackArgs) => Transferable[] | undefined;
+ }): (args: Args) => Promise<zod.infer<Response>> {
+   const payload = ReceiveFramePayload.extend({
+     cmd: zod.literal(cmd),
+-    data: response,
++    data: zod.unknown(),
+   });
+ 
+   return async (args: Args) => {
+     try {
+       const reply = await sendCommand({cmd, args, transfer: transferTransform(args)});
+       const parsed = payload.parse(reply);
+-      return parsed.data;
+-    } catch (error: any) {
+-      if (error.code === RPCErrorCodes.INVALID_PAYLOAD) {
++      return zod.parse<Response>(response, parsed.data);
++    } catch (error: unknown) {
++      if (typeof error === 'object' && error !== null && 'code' in error && error.code === RPCErrorCodes.INVALID_PAYLOAD) {
+         const fallbackArgs = fallbackTransform(args);
+         const reply = await sendCommand({cmd, args: fallbackArgs, transfer: transferTransform(fallbackArgs)});
+         const parsed = payload.parse(reply);
+-        return parsed.data;
++        return zod.parse<Response>(response, parsed.data);
+       } else {
+         throw error;
+       }
+diff --git a/src/utils/zodUtils.ts b/src/utils/zodUtils.ts
+index 4c28b30..98e098a 100644
+--- a/src/utils/zodUtils.ts
++++ b/src/utils/zodUtils.ts
+@@ -32,26 +32,16 @@ export function zodCoerceUnhandledValue<T extends UnhandledObject>(inputObject:
+   );
+ }
+ 
+-export interface ZodEffectOverlayType<T extends ZodTypeAny> extends zod.ZodEffects<T> {
+-  overlayType: T;
+-  // Don't allow accessing the intermediate wrapper
+-  innerType(): never;
+-  _def: never;
+-}
+-
+ /**
+- * Fallback to the default zod value if parsing fails.
++ * Keep the source schema available to the SDK while validating with Zod 4.
+  */
+-export function fallbackToDefault<T extends ZodDefault<ZodTypeAny>>(schema: T): ZodEffectOverlayType<T> {
+-  const transform = zod.custom().transform((data) => {
+-    const res = schema.safeParse(data);
+-    if (res.success) {
+-      return res.data;
+-    }
+-    return schema._def.defaultValue();
+-  }) as ZodEffectOverlayType<T>;
+-  // Must set this inner schema so inspection works correctly
+-  transform.overlayType = schema;
+-  // transform._def.schema = schema;
+-  return transform;
++export function fallbackToDefault<T extends ZodDefault<ZodTypeAny>>(schema: T) {
++  return Object.assign(
++    zod.unknown().transform((data): zod.output<T> => {
++      const result = schema.safeParse(data);
++      return result.success ? result.data : schema.parse(undefined);
++    }),
++    {overlayType: schema},
++  );
+ }
++export type ZodEffectOverlayType<T extends ZodDefault<ZodTypeAny>> = ReturnType<typeof fallbackToDefault<T>>;
