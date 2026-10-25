@@ -2,6 +2,10 @@ packages:
   - packages/*
 # Vite+と同梱Viteの解決先を一致させる。
 overrides:
+  "zod@>=4.0.0 <4.6.6": "4.6.7"
+  "miniflare>undici": "7.30.1"
+  "body-parser": "2.4.0"
+  "fast-uri": "3.1.9"
   # GHSA-rxp7-6hxx-x8q5対策。依存元が修正版へ更新されたら削除する。
   "express-rate-limit@8.7.1>ip-address": "10.7.4"
   "vite@*": "catalog:"
