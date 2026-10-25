@@ -1,0 +1,70 @@
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Tokyo
+    open-pull-requests-limit: 5
+    versioning-strategy: increase
+    commit-message:
+      prefix: "build(deps)"
+    ignore:
+      # Keep Node type definitions on the runtime major in .node-version.
+      - dependency-name: "@types/node"
+        update-types:
+          - version-update:semver-major
+    groups:
+      tools:
+        update-types:
+          - minor
+          - patch
+        patterns:
+          - vite
+          - vite-plus
+          - "@voidzero-dev/vite-plus-core"
+          - vitest
+          - "@vitest/*"
+          - "@vitejs/*"
+          - "@rolldown/*"
+          - rolldown
+          - "@cloudflare/vite-plugin"
+          - wrangler
+      tanstack:
+        update-types:
+          - minor
+          - patch
+        patterns:
+          - "@tanstack/*"
+      react:
+        update-types:
+          - minor
+          - patch
+        patterns:
+          - react
+          - react-dom
+          - "@types/react"
+          - "@types/react-dom"
+
+  - package-ecosystem: github-actions
+    directory: /
+    commit-message:
+      prefix: "ci(deps)"
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Tokyo
+    open-pull-requests-limit: 5
+    groups:
+      actions:
+        update-types:
+          - minor
+          - patch
+        patterns:
+          - "*"

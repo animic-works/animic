@@ -5,3 +5,6 @@
 *.webp binary
 *.gif binary
 *.woff2 binary
+# unified diffの空行を表す文脈行のスペースを保持する。
+patches/*.patch whitespace=-blank-at-eol
+patches/*.diff whitespace=-blank-at-eol

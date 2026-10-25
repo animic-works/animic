@@ -34,8 +34,8 @@
   "dependencies": {
     "@discord/embedded-app-sdk": "2.5.0",
     "@jsquash/webp": "1.5.0",
-    "@tanstack/react-router": "1.170.38",
-    "@tanstack/react-start": "1.168.57",
+    "@tanstack/react-router": "1.170.45",
+    "@tanstack/react-start": "1.169.3",
     "better-auth": "1.7.5",
     "drizzle-orm": "0.45.3",
     "fflate": "0.8.3",
@@ -57,8 +57,8 @@
     "@pandacss/mcp": "2.0.1",
     "@playwright/test": "1.63.0",
     "@rolldown/plugin-babel": "0.2.4",
-    "@storybook/addon-a11y": "10.6.1",
-    "@storybook/react-vite": "10.6.1",
+    "@storybook/addon-a11y": "10.6.3",
+    "@storybook/react-vite": "10.6.3",
     "@types/node": "24.13.6",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
@@ -66,15 +66,15 @@
     "babel-plugin-react-compiler": "1.0.0",
     "drizzle-kit": "0.31.11",
     "knip": "6.37.0",
-    "rolldown": "1.2.9",
-    "storybook": "10.6.1",
+    "rolldown": "1.2.14",
+    "storybook": "10.6.3",
     "typescript": "7.0.2",
-    "vite": "npm:@voidzero-dev/vite-plus-core@0.3.3",
-    "vite-plus": "0.3.3",
+    "vite": "catalog:",
+    "vite-plus": "catalog:",
     "wrangler": "4.147.0"
   },
   "engines": {
-    "node": ">=24.21.0 <25"
+    "node": ">=24.22.1 <25"
   },
   "packageManager": "pnpm@10.33.4",
   "knip": {

@@ -95,15 +95,18 @@ export function BattleOptionsScreen({
     updateKind(kind, { ...draft[kind], choices: [...draft[kind].choices, ""] });
   }
 
-  function buildOptions(): BattleOptions {
-    const build = (kind: BattleOptionKind) => ({
+  function buildOption(kind: BattleOptionKind) {
+    return {
       choices: draft[kind].choices.map(Number),
       defaultSeconds: effectiveDefault(
         optionNumbers(draft[kind].choices),
         draft[kind].defaultSeconds,
       ),
-    });
-    return { duration: build("duration"), selection: build("selection") };
+    };
+  }
+
+  function buildOptions(): BattleOptions {
+    return { duration: buildOption("duration"), selection: buildOption("selection") };
   }
 
   async function save() {
